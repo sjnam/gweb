@@ -29,4 +29,4 @@ $(NAME).pdf: $(NAME).w
 	$(TEXENGINE) $(NAME).tex
 
 clean:
-	rm -f $(NAME).go $(NAME).tex $(NAME).pdf $(NAME).log $(NAME).dvi wc
+	rm -f *.go *.tex *.pdf *.log *.dvi *.toc wc pmap

@@ -248,6 +248,8 @@ func spaceBetween(pk tokKind, pt string, ck tokKind, ct string) bool {
 		return true // func() {, for cond {, struct {
 	case pk == tkOp && pt == "}" && cw:
 		return true // } else, } return
+	case pk == tkOp && pt == ")" && cw:
+		return true // a ) before a word is a return type or method name: ) error
 	}
 	return false
 }

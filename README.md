@@ -41,15 +41,20 @@ Both commands accept `-o <dir>` to choose an output directory. `gwebmac.tex`
 lives in [tex/](tex/); point `TEXINPUTS` at that directory, or copy the file
 next to your document.
 
-## Try the example
+## Try the examples
 
 ```sh
-make example      # tangles & weaves examples/wc.w into wc.go and wc.pdf
+make example                 # tangle & weave every examples/*.w into .go and .pdf
+make -C examples NAME=pmap   # just one example
 ```
 
-[examples/wc.w](examples/wc.w) is a literate word-count program. Its tangled
-output matches the system `wc`, and its woven output is a small illustrated
-document.
+* [examples/wc.w](examples/wc.w) — a literate word-count program; its tangled
+  output matches the system `wc`. It also shows `@f` setting a user type in bold.
+* [examples/pmap.w](examples/pmap.w) — a generic concurrent `map` over a slice,
+  exercising generics, goroutines, channels, and `sync.WaitGroup`.
+
+`make test` (the non-`-short` run) tangles every example and `go build`s the
+result, so the examples are guaranteed to stay compilable.
 
 ## The `.w` file format
 

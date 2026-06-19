@@ -17,9 +17,10 @@ test:
 install:
 	$(GO) install ./cmd/gtangle ./cmd/gweave
 
-# Tangle and weave the bundled example (needs a TeX engine for the PDF).
+# Tangle and weave the bundled examples (needs a TeX engine for the PDFs).
 example: build
-	$(MAKE) -C examples
+	$(MAKE) -C examples NAME=wc
+	$(MAKE) -C examples NAME=pmap
 
 clean:
 	rm -rf $(BIN)
