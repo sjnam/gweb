@@ -32,6 +32,22 @@ All control codes begin with `@`. Use `@@` for a literal `@`.
 | `@&`            | paste: join the surrounding tokens with no space                  |
 | `@@`            | a literal `@`                                                     |
 
+## Woven-layout control codes (used by `gweave`, ignored by `gtangle`)
+
+These fine-tune the woven output; the source's own spacing and line breaks
+otherwise determine the layout.
+
+| code  | meaning                                                          |
+|-------|-----------------------------------------------------------------|
+| `@,`  | insert a thin space                                             |
+| `@/`  | force a line break (continuation at the same indentation)        |
+| `@\|` | an optional line break (a place a long line may wrap)            |
+| `@#`  | a line break followed by a blank line                           |
+
+GWEB mirrors the source rather than reflowing it, so CWEB's prettyprinter hints
+`@+` (cancel break), `@[` … `@]` (treat as an expression), and `@;` (invisible
+semicolon) have no effect; they are accepted and ignored for portability.
+
 ## Formatting / index control codes (used by `gweave`)
 
 | code            | meaning                                                          |

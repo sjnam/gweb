@@ -58,6 +58,8 @@
   \hangindent=\dimexpr\Gindentunit*\numexpr#1+1\relax\relax \hangafter=1
   \noindent\kern#1\Gindentunit\relax #2}
 \def\GS{\penalty0\hskip .5em plus .3em minus .15em\relax} % breakable code space
+\def\GSO{\penalty0\hskip 0pt\relax}                       % @| optional zero-width break
+\def\GBL{\par\smallskip}                                  % @# blank line between code lines
 
 % ---- code token fonts (called inside the math of \GL) -----------------------
 \def\GID#1{\hbox{\it #1\/}}      % identifier

@@ -199,3 +199,18 @@ w * h
 		t.Errorf("definition headline should typeset |area| as code; missing %q in:\n%s", want, out)
 	}
 }
+
+func TestWeaveLayoutCodes(t *testing.T) {
+	out := weaveString(t, "@ x\n@c\nvar y = a@,b\nvar z = c@/d\nvar w = e@|f\nvar v = g@#h\n")
+	checks := map[string]string{
+		`\GID{a}\,\GID{b}`:  "@, should insert a thin space within the chunk",
+		`\GL{0}{$\GID{d}$}`: "@/ should force a new line",
+		`\GSO `:             "@| should emit an optional break",
+		`\GBL`:              "@# should emit a blank line",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant substring %q in:\n%s", msg, sub, out)
+		}
+	}
+}

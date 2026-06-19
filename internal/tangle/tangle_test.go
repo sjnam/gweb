@@ -114,3 +114,15 @@ var area = @<the |x| value@>
 		t.Errorf("name containing |x| should still match for tangling:\n%s", got)
 	}
 }
+
+func TestTangleIgnoresLayoutCodes(t *testing.T) {
+	const src = "@ x\n@c\npackage main\n\nvar n = 1@,@/@|@#@+@[@]@;2\n"
+	outs, err := New(web.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(outs[0].Content)
+	if !strings.Contains(got, "var n = 12") {
+		t.Errorf("layout/hint codes must not leak into tangled output:\n%s", got)
+	}
+}

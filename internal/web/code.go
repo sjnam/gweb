@@ -12,13 +12,14 @@ const (
 	ATeX                      // @t text@> TeX text for the woven output
 	AIndex                    // @^/@./@: index entry
 	APaste                    // @& join (delete surrounding whitespace)
+	ALayout                   // @, @/ @| @# woven-output layout hints
 )
 
 // Atom is one element of a scanned code part.
 type Atom struct {
 	Kind  AtomKind
 	Text  string // payload for AText/AVerbatim/ATeX/AIndex; name for ARef
-	Index byte   // '^', '.', or ':' for AIndex
+	Index byte   // '^','.',':' for AIndex; ',' '/' '|' '#' for ALayout
 }
 
 // ScanCode splits a raw code part into atoms, interpreting in-code control
@@ -101,8 +102,19 @@ func ScanCode(code string) []Atom {
 			i = j
 		case '>':
 			i += 2 // stray terminator
+		case ',', '/', '|', '#':
+			// Woven-output layout hints: thin space, line break, optional line
+			// break, and break-plus-blank-line. Ignored by gtangle.
+			flush()
+			atoms = append(atoms, Atom{Kind: ALayout, Index: d})
+			i += 2
+		case '+', '[', ']', ';':
+			// CWEB prettyprinter hints (cancel break, expression brackets,
+			// invisible semicolon). GWEB mirrors the source instead of reflowing
+			// it, so these have no effect; accept and drop them for portability.
+			i += 2
 		default:
-			buf.WriteByte(d) // unknown @x: keep the following character
+			i += 2 // unknown @x: drop it rather than corrupt the output
 			i += 2
 		}
 	}

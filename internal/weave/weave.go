@@ -158,14 +158,29 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 		run.WriteString(s)
 		atLineStart = false
 	}
-	flushLine := func() {
+	// emitLine writes the accumulated line as a \GL but leaves indent intact.
+	emitLine := func() {
 		flushRun()
 		if strings.TrimSpace(line.String()) != "" {
 			fmt.Fprintf(&out, "\\GL{%d}{%s}%%\n", indent, line.String())
 		}
 		line.Reset()
+	}
+	// flushLine ends a source line.
+	flushLine := func() {
+		emitLine()
 		indent = 0
 		atLineStart = true
+		pendingSpace = false
+	}
+	// forceBreak starts a fresh woven line at the same indent (@/), optionally
+	// preceded by a blank line (@#).
+	forceBreak := func(blank bool) {
+		emitLine()
+		if blank {
+			out.WriteString("\\GBL\n")
+		}
+		atLineStart = false
 		pendingSpace = false
 	}
 
@@ -207,6 +222,20 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 			wv.xref.addManualIndex(a.Index, a.Text, secNum)
 		case web.APaste:
 			pendingSpace = false // join: no space before the next token
+		case web.ALayout:
+			switch a.Index {
+			case ',': // thin space, stays within the current chunk
+				emit("\\,")
+			case '/': // force a line break at the same indent
+				forceBreak(false)
+			case '#': // force a line break preceded by a blank line
+				forceBreak(true)
+			case '|': // optional (zero-width) line break between chunks
+				flushRun()
+				line.WriteString("\\GSO ")
+				pendingSpace = false
+				atLineStart = false
+			}
 		}
 	}
 	flushLine()

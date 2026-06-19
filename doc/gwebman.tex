@@ -224,6 +224,13 @@ Three control codes add hand-written entries to the index, each ending with
 way it formats \cw{b} (for instance to make a type name bold); \cw{@s} does the
 same but omits the entry from the index.
 
+A handful of codes adjust the woven layout directly, and are ignored by
+\cw{gtangle}: \cw{@,} inserts a thin space, \cw{@/} forces a line break, \cw{@|}
+marks an optional line break, and \cw{@\#} forces a line break followed by a
+blank line. Since \cw{gweave} mirrors the source rather than reflowing it, CWEB's
+prettyprinter hints \cw{@+}, \cw{@[}\thinspace$\ldots$\thinspace\cw{@]}, and
+\cw{@;} are unnecessary; they are accepted and ignored.
+
 \chapter{Running the programs}
 Build the tools once with \cw{make build} (or \cw{go install ./...}), then:
 \begincode
