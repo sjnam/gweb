@@ -120,12 +120,12 @@ func f(ch chan int) {
 }
 `)
 	checks := map[string]string{
-		`\neq`:                             "!= should render as \\neq",
-		`\geq`:                             ">= should render as \\geq",
-		`\mathrel{\leftarrow}`:             "<- should render as a left arrow",
-		`\mathord{\mathord{+}\mathord{+}}`: "++ should render tight",
-		`\GKW{if}\ `:                       "a space should follow the if keyword",
-		`\GKW{default}\mathord{:}`:         "default: should be tight (no space before colon)",
+		`\neq`:                     "!= should render as \\neq",
+		`\geq`:                     ">= should render as \\geq",
+		`\mathord{\leftarrow}`:     "<- should render as a left arrow",
+		`\mathord{+}\mathord{+}`:   "++ should render tight",
+		`$\GKW{if}$\GS `:           "a source space after if becomes a breakable \\GS",
+		`\GKW{default}\mathord{:}`: "default: should be tight (no space before colon)",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -156,5 +156,26 @@ var hidden int
 	}
 	if strings.Contains(out, `\GII{\GID{hidden}}`) {
 		t.Errorf("@s should omit the identifier from the index:\n%s", out)
+	}
+}
+
+func TestWeaveSourceSpacing(t *testing.T) {
+	out := weaveString(t, `@ x
+@c
+func f(p *int) {
+	r := a*b + c
+	s := xs[i]
+}
+`)
+	checks := map[string]string{
+		`\mathord{*}\GKW{int}`:                  "pointer *int should be tight (one chunk)",
+		`\GID{a}\mathord{*}\GID{b}`:             "multiplication a*b should be tight, matching gofmt",
+		`\GID{xs}\mathord{[}\GID{i}\mathord{]}`: "index xs[i] should be tight",
+		`\GS `:                                  "spaced operands should be separated by a breakable \\GS",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant substring %q in:\n%s", msg, sub, out)
+		}
 	}
 }

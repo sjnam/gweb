@@ -67,49 +67,28 @@ func escMathOp(s string) string {
 	return b.String()
 }
 
-// Operators that read as relations (math \mathrel spacing) when multi-character.
-var relOps = map[string]bool{
-	":=": true, "+=": true, "-=": true, "*=": true, "/=": true, "%=": true,
-	"&=": true, "|=": true, "^=": true, "<<=": true, ">>=": true, "&^=": true,
-	"==": true,
-}
-
-// Operators that should hug their operand (postfix ++/--).
-var ordOps = map[string]bool{"++": true, "--": true}
-
-// renderOp typesets a Go operator token for math mode. Single characters keep
-// TeX's default math class; multi-character operators are rendered as one tight
-// atom (no internal spacing) wrapped in the right class, using real math symbols
-// where they exist.
+// renderOp typesets a Go operator token as a single tight math atom (no math
+// spacing of its own), using real math symbols where they exist. Inter-token
+// spacing is supplied by the surrounding source whitespace, so the result
+// reproduces gofmt's spacing exactly and the unary/binary distinction for *, &,
+// etc. needs no grammar analysis.
 func renderOp(s string) string {
 	switch s {
 	case "<=":
-		return "\\leq"
+		return "\\mathord{\\leq}"
 	case ">=":
-		return "\\geq"
+		return "\\mathord{\\geq}"
 	case "!=":
-		return "\\neq"
+		return "\\mathord{\\neq}"
 	case "<-":
-		return "\\mathrel{\\leftarrow}"
+		return "\\mathord{\\leftarrow}"
 	case "...":
 		return "\\mathord{\\ldots}"
-	case ":":
-		// ':' is a relation in math, but in Go it is punctuation (labels, case
-		// clauses, slices, map literals); render it tight.
-		return "\\mathord{:}"
 	}
 	if len(s) == 1 {
-		return escMathOp(s)
+		return "\\mathord{" + escMathOp(s) + "}"
 	}
-	inner := tightMathOp(s)
-	switch {
-	case ordOps[s]:
-		return "\\mathord{" + inner + "}"
-	case relOps[s]:
-		return "\\mathrel{" + inner + "}"
-	default:
-		return "\\mathbin{" + inner + "}"
-	}
+	return tightMathOp(s)
 }
 
 // tightMathOp encodes each character of an operator as an ordinary atom, so that

@@ -48,9 +48,16 @@
 % ---- displayed Go code ------------------------------------------------------
 % \GB ... \GE bracket a code display; \GL typesets one line of it.
 \def\GB{\par\nobreak\vskip 3pt\begingroup
-  \baselineskip=11pt \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil}
+  \baselineskip=11pt \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil
+  \hfuzz=2pt \emergencystretch=3em}
 \def\GE{\par\endgroup\vskip 3pt}
-\def\GL#1#2{\par\noindent\kern#1\Gindentunit$#2$}
+% One displayed code line: #1 indentation steps, #2 the body, which is a series
+% of tight math chunks ($...$) joined by \GS.  Lines that exceed \hsize wrap at
+% a \GS, with continuation lines indented one step deeper than the line itself.
+\def\GL#1#2{\par
+  \hangindent=\dimexpr\Gindentunit*\numexpr#1+1\relax\relax \hangafter=1
+  \noindent\kern#1\Gindentunit\relax #2}
+\def\GS{\penalty0\hskip .5em plus .3em minus .15em\relax} % breakable code space
 
 % ---- code token fonts (called inside the math of \GL) -----------------------
 \def\GID#1{\hbox{\it #1\/}}      % identifier

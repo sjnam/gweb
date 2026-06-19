@@ -215,10 +215,13 @@ example \cw{@f Counts int} sets the user type \cw{Counts} in bold, the way
 \bull {\bf Formatting from \cw{gofmt}.} Rather than reformatting code itself,
 \cw{gtangle} delegates to \cw{gofmt}; the tangled file is always tidy.
 
-\bull {\bf Layout in the woven output.} \cw{gweave} preserves the source's own
-\cw{gofmt}-style line breaks and indentation instead of re-deriving layout from a
-full grammar as \cw{cweave} does for~C. Because idiomatic Go is already
-\cw{gofmt}-formatted, the printed code reads cleanly.
+\bull {\bf Layout in the woven output.} \cw{gweave} mirrors the source's own
+spacing and indentation instead of re-deriving layout from a full grammar as
+\cw{cweave} does for~C. Because gofmt-formatted Go already encodes the grammar in
+its spacing, this reproduces gofmt exactly --- pointer \cw{*T} versus the product
+\cw{a * b}, the slice \cw{[]T} versus the index \cw{a[i]} --- with no parsing.
+Long code lines wrap at the spaces between tokens, with continuation lines
+indented. Write the code in your sections in gofmt style for the best results.
 
 \bull {\bf Heuristic definitions.} An identifier is marked as ``defined'' in the
 index (its section number underlined) when it follows \cw{func}, \cw{var},

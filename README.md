@@ -96,11 +96,14 @@ examples/        a worked example
   the assembled program, so the emitted Go is always tidily formatted as long as
   the web assembles into valid Go.
 * **Pretty-printing.** `gweave` highlights tokens (bold keywords, italic
-  identifiers, …) and *preserves the source's own line structure and
-  indentation* rather than re-deriving layout from a full Go grammar the way
-  CWEB does for C. Because literate Go is normally written `gofmt`-style, the
-  result reads cleanly; it is a deliberately simpler model than CWEB's
-  scrap-reduction prettyprinter.
+  identifiers, typewriter strings, real math symbols for `≤ ≥ ≠ ←`, …) and
+  *mirrors the source's own spacing* rather than re-deriving layout from a full
+  Go grammar the way CWEB does for C. Because gofmt-formatted Go already encodes
+  the grammar in its spacing, mirroring it reproduces gofmt exactly — including
+  the tricky cases (`*T` vs `a * b`, `[]T` vs `a[i]`, precedence spacing like
+  `a*b + c`) — without any parsing. Long code lines wrap at the inter-token
+  spaces, with continuation lines indented one step deeper. Write the code in
+  your sections in gofmt style for the best-looking output.
 * **Definition detection** in the index is heuristic (an identifier following
   `func`/`var`/`const`/`type`, or just left of `:=`), not a full type check.
 * **Table of contents.** Starred sections record themselves (number, title, page)

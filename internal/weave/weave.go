@@ -121,39 +121,52 @@ func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 	}
 }
 
-// renderCode formats a code part into a sequence of \GL code lines.
+// renderCode formats a code part into a sequence of \GL code lines. Spacing
+// mirrors the source: a run of tokens with no source whitespace between them
+// becomes one tight math "chunk" ($...$), and a gap in the source becomes a
+// breakable \GS space between chunks. Because gofmt-formatted Go already encodes
+// the grammar in its spacing, this reproduces it exactly (pointer *T vs a * b,
+// slice []T vs index a[i], and so on) and lets long lines wrap at \GS.
 func (wv *Weaver) renderCode(secNum int, code string) string {
 	var out strings.Builder
-	var line strings.Builder
+	var line strings.Builder // the current source line: chunks joined by \GS
+	var run strings.Builder  // the current tight chunk (inside one $...$)
 	var st lexState
 	indent := 0
 	atLineStart := true
-	// prev* describe the previous emitted atom, for inter-token spacing.
-	prevKind := tkNewline
-	prevText := ""
+	pendingSpace := false
 
 	// prevSig* tracks the most recent significant token so that an identifier
 	// following func/var/const/type can be flagged as a definition.
 	prevSigKind := tkNewline
 	prevSigText := ""
 
-	flush := func() {
+	flushRun := func() {
+		if run.Len() > 0 {
+			line.WriteString("$")
+			line.WriteString(run.String())
+			line.WriteString("$")
+			run.Reset()
+		}
+	}
+	emit := func(s string) {
+		if pendingSpace {
+			flushRun()
+			line.WriteString("\\GS ")
+			pendingSpace = false
+		}
+		run.WriteString(s)
+		atLineStart = false
+	}
+	flushLine := func() {
+		flushRun()
 		if strings.TrimSpace(line.String()) != "" {
 			fmt.Fprintf(&out, "\\GL{%d}{%s}%%\n", indent, line.String())
 		}
 		line.Reset()
 		indent = 0
 		atLineStart = true
-		prevKind, prevText = tkNewline, ""
-	}
-	// emit writes one atom, inserting an inter-token space per spaceBetween.
-	emit := func(s string, kind tokKind, text string) {
-		if spaceBetween(prevKind, prevText, kind, text) {
-			line.WriteString("\\ ")
-		}
-		line.WriteString(s)
-		atLineStart = false
-		prevKind, prevText = kind, text
+		pendingSpace = false
 	}
 
 	for _, a := range web.ScanCode(code) {
@@ -163,10 +176,12 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 			for k, t := range toks {
 				switch t.kind {
 				case tkNewline:
-					flush()
+					flushLine()
 				case tkSpace:
 					if atLineStart {
 						indent += indentLevel(t.text)
+					} else {
+						pendingSpace = true
 					}
 				default:
 					if (t.kind == tkIdent || t.kind == tkBuiltin) && !wv.noIndex[t.text] {
@@ -176,26 +191,25 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 							wv.xref.addIdentUse(t.text, secNum)
 						}
 					}
-					disp := token{kind: wv.effKind(t), text: t.text}
-					emit(renderToken(disp), disp.kind, disp.text)
+					emit(renderToken(token{kind: wv.effKind(t), text: t.text}))
 					prevSigKind, prevSigText = t.kind, t.text
 				}
 			}
 		case web.ARef:
 			name := wv.w.Resolve(a.Text)
 			wv.xref.addSectionUse(name, secNum)
-			emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], escProse(name)), tkIdent, "")
+			emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], escProse(name)))
 		case web.AVerbatim:
-			emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)), tkString, "")
+			emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)))
 		case web.ATeX:
-			emit(a.Text, tkOp, "")
+			emit(a.Text)
 		case web.AIndex:
 			wv.xref.addManualIndex(a.Index, a.Text, secNum)
 		case web.APaste:
-			prevKind, prevText = tkNewline, "" // join: suppress the next space
+			pendingSpace = false // join: no space before the next token
 		}
 	}
-	flush()
+	flushLine()
 	return out.String()
 }
 
@@ -216,42 +230,6 @@ func renderToken(t token) string {
 		return renderOp(t.text)
 	}
 	return ""
-}
-
-// wordLike reports whether a token needs an explicit space to separate it from
-// an adjacent word token; operators and punctuation are spaced by math mode.
-func wordLike(k tokKind) bool {
-	switch k {
-	case tkIdent, tkKeyword, tkBuiltin, tkNumber, tkString, tkComment:
-		return true
-	}
-	return false
-}
-
-// attachKW are keywords that bind tightly to a following bracket (e.g. func(,
-// map[, struct{), so no space is inserted after them before an operator.
-var attachKW = map[string]bool{
-	"func": true, "map": true, "struct": true, "interface": true, "chan": true,
-}
-
-// spaceBetween decides whether to insert an explicit inter-token space. Math
-// mode already spaces operators and punctuation; these rules add the spaces a
-// gofmt reader expects but math omits.
-func spaceBetween(pk tokKind, pt string, ck tokKind, ct string) bool {
-	pw, cw := wordLike(pk), wordLike(ck)
-	switch {
-	case pw && cw:
-		return true // two words: func main, return x, chan T, } else
-	case pk == tkKeyword && !attachKW[pt] && ck == tkOp && ct != ":":
-		return true // if !x, return -1, case <-ch, for {, else { (but "default:")
-	case ck == tkOp && ct == "{" && (pw || pt == ")" || pt == "]" || pt == "}"):
-		return true // func() {, for cond {, struct {
-	case pk == tkOp && pt == "}" && cw:
-		return true // } else, } return
-	case pk == tkOp && pt == ")" && cw:
-		return true // a ) before a word is a return type or method name: ) error
-	}
-	return false
 }
 
 // processTex transforms commentary: |Go code| inline, @<refs@>, @@->@, and
@@ -317,27 +295,30 @@ func (wv *Weaver) processTex(secNum int, s string) string {
 	return b.String()
 }
 
-// renderInline formats a |...| inline Go fragment as math.
+// renderInline formats a |...| inline Go fragment as one math group, mirroring
+// the source whitespace (an inline fragment is short, so it is not wrapped).
 func (wv *Weaver) renderInline(secNum int, code string) string {
 	var st lexState
 	var b strings.Builder
 	b.WriteString("$")
-	prevKind := tkNewline
-	prevText := ""
+	pendingSpace := false
+	started := false
 	for _, t := range lexGo(code, &st) {
 		switch t.kind {
 		case tkSpace, tkNewline:
-			// spacing is decided by spaceBetween, not by source whitespace
+			if started {
+				pendingSpace = true
+			}
 		default:
-			disp := token{kind: wv.effKind(t), text: t.text}
-			if spaceBetween(prevKind, prevText, disp.kind, disp.text) {
+			if pendingSpace {
 				b.WriteString("\\ ")
+				pendingSpace = false
 			}
 			if (t.kind == tkIdent || t.kind == tkBuiltin) && !wv.noIndex[t.text] {
 				wv.xref.addIdentUse(t.text, secNum)
 			}
-			b.WriteString(renderToken(disp))
-			prevKind, prevText = disp.kind, disp.text
+			b.WriteString(renderToken(token{kind: wv.effKind(t), text: t.text}))
+			started = true
 		}
 	}
 	b.WriteString("$")
