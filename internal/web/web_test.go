@@ -1,6 +1,10 @@
 package web
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 const sample = `\input gwebmac
 This is limbo text.
@@ -191,5 +195,32 @@ func TestChangeFilePartialMismatch(t *testing.T) {
 func TestChangeFileMalformed(t *testing.T) {
 	if _, err := parseChangeFile("@x\nfind\n@z\n"); err == nil {
 		t.Error("want error for @x without @y")
+	}
+}
+
+func TestIncludeLineMapping(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite := func(name, content string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	mustWrite("part.w", "@ A section in the included file.\n@c\nx := @<undef@>\n")
+	main := mustWrite("main.w", "@* Main.\n@c\npackage main\n\n@i part.w\n")
+
+	w, err := Parse(main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The undefined reference lives in part.w; the diagnostic must cite it
+	// (not a line number in the includes-expanded master).
+	if !hasWarning(w.Warnings, "part.w:1") {
+		t.Errorf("want a warning citing part.w:1, got %v", w.Warnings)
+	}
+	// Section 2 (the @c in part.w) should map back to part.w.
+	if got := w.at(w.Sections[1].Line); !contains(got, "part.w") {
+		t.Errorf("section 2 origin = %q, want a part.w location", got)
 	}
 }

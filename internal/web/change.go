@@ -21,9 +21,25 @@ import (
 // to match, then substitutes the replacement lines.
 
 type change struct {
-	match []string // lines to find in the master source
-	repl  []string // lines to substitute for them
-	line  int      // 1-based line of the @x in the change file (for diagnostics)
+	match    []string // lines to find in the master source
+	repl     []string // lines to substitute for them
+	line     int      // 1-based line of the @x in the change file (for diagnostics)
+	replLine int      // 1-based change-file line of the first replacement line
+}
+
+// srcLoc identifies the origin (file and 1-based line) of a line of the
+// includes-expanded, change-applied source, so diagnostics can point back to
+// the file the user actually wrote.
+type srcLoc struct {
+	file string
+	line int
+}
+
+func (l srcLoc) String() string {
+	if l.file == "" {
+		return fmt.Sprintf("line %d", l.line)
+	}
+	return fmt.Sprintf("%s:%d", l.file, l.line)
 }
 
 // isChangeCtrl reports whether line begins with the change control "@<c>"
@@ -67,6 +83,7 @@ func parseChangeFile(src string) ([]change, error) {
 			return nil, fmt.Errorf("change file line %d: @x without a matching @y", c.line)
 		}
 		i++ // skip @y
+		c.replLine = i + 1
 		for i < n && !isChangeCtrl(lines[i], 'z') {
 			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'y') {
 				return nil, fmt.Errorf("change file line %d: expected @z to close the change", c.line)
@@ -86,32 +103,55 @@ func parseChangeFile(src string) ([]change, error) {
 	return changes, nil
 }
 
-// applyChanges returns src with the changes applied. chFile names the change
-// file, for diagnostics. It is an error if a change's first line is never
-// found, or if it is found but the rest of the block does not match.
+// applyChanges returns src with the changes applied (string convenience form,
+// used by tests). See applyChangesMapped for the origin-tracking version.
 func applyChanges(src string, changes []change, chFile string) (string, error) {
-	master := splitLines(src)
+	out, _, err := applyChangesMapped(splitLines(src), nil, changes, chFile)
+	if err != nil {
+		return "", err
+	}
+	return strings.Join(out, "\n"), nil
+}
+
+// applyChangesMapped applies changes to master, keeping a parallel origin map in
+// step: passed-through lines keep their origin, and replacement lines are
+// attributed to the change file. locs may be nil if origins are not tracked.
+// chFile names the change file for diagnostics. It is an error if a change's
+// first line is never found, or is found but the rest of the block does not
+// match.
+func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) ([]string, []srcLoc, error) {
+	loc := func(i int) srcLoc {
+		if locs != nil && i < len(locs) {
+			return locs[i]
+		}
+		return srcLoc{line: i + 1}
+	}
 	out := make([]string, 0, len(master))
+	var outLocs []srcLoc
 	ci := 0
 	for i := 0; i < len(master); {
 		if ci < len(changes) && sameLine(master[i], changes[ci].match[0]) {
 			if !blockMatches(master, i, changes[ci].match) {
-				return "", fmt.Errorf("%s:%d: change did not match the master source at line %d",
-					chFile, changes[ci].line, i+1)
+				return nil, nil, fmt.Errorf("%s:%d: change did not match the master source at %s",
+					chFile, changes[ci].line, loc(i))
 			}
-			out = append(out, changes[ci].repl...)
+			for r, rl := range changes[ci].repl {
+				out = append(out, rl)
+				outLocs = append(outLocs, srcLoc{chFile, changes[ci].replLine + r})
+			}
 			i += len(changes[ci].match)
 			ci++
 			continue
 		}
 		out = append(out, master[i])
+		outLocs = append(outLocs, loc(i))
 		i++
 	}
 	if ci < len(changes) {
-		return "", fmt.Errorf("%s:%d: change was never matched (looking for %q)",
+		return nil, nil, fmt.Errorf("%s:%d: change was never matched (looking for %q)",
 			chFile, changes[ci].line, changes[ci].match[0])
 	}
-	return strings.Join(out, "\n"), nil
+	return out, outLocs, nil
 }
 
 // blockMatches reports whether match lines up with master starting at index at.

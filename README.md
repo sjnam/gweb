@@ -113,8 +113,9 @@ examples/        a worked example
 * **Diagnostics.** Both tools report, with `file:line` locations, unterminated
   control codes, references to undefined sections, ambiguous `...` abbreviations,
   and named sections defined but never used. These are warnings; `gtangle` still
-  stops if it must actually expand an undefined reference. (With `@i` includes,
-  line numbers refer to the concatenated source.)
+  stops if it must actually expand an undefined reference. An origin map kept in
+  step through `@i` includes and change-file edits makes every location point
+  back to the file (and line) you actually wrote.
 * **Table of contents.** Starred sections record themselves (number, title, page)
   as the document is shaped, and `gwebmac.tex` typesets a contents page from that
   data in a single TeX pass. As in CWEB, the contents page is emitted at the *end*

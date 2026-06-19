@@ -254,13 +254,7 @@ func extractTitle(tex string) string {
 // scanDiagnostics walks the source looking for malformed control codes —
 // currently argument-terminated codes (@<, @(, @=, @t, @^, @., @:, @q) that are
 // missing their closing @> — and returns one warning per problem.
-func scanDiagnostics(src, file string) []string {
-	at := func(off int) string {
-		if file != "" {
-			return fmt.Sprintf("%s:%d", file, lineAt(src, off))
-		}
-		return fmt.Sprintf("line %d", lineAt(src, off))
-	}
+func (w *Web) scanDiagnostics(src string) []string {
 	var warns []string
 	n := len(src)
 	i := 0
@@ -274,7 +268,7 @@ func scanDiagnostics(src, file string) []string {
 			i += 2
 		case '<', '(', '=', 't', '^', '.', ':', 'q':
 			if end := indexFrom(src, "@>", i+2); end < 0 {
-				warns = append(warns, fmt.Sprintf("%s: unterminated `@%c ... @>'", at(i), c))
+				warns = append(warns, fmt.Sprintf("%s: unterminated `@%c ... @>'", w.at(lineAt(src, i)), c))
 				i = n
 			} else {
 				i = end + 2

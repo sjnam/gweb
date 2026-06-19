@@ -40,6 +40,7 @@ type Web struct {
 	Sections []*Section
 	Warnings []string // non-fatal diagnostics gathered while parsing/checking
 	file     string   // source filename, for diagnostics ("" if unknown)
+	locs     []srcLoc // origin (file, line) of each combined-source line
 	full     []string // canonical (non-abbreviated) section names
 }
 
@@ -50,14 +51,10 @@ func Parse(filename string) (*Web, error) {
 
 // ParseWithChange reads the master file, expands @i includes, applies the change
 // file (CWEB's ".ch" mechanism) if changeFile is non-empty, and parses the
-// result. Diagnostic line numbers refer to the post-change, includes-expanded
-// source.
+// result. Diagnostics point back to the original file and line via an origin map
+// kept in step through include expansion and change application.
 func ParseWithChange(filename, changeFile string) (*Web, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	src, err := expandIncludes(string(data), filepath.Dir(filename), 0)
+	lines, locs, err := expandIncludes(filename, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -70,13 +67,15 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 		if err != nil {
 			return nil, err
 		}
-		src, err = applyChanges(src, changes, changeFile)
+		lines, locs, err = applyChangesMapped(lines, locs, changes, changeFile)
 		if err != nil {
 			return nil, err
 		}
 	}
+	src := strings.Join(lines, "\n")
 	w := parse(src)
 	w.file = filename
+	w.locs = locs
 	w.finish(src)
 	return w, nil
 }
@@ -91,77 +90,76 @@ func ParseString(src string) *Web {
 // finish runs post-parse bookkeeping: name collection and diagnostics.
 func (w *Web) finish(src string) {
 	w.collectNames()
-	w.Warnings = append(w.Warnings, scanDiagnostics(src, w.file)...)
+	w.Warnings = append(w.Warnings, w.scanDiagnostics(src)...)
 	w.Warnings = append(w.Warnings, w.checkNames()...)
 }
 
-// at formats a source location for a diagnostic message.
+// at formats a combined-source line for a diagnostic, mapping it back to the
+// original file and line when an origin map is available.
 func (w *Web) at(line int) string {
+	if i := line - 1; i >= 0 && i < len(w.locs) {
+		return w.locs[i].String()
+	}
 	if w.file != "" {
 		return fmt.Sprintf("%s:%d", w.file, line)
 	}
 	return fmt.Sprintf("line %d", line)
 }
 
-// expandIncludes splices in @i files, respecting argument-terminated control
-// codes so an @i inside @<...@> or @=...@> is not mistaken for an include.
-func expandIncludes(src, dir string, depth int) (string, error) {
+// expandIncludes reads file and splices in @i includes, returning the combined
+// lines together with a parallel origin map. As in CWEB, @i is line-oriented: a
+// line whose first non-blank text is "@i" (followed by whitespace) names a file
+// whose expansion replaces that line. A final newline does not produce a
+// trailing blank line.
+func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 	if depth > 25 {
-		return "", fmt.Errorf("gweb: @i include nesting too deep")
+		return nil, nil, fmt.Errorf("gweb: @i include nesting too deep at %q", file)
 	}
-	var b strings.Builder
-	n := len(src)
-	i := 0
-	for i < n {
-		if src[i] != '@' || i+1 >= n {
-			b.WriteByte(src[i])
-			i++
-			continue
-		}
-		switch c := src[i+1]; c {
-		case '@':
-			b.WriteString("@@")
-			i += 2
-		case 'i':
-			j := i + 2
-			for j < n && (src[j] == ' ' || src[j] == '\t') {
-				j++
-			}
-			start := j
-			for j < n && src[j] != '\n' {
-				j++
-			}
-			name := strings.TrimSpace(src[start:j])
-			name = strings.Trim(name, "\"")
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return nil, nil, err
+	}
+	raw := splitLines(string(data))
+	if n := len(raw); n > 0 && raw[n-1] == "" {
+		raw = raw[:n-1]
+	}
+
+	var lines []string
+	var locs []srcLoc
+	dir := filepath.Dir(file)
+	for i, line := range raw {
+		if name, ok := includeDirective(line); ok {
 			path := name
 			if !filepath.IsAbs(path) {
 				path = filepath.Join(dir, name)
 			}
-			data, err := os.ReadFile(path)
+			sub, subLocs, err := expandIncludes(path, depth+1)
 			if err != nil {
-				return "", fmt.Errorf("gweb: cannot include %q: %w", name, err)
+				return nil, nil, fmt.Errorf("%s:%d: %w", file, i+1, err)
 			}
-			inc, err := expandIncludes(string(data), filepath.Dir(path), depth+1)
-			if err != nil {
-				return "", err
-			}
-			b.WriteString(inc)
-			i = j // leave the trailing newline in place
-		case '<', '(', '=', 't', '^', '.', ':', 'q':
-			end := indexFrom(src, "@>", i+2)
-			if end < 0 {
-				b.WriteString(src[i:])
-				i = n
-			} else {
-				b.WriteString(src[i : end+2])
-				i = end + 2
-			}
-		default:
-			b.WriteString(src[i : i+2])
-			i += 2
+			lines = append(lines, sub...)
+			locs = append(locs, subLocs...)
+			continue
 		}
+		lines = append(lines, line)
+		locs = append(locs, srcLoc{file, i + 1})
 	}
-	return b.String(), nil
+	return lines, locs, nil
+}
+
+// includeDirective returns the file named by an "@i" line, or ok=false. The @i
+// must be the first non-blank text on the line and be followed by whitespace.
+func includeDirective(line string) (name string, ok bool) {
+	t := strings.TrimLeft(line, " \t")
+	if !strings.HasPrefix(t, "@i") {
+		return "", false
+	}
+	rest := t[2:]
+	if rest != "" && rest[0] != ' ' && rest[0] != '\t' {
+		return "", false
+	}
+	name = strings.Trim(strings.TrimSpace(rest), "\"")
+	return name, name != ""
 }
 
 // collectNames records the set of canonical (non-abbreviated) named sections so
