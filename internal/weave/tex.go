@@ -67,6 +67,63 @@ func escMathOp(s string) string {
 	return b.String()
 }
 
+// Operators that read as relations (math \mathrel spacing) when multi-character.
+var relOps = map[string]bool{
+	":=": true, "+=": true, "-=": true, "*=": true, "/=": true, "%=": true,
+	"&=": true, "|=": true, "^=": true, "<<=": true, ">>=": true, "&^=": true,
+	"==": true,
+}
+
+// Operators that should hug their operand (postfix ++/--).
+var ordOps = map[string]bool{"++": true, "--": true}
+
+// renderOp typesets a Go operator token for math mode. Single characters keep
+// TeX's default math class; multi-character operators are rendered as one tight
+// atom (no internal spacing) wrapped in the right class, using real math symbols
+// where they exist.
+func renderOp(s string) string {
+	switch s {
+	case "<=":
+		return "\\leq"
+	case ">=":
+		return "\\geq"
+	case "!=":
+		return "\\neq"
+	case "<-":
+		return "\\mathrel{\\leftarrow}"
+	case "...":
+		return "\\mathord{\\ldots}"
+	case ":":
+		// ':' is a relation in math, but in Go it is punctuation (labels, case
+		// clauses, slices, map literals); render it tight.
+		return "\\mathord{:}"
+	}
+	if len(s) == 1 {
+		return escMathOp(s)
+	}
+	inner := tightMathOp(s)
+	switch {
+	case ordOps[s]:
+		return "\\mathord{" + inner + "}"
+	case relOps[s]:
+		return "\\mathrel{" + inner + "}"
+	default:
+		return "\\mathbin{" + inner + "}"
+	}
+}
+
+// tightMathOp encodes each character of an operator as an ordinary atom, so that
+// e.g. "==" or "<<" prints with the characters adjacent rather than spaced.
+func tightMathOp(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		b.WriteString("\\mathord{")
+		b.WriteString(escMathOp(s[i : i+1]))
+		b.WriteString("}")
+	}
+	return b.String()
+}
+
 // escProse escapes text for ordinary roman text mode (used for section names).
 func escProse(s string) string {
 	var b strings.Builder

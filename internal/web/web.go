@@ -21,10 +21,10 @@ type Format struct {
 // Section is one numbered section of the web.
 type Section struct {
 	Number  int    // 1-based section number
-	Starred bool    // true for @* sections
-	Depth   int     // group depth for starred sections (0 == top level)
-	Title   string  // starred-section title (text up to the first period)
-	Tex     string  // commentary, raw TeX with in-text @-codes still embedded
+	Starred bool   // true for @* sections
+	Depth   int    // group depth for starred sections (0 == top level)
+	Title   string // starred-section title (text up to the first period)
+	Tex     string // commentary, raw TeX with in-text @-codes still embedded
 	Formats []Format
 	HasCode bool   // true if the section contributes code
 	Name    string // named-section name, or "" for an unnamed @c section

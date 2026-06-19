@@ -32,13 +32,13 @@ func main() {
 println(x)
 `)
 	checks := []string{
-		`\GN{0}{1}{Demo}`,             // starred section with title
-		`$\GID{main}$`,                // inline code
-		`\GKW{package}`,               // keyword bold
-		`\GKW{func}`,                  // keyword bold
-		`\GID{main}`,                  // identifier italic
-		`\GX{2}{body}`,                // reference resolved to defining section 2
-		`\GD{2}{body}`,                // definition headline
+		`\GN{0}{1}{Demo}`, // starred section with title
+		`$\GID{main}$`,    // inline code
+		`\GKW{package}`,   // keyword bold
+		`\GKW{func}`,      // keyword bold
+		`\GID{main}`,      // identifier italic
+		`\GX{2}{body}`,    // reference resolved to defining section 2
+		`\GD{2}{body}`,    // definition headline
 	}
 	for _, c := range checks {
 		if !strings.Contains(out, c) {
@@ -101,6 +101,35 @@ println(x + 1)
 	for _, c := range checks {
 		if !strings.Contains(out, c) {
 			t.Errorf("woven output missing %q\n---\n%s", c, out)
+		}
+	}
+}
+
+func TestWeaveOperators(t *testing.T) {
+	out := weaveString(t, `@ x
+@c
+func f(ch chan int) {
+	for i := 0; i != 3; i++ {
+		ch <- i
+	}
+	if !done && i >= 1 {
+	}
+	switch x {
+	default:
+	}
+}
+`)
+	checks := map[string]string{
+		`\neq`:                             "!= should render as \\neq",
+		`\geq`:                             ">= should render as \\geq",
+		`\mathrel{\leftarrow}`:             "<- should render as a left arrow",
+		`\mathord{\mathord{+}\mathord{+}}`: "++ should render tight",
+		`\GKW{if}\ `:                       "a space should follow the if keyword",
+		`\GKW{default}\mathord{:}`:         "default: should be tight (no space before colon)",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant substring %q in:\n%s", msg, sub, out)
 		}
 	}
 }

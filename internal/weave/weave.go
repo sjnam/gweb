@@ -95,10 +95,12 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 	var st lexState
 	indent := 0
 	atLineStart := true
-	pendingSpace := false
+	// prev* describe the previous emitted atom, for inter-token spacing.
+	prevKind := tkNewline
+	prevText := ""
 
-	// prevWord tracks the most recent significant token's kind/text so that an
-	// identifier following func/var/const/type can be flagged as a definition.
+	// prevSig* tracks the most recent significant token so that an identifier
+	// following func/var/const/type can be flagged as a definition.
 	prevSigKind := tkNewline
 	prevSigText := ""
 
@@ -109,13 +111,16 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 		line.Reset()
 		indent = 0
 		atLineStart = true
-		pendingSpace = false
+		prevKind, prevText = tkNewline, ""
 	}
-	emitSpaceBefore := func() {
-		if pendingSpace {
+	// emit writes one atom, inserting an inter-token space per spaceBetween.
+	emit := func(s string, kind tokKind, text string) {
+		if spaceBetween(prevKind, prevText, kind, text) {
 			line.WriteString("\\ ")
-			pendingSpace = false
 		}
+		line.WriteString(s)
+		atLineStart = false
+		prevKind, prevText = kind, text
 	}
 
 	for _, a := range web.ScanCode(code) {
@@ -129,12 +134,8 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 				case tkSpace:
 					if atLineStart {
 						indent += indentLevel(t.text)
-					} else {
-						pendingSpace = true
 					}
 				default:
-					atLineStart = false
-					emitSpaceBefore()
 					if t.kind == tkIdent || t.kind == tkBuiltin {
 						if isDefinition(prevSigKind, prevSigText, toks, k) {
 							wv.xref.addIdentDef(t.text, secNum)
@@ -142,28 +143,22 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 							wv.xref.addIdentUse(t.text, secNum)
 						}
 					}
-					line.WriteString(renderToken(t))
+					emit(renderToken(t), t.kind, t.text)
 					prevSigKind, prevSigText = t.kind, t.text
 				}
 			}
 		case web.ARef:
-			atLineStart = false
-			emitSpaceBefore()
 			name := wv.w.Resolve(a.Text)
 			wv.xref.addSectionUse(name, secNum)
-			fmt.Fprintf(&line, "\\GX{%d}{%s}", wv.defNum[name], escProse(name))
+			emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], escProse(name)), tkIdent, "")
 		case web.AVerbatim:
-			atLineStart = false
-			emitSpaceBefore()
-			fmt.Fprintf(&line, "\\GST{%s}", escTT(a.Text))
+			emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)), tkString, "")
 		case web.ATeX:
-			atLineStart = false
-			emitSpaceBefore()
-			line.WriteString(a.Text)
+			emit(a.Text, tkOp, "")
 		case web.AIndex:
 			wv.xref.addManualIndex(a.Index, a.Text, secNum)
 		case web.APaste:
-			pendingSpace = false // join: suppress surrounding space
+			prevKind, prevText = tkNewline, "" // join: suppress the next space
 		}
 	}
 	flush()
@@ -184,9 +179,43 @@ func renderToken(t token) string {
 	case tkComment:
 		return "\\GCM{" + escTT(t.text) + "}"
 	case tkOp:
-		return escMathOp(t.text)
+		return renderOp(t.text)
 	}
 	return ""
+}
+
+// wordLike reports whether a token needs an explicit space to separate it from
+// an adjacent word token; operators and punctuation are spaced by math mode.
+func wordLike(k tokKind) bool {
+	switch k {
+	case tkIdent, tkKeyword, tkBuiltin, tkNumber, tkString, tkComment:
+		return true
+	}
+	return false
+}
+
+// attachKW are keywords that bind tightly to a following bracket (e.g. func(,
+// map[, struct{), so no space is inserted after them before an operator.
+var attachKW = map[string]bool{
+	"func": true, "map": true, "struct": true, "interface": true, "chan": true,
+}
+
+// spaceBetween decides whether to insert an explicit inter-token space. Math
+// mode already spaces operators and punctuation; these rules add the spaces a
+// gofmt reader expects but math omits.
+func spaceBetween(pk tokKind, pt string, ck tokKind, ct string) bool {
+	pw, cw := wordLike(pk), wordLike(ck)
+	switch {
+	case pw && cw:
+		return true // two words: func main, return x, chan T, } else
+	case pk == tkKeyword && !attachKW[pt] && ck == tkOp && ct != ":":
+		return true // if !x, return -1, case <-ch, for {, else { (but "default:")
+	case ck == tkOp && ct == "{" && (pw || pt == ")" || pt == "]" || pt == "}"):
+		return true // func() {, for cond {, struct {
+	case pk == tkOp && pt == "}" && cw:
+		return true // } else, } return
+	}
+	return false
 }
 
 // processTex transforms commentary: |Go code| inline, @<refs@>, @@->@, and
@@ -257,24 +286,21 @@ func (wv *Weaver) renderInline(secNum int, code string) string {
 	var st lexState
 	var b strings.Builder
 	b.WriteString("$")
-	pending := false
-	started := false
+	prevKind := tkNewline
+	prevText := ""
 	for _, t := range lexGo(code, &st) {
 		switch t.kind {
 		case tkSpace, tkNewline:
-			if started {
-				pending = true
-			}
+			// spacing is decided by spaceBetween, not by source whitespace
 		default:
-			if pending {
+			if spaceBetween(prevKind, prevText, t.kind, t.text) {
 				b.WriteString("\\ ")
-				pending = false
 			}
 			if t.kind == tkIdent || t.kind == tkBuiltin {
 				wv.xref.addIdentUse(t.text, secNum)
 			}
 			b.WriteString(renderToken(t))
-			started = true
+			prevKind, prevText = t.kind, t.text
 		}
 	}
 	b.WriteString("$")

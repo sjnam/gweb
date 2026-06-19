@@ -1,0 +1,12 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdftex 2026.3.29)  19 JUN 2026 21:59
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**wc.tex
+
+! Emergency stop.
+<*> wc.tex
+          
+*** (job aborted, file error in nonstop mode)
+
+!  ==> Fatal error occurred, no output PDF file produced!
