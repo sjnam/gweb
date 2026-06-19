@@ -45,6 +45,14 @@ type Web struct {
 
 // Parse reads filename, expands @i includes, and parses the result.
 func Parse(filename string) (*Web, error) {
+	return ParseWithChange(filename, "")
+}
+
+// ParseWithChange reads the master file, expands @i includes, applies the change
+// file (CWEB's ".ch" mechanism) if changeFile is non-empty, and parses the
+// result. Diagnostic line numbers refer to the post-change, includes-expanded
+// source.
+func ParseWithChange(filename, changeFile string) (*Web, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -52,6 +60,20 @@ func Parse(filename string) (*Web, error) {
 	src, err := expandIncludes(string(data), filepath.Dir(filename), 0)
 	if err != nil {
 		return nil, err
+	}
+	if changeFile != "" {
+		chData, err := os.ReadFile(changeFile)
+		if err != nil {
+			return nil, err
+		}
+		changes, err := parseChangeFile(string(chData))
+		if err != nil {
+			return nil, err
+		}
+		src, err = applyChanges(src, changes, changeFile)
+		if err != nil {
+			return nil, err
+		}
 	}
 	w := parse(src)
 	w.file = filename

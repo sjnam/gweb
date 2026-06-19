@@ -161,6 +161,35 @@ You can also split a large web across several source files. The directive
 \cw{@i filename} includes another \cw{.w} file at that point, exactly as if its
 text appeared inline.
 
+\chapter{Change files}
+Sometimes you must adapt a web you do not want to edit --- someone else's
+program, or a version tailored to a particular system. For this both tools take
+an optional second argument, a {\it change file}, exactly as CWEB does:
+\begincode
+gtangle foo.w foo.ch
+gweave  foo.w foo.ch
+|endcode
+A change file is a list of changes, each of which names some lines to find in
+the master source and the lines to put in their place:
+\begincode
+@x
+  the lines to find
+@y
+  the lines to substitute
+@z
+|endcode
+Anything outside an \cw{@x}\thinspace$\ldots$\thinspace\cw{@z} group is ignored,
+so you can annotate the change file freely. The three controls must begin a
+line. Changes are applied to the master (after \cw{@i} includes are expanded) in
+the order they occur: at the first line that equals a change's first line, the
+whole block must match --- trailing spaces aside --- and is then replaced. It is
+an error if a change never matches, or matches its first line but not the rest,
+so a change is anchored by quoting enough surrounding context to be unique.
+
+Because changes are applied before anything else, they affect \cw{gtangle} and
+\cw{gweave} identically: the program you build and the document you read stay in
+step. The bundled \cw{wc.ch} turns the \cw{wc} example's output into CSV.
+
 \chapter{The woven document}
 \cw{gweave} writes a \TeX\ file that expects the macros in \cw{gwebmac.tex} (the
 analogue of \cw{cwebmac.tex}); your limbo should therefore start with

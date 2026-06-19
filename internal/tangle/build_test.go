@@ -76,3 +76,42 @@ func buildExample(t *testing.T, path string) {
 		t.Fatalf("go build failed: %v\n%s", err, out)
 	}
 }
+
+// TestChangeFileBuilds applies the wc.ch change file to wc.w and confirms the
+// patched program still tangles to compilable Go (and was actually changed).
+func TestChangeFileBuilds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping go build in -short mode")
+	}
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go tool not found in PATH")
+	}
+	w, err := web.ParseWithChange(
+		filepath.Join("..", "..", "examples", "wc.w"),
+		filepath.Join("..", "..", "examples", "wc.ch"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outs, err := New(w).Tangle("wc.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(outs[0].Content)
+	if !strings.Contains(got, `%d,%d,%d`) || strings.Contains(got, `%8d`) {
+		t.Fatalf("change file not applied to tangled output:\n%s", got)
+	}
+
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "wc.go"), outs[0].Content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module gwebexample\n\ngo 1.21\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "build", "-o", os.DevNull, ".")
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed: %v\n%s", err, out)
+	}
+}

@@ -150,3 +150,46 @@ func TestDiagnostics(t *testing.T) {
 		})
 	}
 }
+
+func TestChangeFileApply(t *testing.T) {
+	master := "@ greet\n@c\npackage main\n\nfunc main() {\n\tprintln(\"hello\")\n}\n"
+	chSrc := "Ignored commentary.\n@x\n\tprintln(\"hello\")\n@y\n\tprintln(\"goodbye\")\n@z\n"
+	changes, err := parseChangeFile(chSrc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changes) != 1 || len(changes[0].match) != 1 || len(changes[0].repl) != 1 {
+		t.Fatalf("bad parse: %+v", changes)
+	}
+	out, err := applyChanges(master, changes, "c.ch")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !contains(out, `println("goodbye")`) || contains(out, `println("hello")`) {
+		t.Errorf("change not applied:\n%s", out)
+	}
+}
+
+func TestChangeFileNoMatch(t *testing.T) {
+	master := "@ x\n@c\npackage main\n"
+	changes, _ := parseChangeFile("@x\nnonexistent line\n@y\nwhatever\n@z\n")
+	if _, err := applyChanges(master, changes, "c.ch"); err == nil ||
+		!contains(err.Error(), "never matched") {
+		t.Errorf("want never-matched error, got %v", err)
+	}
+}
+
+func TestChangeFilePartialMismatch(t *testing.T) {
+	master := "alpha\nbeta\ngamma\n"
+	changes, _ := parseChangeFile("@x\nbeta\nWRONG\n@y\nx\n@z\n")
+	if _, err := applyChanges(master, changes, "c.ch"); err == nil ||
+		!contains(err.Error(), "did not match") {
+		t.Errorf("want did-not-match error, got %v", err)
+	}
+}
+
+func TestChangeFileMalformed(t *testing.T) {
+	if _, err := parseChangeFile("@x\nfind\n@z\n"); err == nil {
+		t.Error("want error for @x without @y")
+	}
+}

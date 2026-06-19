@@ -23,23 +23,23 @@ func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
 	flag.Usage = usage
 	flag.Parse()
-	if flag.NArg() != 1 {
+	if flag.NArg() < 1 || flag.NArg() > 2 {
 		usage()
 		os.Exit(2)
 	}
-	if err := run(flag.Arg(0), *outDir); err != nil {
+	if err := run(flag.Arg(0), flag.Arg(1), *outDir); err != nil {
 		fmt.Fprintln(os.Stderr, "gtangle:", err)
 		os.Exit(1)
 	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file.w")
+	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file.w [change.ch]")
 	flag.PrintDefaults()
 }
 
-func run(input, outDir string) error {
-	w, err := web.Parse(input)
+func run(input, changeFile, outDir string) error {
+	w, err := web.ParseWithChange(input, changeFile)
 	if err != nil {
 		return err
 	}

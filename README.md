@@ -37,7 +37,11 @@ gweave  foo.w     # -> foo.tex
 pdftex  foo.tex   # -> foo.pdf   (gwebmac.tex must be on TEXINPUTS)
 ```
 
-Both commands accept `-o <dir>` to choose an output directory. `gwebmac.tex`
+Both commands accept `-o <dir>` to choose an output directory, and an optional
+**change file** as a second argument — `gtangle foo.w foo.ch` — which patches the
+master source without editing it (CWEB's `.ch` mechanism; see
+[doc/format.md](doc/format.md)). For example,
+`gtangle examples/wc.w examples/wc.ch` builds a CSV variant of the word counter. `gwebmac.tex`
 lives in [tex/](tex/); point `TEXINPUTS` at that directory, or copy the file
 next to your document.
 

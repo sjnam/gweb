@@ -49,6 +49,33 @@ All control codes begin with `@`. Use `@@` for a literal `@`.
 A section name may be abbreviated with a trailing `...`: `@<Set it up...@>`
 matches the unique full name beginning with `Set it up`.
 
+## Change files
+
+Both tools accept an optional second argument, a **change file** (`.ch`), which
+patches the master source without editing it (CWEB's mechanism):
+
+```sh
+gtangle foo.w foo.ch
+gweave  foo.w foo.ch
+```
+
+A change file is a sequence of changes, each of the form
+
+```
+@x
+<lines to find in the master source>
+@y
+<lines to substitute>
+@z
+```
+
+Text outside an `@x`…`@z` group is ignored (commentary). The `@x`/`@y`/`@z`
+controls must start in the first column. Changes are matched against the master
+(after `@i` includes are expanded) in order: at the first line equal to a
+change's first match line the whole block must match, and is then replaced.
+Matching ignores trailing whitespace. It is an error if a change never matches,
+or matches its first line but not the rest.
+
 ## Notes specific to Go
 
 * Go has no preprocessor, so `@d` (macro definition) has no analogue: it is
