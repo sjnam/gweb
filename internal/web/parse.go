@@ -152,9 +152,11 @@ func parse(src string) *Web {
 	w := &Web{}
 	n := len(src)
 
-	// Limbo runs until the first section break.
+	// Limbo runs until the first section break. Format directives placed there
+	// (@f / @s, a common CWEB idiom) are extracted and removed from the copied
+	// TeX so they apply globally rather than printing literally.
 	first := findNextSection(src, 0)
-	w.Limbo = src[:first.pos]
+	w.Limbo, w.Formats = extractLimboFormats(src[:first.pos])
 	i := first.pos
 
 	num := 0
@@ -187,10 +189,9 @@ func parse(src string) *Web {
 				if f, ok := parseFormat(seg, ct.noIndex); ok {
 					sec.Formats = append(sec.Formats, f)
 				}
-			} else {
-				// @d has no Go analogue; keep its text as code-like commentary.
-				sec.Tex += "\n@d" + seg
 			}
+			// @d (a C-preprocessor macro in CWEB) has no Go analogue, so its
+			// body is simply discarded by both gtangle and gweave.
 			ct = nx
 		}
 
@@ -254,4 +255,51 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 		return Format{}, false
 	}
 	return Format{Original: fields[0], Like: fields[1], NoIndex: noIndex}, true
+}
+
+// extractLimboFormats pulls @f/@s directives out of the limbo text (consuming
+// each to end of line) and returns the cleaned text together with the formats.
+// Other control codes and argument-terminated groups are copied through.
+func extractLimboFormats(src string) (string, []Format) {
+	var b strings.Builder
+	var formats []Format
+	n := len(src)
+	i := 0
+	for i < n {
+		if src[i] != '@' || i+1 >= n {
+			b.WriteByte(src[i])
+			i++
+			continue
+		}
+		switch c := src[i+1]; c {
+		case '@':
+			b.WriteString("@@")
+			i += 2
+		case 'f', 's':
+			j := i + 2
+			for j < n && src[j] != '\n' {
+				j++
+			}
+			if f, ok := parseFormat(src[i+2:j], c == 's'); ok {
+				formats = append(formats, f)
+			}
+			if j < n {
+				j++ // also drop the newline that ended the directive
+			}
+			i = j
+		case '<', '(', '=', 't', '^', '.', ':', 'q':
+			end := indexFrom(src, "@>", i+2)
+			if end < 0 {
+				b.WriteString(src[i:])
+				i = n
+			} else {
+				b.WriteString(src[i : end+2])
+				i = end + 2
+			}
+		default:
+			b.WriteString(src[i : i+2])
+			i += 2
+		}
+	}
+	return b.String(), formats
 }

@@ -39,7 +39,10 @@ func main() {
 }
 
 @* Counting.
-For every input we accumulate three integers, kept together in one struct.
+For every input we accumulate three integers, kept together in one struct. The
+format directive on the next line asks |gweave| to typeset the type |counts| in
+bold, the way it sets predeclared types such as |int|.
+@f counts int
 @<Type definitions@>=
 type counts struct {
 	lines, words, chars int

@@ -51,8 +51,13 @@ matches the unique full name beginning with `Set it up`.
 
 ## Notes specific to Go
 
-* Go has no preprocessor, so `@d` (macro definition) is accepted but currently
-  emitted verbatim into the code stream; prefer Go `const`/`func`.
+* Go has no preprocessor, so `@d` (macro definition) has no analogue: it is
+  accepted for compatibility but its body is ignored by both tools. Use Go
+  `const`/`func` instead.
+* `@f a b` makes `gweave` typeset identifier `a` in the class of `b` — most
+  usefully `@f MyType int` to set a user type in bold like a predeclared type.
+  `@s` does the same but also omits `a` from the index. These directives apply
+  globally and may appear in limbo or in a section's definition part.
 * The default tangled output file is `<basename>.go`; additional files are
   produced with `@(file@>=`.
 * `gtangle` runs `gofmt` on its output, so the emitted Go is canonically

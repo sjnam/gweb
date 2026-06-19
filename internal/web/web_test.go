@@ -83,3 +83,28 @@ func TestResolveAbbrev(t *testing.T) {
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && indexFrom(s, sub, 0) >= 0
 }
+
+func TestLimboFormats(t *testing.T) {
+	w := ParseString(`\input gwebmac
+@f Counts int
+@s hidden int
+@ x
+@c
+package main
+`)
+	if len(w.Formats) != 2 {
+		t.Fatalf("limbo formats = %d, want 2: %+v", len(w.Formats), w.Formats)
+	}
+	if w.Formats[0].Original != "Counts" || w.Formats[0].Like != "int" || w.Formats[0].NoIndex {
+		t.Errorf("format[0] = %+v", w.Formats[0])
+	}
+	if w.Formats[1].Original != "hidden" || !w.Formats[1].NoIndex {
+		t.Errorf("format[1] = %+v", w.Formats[1])
+	}
+	if contains(w.Limbo, "@f") || contains(w.Limbo, "@s") {
+		t.Errorf("directives not stripped from limbo: %q", w.Limbo)
+	}
+	if !contains(w.Limbo, "\\input gwebmac") {
+		t.Errorf("limbo lost its TeX: %q", w.Limbo)
+	}
+}

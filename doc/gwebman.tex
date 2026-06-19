@@ -206,9 +206,11 @@ raw output and prints a warning.
 GWEB keeps CWEB's control codes and behavior wherever they make sense. The main
 differences follow from the move from C to Go.
 
-\bull {\bf No preprocessor.} Go has no macros, so \cw{@d} plays a much smaller
-role than in CWEB; prefer Go \cw{const} and \cw{func} declarations. The
-formatting directives \cw{@f} and \cw{@s} are still useful.
+\bull {\bf No preprocessor.} Go has no macros, so \cw{@d} has no analogue: it is
+accepted for compatibility but ignored. Prefer Go \cw{const} and \cw{func}
+declarations. The formatting directives \cw{@f} and \cw{@s} remain useful: for
+example \cw{@f Counts int} sets the user type \cw{Counts} in bold, the way
+\cw{gweave} sets predeclared types.
 
 \bull {\bf Formatting from \cw{gofmt}.} Rather than reformatting code itself,
 \cw{gtangle} delegates to \cw{gofmt}; the tangled file is always tidy.

@@ -133,3 +133,28 @@ func f(ch chan int) {
 		}
 	}
 }
+
+func TestWeaveFormatDirective(t *testing.T) {
+	out := weaveString(t, `\input gwebmac
+@f Counts int
+@s hidden int
+@ x
+@c
+type Counts struct{}
+
+var c Counts
+var hidden int
+`)
+	if !strings.Contains(out, `\GKW{Counts}`) {
+		t.Errorf("@f should typeset Counts bold like a type:\n%s", out)
+	}
+	if !strings.Contains(out, `\GKW{hidden}`) {
+		t.Errorf("@s should also change the typeset class:\n%s", out)
+	}
+	if !strings.Contains(out, `\GII{\GID{Counts}}`) {
+		t.Errorf("@f keeps the identifier in the index:\n%s", out)
+	}
+	if strings.Contains(out, `\GII{\GID{hidden}}`) {
+		t.Errorf("@s should omit the identifier from the index:\n%s", out)
+	}
+}

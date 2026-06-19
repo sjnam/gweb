@@ -18,12 +18,20 @@ type Weaver struct {
 	w      *web.Web
 	defNum map[string]int // canonical named-section -> first defining section
 
+	format  map[string]tokKind // @f/@s: identifier -> the token class to use
+	noIndex map[string]bool    // @s: identifiers omitted from the index
+
 	xref *xref // identifier and section cross-references (built lazily)
 }
 
 // New builds a Weaver for the given web.
 func New(w *web.Web) *Weaver {
-	wv := &Weaver{w: w, defNum: map[string]int{}}
+	wv := &Weaver{
+		w:       w,
+		defNum:  map[string]int{},
+		format:  map[string]tokKind{},
+		noIndex: map[string]bool{},
+	}
 	for _, s := range w.Sections {
 		if s.HasCode && s.Name != "" && !s.IsFile {
 			name := w.Resolve(s.Name)
@@ -32,7 +40,32 @@ func New(w *web.Web) *Weaver {
 			}
 		}
 	}
+	// Format directives apply globally; later definitions win. The display
+	// class of identifier a (@f a b) is the class b would be typeset in.
+	apply := func(fs []web.Format) {
+		for _, f := range fs {
+			wv.format[f.Original] = classifyWord(f.Like)
+			if f.NoIndex {
+				wv.noIndex[f.Original] = true
+			}
+		}
+	}
+	apply(w.Formats)
+	for _, s := range w.Sections {
+		apply(s.Formats)
+	}
 	return wv
+}
+
+// effKind returns the token class to typeset t in, honoring @f/@s overrides.
+func (wv *Weaver) effKind(t token) tokKind {
+	switch t.kind {
+	case tkIdent, tkKeyword, tkBuiltin:
+		if k, ok := wv.format[t.text]; ok {
+			return k
+		}
+	}
+	return t.kind
 }
 
 // Weave writes the complete TeX document to out. It runs two passes: the first
@@ -136,14 +169,15 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 						indent += indentLevel(t.text)
 					}
 				default:
-					if t.kind == tkIdent || t.kind == tkBuiltin {
+					if (t.kind == tkIdent || t.kind == tkBuiltin) && !wv.noIndex[t.text] {
 						if isDefinition(prevSigKind, prevSigText, toks, k) {
 							wv.xref.addIdentDef(t.text, secNum)
 						} else {
 							wv.xref.addIdentUse(t.text, secNum)
 						}
 					}
-					emit(renderToken(t), t.kind, t.text)
+					disp := token{kind: wv.effKind(t), text: t.text}
+					emit(renderToken(disp), disp.kind, disp.text)
 					prevSigKind, prevSigText = t.kind, t.text
 				}
 			}
@@ -293,14 +327,15 @@ func (wv *Weaver) renderInline(secNum int, code string) string {
 		case tkSpace, tkNewline:
 			// spacing is decided by spaceBetween, not by source whitespace
 		default:
-			if spaceBetween(prevKind, prevText, t.kind, t.text) {
+			disp := token{kind: wv.effKind(t), text: t.text}
+			if spaceBetween(prevKind, prevText, disp.kind, disp.text) {
 				b.WriteString("\\ ")
 			}
-			if t.kind == tkIdent || t.kind == tkBuiltin {
+			if (t.kind == tkIdent || t.kind == tkBuiltin) && !wv.noIndex[t.text] {
 				wv.xref.addIdentUse(t.text, secNum)
 			}
-			b.WriteString(renderToken(t))
-			prevKind, prevText = t.kind, t.text
+			b.WriteString(renderToken(disp))
+			prevKind, prevText = disp.kind, disp.text
 		}
 	}
 	b.WriteString("$")

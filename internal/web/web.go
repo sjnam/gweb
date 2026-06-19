@@ -35,6 +35,7 @@ type Section struct {
 // Web is a fully parsed GWEB document.
 type Web struct {
 	Limbo    string
+	Formats  []Format // @f / @s directives found in limbo (apply globally)
 	Sections []*Section
 	full     []string // canonical (non-abbreviated) section names
 }
