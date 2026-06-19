@@ -108,3 +108,45 @@ package main
 		t.Errorf("limbo lost its TeX: %q", w.Limbo)
 	}
 }
+
+func hasWarning(ws []string, sub string) bool {
+	for _, w := range ws {
+		if indexFrom(w, sub, 0) >= 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func TestSectionLines(t *testing.T) {
+	w := ParseString("limbo\n\n@ first\n@c\nx\n\n@ second\n@c\ny\n")
+	if w.Sections[0].Line != 3 {
+		t.Errorf("section 1 line = %d, want 3", w.Sections[0].Line)
+	}
+	if w.Sections[1].Line != 7 {
+		t.Errorf("section 2 line = %d, want 7", w.Sections[1].Line)
+	}
+}
+
+func TestDiagnostics(t *testing.T) {
+	cases := []struct {
+		name, src, want string
+	}{
+		{"unterminated", "@ x\n@c\ny := @<oops\n", "unterminated"},
+		{"undefined ref", "@ x\n@c\n@<nope@>\n", "undefined section <nope>"},
+		{"never used", "@ x\n@<helper@>=\ndoit()\n@ y\n@c\npackage main\n", "defined but never used"},
+		{
+			"ambiguous",
+			"@ a\n@<Set X@>=\n1\n@ b\n@<Set Y@>=\n2\n@ c\n@c\n@<Set...@>\n",
+			"ambiguous prefix <Set...>",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			w := ParseString(c.src)
+			if !hasWarning(w.Warnings, c.want) {
+				t.Errorf("want a warning containing %q, got %v", c.want, w.Warnings)
+			}
+		})
+	}
+}

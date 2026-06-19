@@ -106,6 +106,11 @@ examples/        a worked example
   your sections in gofmt style for the best-looking output.
 * **Definition detection** in the index is heuristic (an identifier following
   `func`/`var`/`const`/`type`, or just left of `:=`), not a full type check.
+* **Diagnostics.** Both tools report, with `file:line` locations, unterminated
+  control codes, references to undefined sections, ambiguous `...` abbreviations,
+  and named sections defined but never used. These are warnings; `gtangle` still
+  stops if it must actually expand an undefined reference. (With `@i` includes,
+  line numbers refer to the concatenated source.)
 * **Table of contents.** Starred sections record themselves (number, title, page)
   as the document is shaped, and `gwebmac.tex` typesets a contents page from that
   data in a single TeX pass. As in CWEB, the contents page is emitted at the *end*

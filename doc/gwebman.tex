@@ -202,6 +202,12 @@ Both tools accept \cw{-o dir} to choose the output directory. \cw{gtangle} runs
 formatted Go; if the assembled program is not valid Go, \cw{gtangle} keeps the
 raw output and prints a warning.
 
+Both tools also print diagnostics, each tagged with a \cw{file:line} location:
+an unterminated control code, a reference to an undefined section, an ambiguous
+\cw{...} abbreviation, or a section that is defined but never used. These are
+warnings and do not stop processing --- although \cw{gtangle} will still fail if
+it actually has to expand a reference that was never defined.
+
 \chapter{Differences from CWEB and Go-specific notes}
 GWEB keeps CWEB's control codes and behavior wherever they make sense. The main
 differences follow from the move from C to Go.

@@ -43,6 +43,9 @@ func run(input, outDir string) error {
 	if err != nil {
 		return err
 	}
+	for _, warn := range w.Warnings {
+		fmt.Fprintln(os.Stderr, "gweave: warning:", warn)
+	}
 	if outDir == "" {
 		outDir = filepath.Dir(input)
 	}

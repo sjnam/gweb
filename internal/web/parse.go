@@ -1,6 +1,9 @@
 package web
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // ctrlKind classifies a structural control code found while scanning.
 type ctrlKind int
@@ -164,7 +167,7 @@ func parse(src string) *Web {
 		// We are positioned at a section break.
 		hdr := src[i+1]
 		num++
-		sec := &Section{Number: num}
+		sec := &Section{Number: num, Line: lineAt(src, i)}
 		if hdr == '*' {
 			h := findSectionHeaderEnd(src, i)
 			sec.Starred = true
@@ -246,6 +249,41 @@ func extractTitle(tex string) string {
 		t = t[:dot]
 	}
 	return strings.Join(strings.Fields(t), " ")
+}
+
+// scanDiagnostics walks the source looking for malformed control codes —
+// currently argument-terminated codes (@<, @(, @=, @t, @^, @., @:, @q) that are
+// missing their closing @> — and returns one warning per problem.
+func scanDiagnostics(src, file string) []string {
+	at := func(off int) string {
+		if file != "" {
+			return fmt.Sprintf("%s:%d", file, lineAt(src, off))
+		}
+		return fmt.Sprintf("line %d", lineAt(src, off))
+	}
+	var warns []string
+	n := len(src)
+	i := 0
+	for i < n {
+		if src[i] != '@' || i+1 >= n {
+			i++
+			continue
+		}
+		switch c := src[i+1]; c {
+		case '@':
+			i += 2
+		case '<', '(', '=', 't', '^', '.', ':', 'q':
+			if end := indexFrom(src, "@>", i+2); end < 0 {
+				warns = append(warns, fmt.Sprintf("%s: unterminated `@%c ... @>'", at(i), c))
+				i = n
+			} else {
+				i = end + 2
+			}
+		default:
+			i += 2
+		}
+	}
+	return warns
 }
 
 // parseFormat parses the body of an @f/@s directive: two identifiers.

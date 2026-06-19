@@ -82,7 +82,7 @@ func (t *Tangler) Tangle(defaultFile string) ([]Output, error) {
 	}
 
 	if len(outs) == 0 {
-		return nil, fmt.Errorf("gtangle: no code to tangle (no @c or @(file@>= sections)")
+		return nil, fmt.Errorf("no code to tangle (no @c or @(file@>= sections)")
 	}
 	return outs, nil
 }
@@ -119,10 +119,10 @@ func (t *Tangler) expand(code string, o *buffer, stack []string) error {
 			name := t.w.Resolve(a.Text)
 			def, ok := t.defs[name]
 			if !ok {
-				return fmt.Errorf("gtangle: undefined section <%s>", a.Text)
+				return fmt.Errorf("undefined section <%s>", a.Text)
 			}
 			if slices.Contains(stack, name) {
-				return fmt.Errorf("gtangle: circular reference through <%s>", name)
+				return fmt.Errorf("circular reference through <%s>", name)
 			}
 			// Surround an expanded reference with newlines so adjacent
 			// statements stay on separate lines; gofmt collapses the rest.
