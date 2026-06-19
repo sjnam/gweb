@@ -1,0 +1,64 @@
+// Command gweave turns a GWEB (.w) file into a TeX document.
+//
+// Usage:
+//
+//	gweave [-o dir] file.w
+//
+// The woven document is written to <basename>.tex. Process it with a TeX engine
+// that can find gwebmac.tex (e.g. "pdftex file.tex") to produce a PDF.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/sjnam/gweb/internal/weave"
+	"github.com/sjnam/gweb/internal/web"
+)
+
+func main() {
+	outDir := flag.String("o", "", "output directory (default: input file's directory)")
+	flag.Usage = usage
+	flag.Parse()
+	if flag.NArg() != 1 {
+		usage()
+		os.Exit(2)
+	}
+	if err := run(flag.Arg(0), *outDir); err != nil {
+		fmt.Fprintln(os.Stderr, "gweave:", err)
+		os.Exit(1)
+	}
+}
+
+func usage() {
+	fmt.Fprintln(os.Stderr, "usage: gweave [-o dir] file.w")
+	flag.PrintDefaults()
+}
+
+func run(input, outDir string) error {
+	w, err := web.Parse(input)
+	if err != nil {
+		return err
+	}
+	if outDir == "" {
+		outDir = filepath.Dir(input)
+	}
+	base := filepath.Base(input)
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	outPath := filepath.Join(outDir, base+".tex")
+
+	f, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if err := weave.New(w).Weave(f); err != nil {
+		return err
+	}
+	fmt.Printf("gweave: wrote %s\n", outPath)
+	return nil
+}

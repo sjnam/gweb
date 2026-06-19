@@ -1,0 +1,228 @@
+% gwebman.tex -- the GWEB manual.  Process with a plain-TeX engine:
+%   pdftex gwebman.tex
+% This is the GWEB analogue of CWEB's cwebman.tex.  It is a self-contained plain
+% TeX document and does not need gwebmac.tex.
+
+\hsize=6.3in \vsize=8.7in
+\parindent=18pt
+\tolerance=2000 \hbadness=2000
+
+\font\titlefont=cmbx12 scaled\magstep2
+\font\chapfont=cmbx12 scaled\magstep1
+\font\secfont=cmbx12
+\font\eightrm=cmr8
+
+% --- inline code word: @ < > = etc. are safe in \tt; avoid braces inline ---
+\def\cw#1{{\tt #1}}
+\def\bs{\char92 }                             % a literal backslash, in \tt
+\def\rn#1{$\langle\,${\it #1\/}$\,\rangle$}   % a refinement name, as in print
+
+% --- structural macros ---
+\newcount\chapno
+\def\chapter#1{\par\penalty-300\vfil\eject\global\advance\chapno by1
+  \leftline{\chapfont \the\chapno.\enspace #1}\nobreak\bigskip\noindent}
+\def\section#1{\par\penalty-150\medskip\leftline{\secfont #1}\nobreak
+  \smallskip\noindent}
+
+% --- a verbatim code display (TeXbook recipe): | is the escape inside it ---
+\def\begincode{\par\medskip\begingroup
+  \def\do##1{\catcode`##1=12 }\dospecials
+  \catcode`\|=0
+  \obeylines \obeyspaces \tt \parindent=0pt \leftskip=18pt\relax}
+\def\endcode{\endgroup\medskip\noindent}
+
+\def\bull{\smallbreak\noindent\llap{$\bullet$\enspace}}
+
+% =============================================================================
+\centerline{\titlefont GWEB}
+\medskip
+\centerline{\secfont A Literate Programming System for Go}
+\bigskip
+\centerline{(modeled on Knuth and Levy's CWEB)}
+\vskip 24pt
+\noindent
+This manual describes {\bf GWEB}, a system that lets you write a Go program and
+its documentation as a single source file in the style of literate programming.
+GWEB follows Donald Knuth and Silvio Levy's {\bf CWEB} as closely as possible;
+to a first approximation it is ``CWEB with C replaced by Go.'' If you already
+know CWEB, you can read this manual quickly, noting only the Go-specific points
+in the final chapter.
+
+\chapter{What literate programming is}
+A {\it literate program\/} is written for human beings first and computers
+second. Instead of arranging code in the order the compiler demands, you arrange
+it in the order that best explains the ideas, breaking the program into small
+labeled pieces and weaving prose between them. Two programs then process the
+single source file in opposite directions:
+
+\bull {\bf \cw{gtangle}} produces a Go source file for the compiler. It discards
+all the commentary and reassembles the labeled pieces into the order Go requires.
+
+\bull {\bf \cw{gweave}} produces a \TeX\ file for the reader. It typesets the
+prose, pretty-prints the Go code (reserved words in {\bf bold}, identifiers in
+{\it italic\/}), and builds an index and a list of code pieces with full
+cross-references.
+
+\noindent A GWEB source file conventionally has the extension \cw{.w}. From
+\cw{foo.w} you obtain \cw{foo.go} with \cw{gtangle} and \cw{foo.tex} (then
+\cw{foo.pdf}) with \cw{gweave}.
+
+\chapter{The structure of a web}
+A web is a sequence of {\it sections}. Material before the first section is
+called {\it limbo}: it is plain \TeX\ that \cw{gweave} copies to the output
+(typically \cw{\bs input gwebmac} and a title), and that \cw{gtangle} ignores.
+
+Each section has up to three parts, always in this order:
+
+\bull the {\it \TeX\ part}: commentary, written in ordinary \TeX;
+
+\bull the {\it definition part}: zero or more \cw{@d}, \cw{@f}, or \cw{@s}
+directives;
+
+\bull the {\it code part}: the Go code of the section.
+
+\noindent A section is opened by one of two control codes. \cw{@\ } (the
+character \cw{@} followed by a space, tab, or newline) opens an ordinary
+section; \cw{@*} opens a {\it starred\/} section, which begins a major group and
+whose title --- the text up to the first period --- appears as a heading and in
+the table of contents. Write \cw{@*1}, \cw{@*2}, $\ldots$ for subordinate
+groups; \cw{@*} alone means depth~0.
+
+The code part is opened either by \cw{@c}, which marks {\it unnamed\/} code
+belonging to the program as a whole, or by a section name of the form
+\cw{@<...@>=}, which {\it defines\/} a named section (see the next chapter).
+Sections numbered automatically, starting at~1.
+
+\section{A first example}
+Here is a complete one-section web:
+\begincode
+@* Hello. Our first GWEB program.
+@c
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("hello, world")
+}
+|endcode
+The starred section's title is ``Hello''. Running \cw{gtangle} on this file
+yields a \cw{hello.go} that compiles and runs; running \cw{gweave} yields a
+typeset document with ``1. Hello.'' as its heading.
+
+\chapter{Named sections (refinements)}
+The power of literate programming comes from {\it named sections}, which CWEB
+and GWEB also call {\it refinements}. You may use a refinement before you define
+it, and you may define it in several pieces scattered through the document.
+
+A reference \cw{@<Name of section@>} stands for code defined elsewhere. A
+definition \cw{@<Name of section@>=} introduces that code. When \cw{gtangle}
+meets a reference it substitutes the corresponding definition (recursively); when
+\cw{gweave} meets one it prints \rn{Name of section} followed by the number of
+the defining section, so the reader can navigate.
+
+\begincode
+@ The skeleton names a refinement and fills it in below.
+@c
+package main
+
+func main() {
+    @<Greet the user@>
+}
+
+@ Here is the refinement itself.
+@<Greet the user@>=
+println("hi!")
+|endcode
+
+Several definitions with the same name are concatenated in the order they
+appear, so you can grow a section incrementally. \cw{gweave} marks the second and
+later pieces with ``$\mathrel+\equiv$'' and notes ``This code is also defined
+in'' the other sections. Under the first definition it lists every section that
+{\it uses\/} the refinement.
+
+A name may be abbreviated by a trailing \cw{...}: \cw{@<Greet...@>} matches the
+unique full name beginning ``Greet''.
+
+\chapter{Producing more than one file}
+By default \cw{gtangle} writes the unnamed sections to \cw{basename.go}. To
+direct code to an additional file, define a section whose name is that file:
+\begincode
+@(go.mod@>=
+module hello
+
+go 1.22
+|endcode
+Each such file is written verbatim (after refinement expansion) to the named
+path. This is handy for emitting a \cw{go.mod}, a second package file, or
+generated data alongside the main program.
+
+You can also split a large web across several source files. The directive
+\cw{@i filename} includes another \cw{.w} file at that point, exactly as if its
+text appeared inline.
+
+\chapter{The woven document}
+\cw{gweave} writes a \TeX\ file that expects the macros in \cw{gwebmac.tex} (the
+analogue of \cw{cwebmac.tex}); your limbo should therefore start with
+\cw{\bs input gwebmac}. Make sure \TeX\ can find that file, for example with
+\hbox{\cw{TEXINPUTS=/path/to/gweb/tex: pdftex foo.tex}}.
+
+The woven output prints each section in source order, pretty-printing the code:
+reserved words and predeclared type names are set in bold, other identifiers in
+italic, string and rune literals in typewriter, and comments in roman. The
+original indentation of the Go code is preserved.
+
+\section{Inline code, indexing, and formatting}
+Within commentary you may insert a short piece of Go code by surrounding it with
+vertical bars: writing \hbox{\cw{\char124 x := f()\char124}} typesets it like
+code. (Use \cw{\bs\char124} for a literal bar.)
+
+Three control codes add hand-written entries to the index, each ending with
+\cw{@>}:
+
+\bull \cw{@\char94 text@>} --- typeset the entry in roman;
+
+\bull \cw{@.text@>} --- typeset it in typewriter;
+
+\bull \cw{@:text@>} --- typeset it with the user macro \cw{\bs 9}.
+
+\noindent Finally, \cw{@f a b} tells \cw{gweave} to format identifier \cw{a} the
+way it formats \cw{b} (for instance to make a type name bold); \cw{@s} does the
+same but omits the entry from the index.
+
+\chapter{Running the programs}
+Build the tools once with \cw{make build} (or \cw{go install ./...}), then:
+\begincode
+gtangle foo.w        # -> foo.go
+gweave  foo.w        # -> foo.tex
+pdftex  foo.tex      # -> foo.pdf
+|endcode
+Both tools accept \cw{-o dir} to choose the output directory. \cw{gtangle} runs
+\cw{gofmt} on its result, so a correct web always tangles to canonically
+formatted Go; if the assembled program is not valid Go, \cw{gtangle} keeps the
+raw output and prints a warning.
+
+\chapter{Differences from CWEB and Go-specific notes}
+GWEB keeps CWEB's control codes and behavior wherever they make sense. The main
+differences follow from the move from C to Go.
+
+\bull {\bf No preprocessor.} Go has no macros, so \cw{@d} plays a much smaller
+role than in CWEB; prefer Go \cw{const} and \cw{func} declarations. The
+formatting directives \cw{@f} and \cw{@s} are still useful.
+
+\bull {\bf Formatting from \cw{gofmt}.} Rather than reformatting code itself,
+\cw{gtangle} delegates to \cw{gofmt}; the tangled file is always tidy.
+
+\bull {\bf Layout in the woven output.} \cw{gweave} preserves the source's own
+\cw{gofmt}-style line breaks and indentation instead of re-deriving layout from a
+full grammar as \cw{cweave} does for~C. Because idiomatic Go is already
+\cw{gofmt}-formatted, the printed code reads cleanly.
+
+\bull {\bf Heuristic definitions.} An identifier is marked as ``defined'' in the
+index (its section number underlined) when it follows \cw{func}, \cw{var},
+\cw{const}, or \cw{type}, or stands just left of \cw{:=}. This is a heuristic,
+not a full type analysis.
+
+\vfill
+\centerline{\eightrm GWEB --- a literate programming system for Go.}
+\bye

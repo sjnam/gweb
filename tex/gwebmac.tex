@@ -1,0 +1,79 @@
+% gwebmac.tex -- plain-TeX macros for documents produced by gweave.
+% This is the GWEB analogue of CWEB's cwebmac.tex.  Process a woven file with
+% a plain-TeX engine, e.g.  pdftex foo.tex  (gwebmac.tex must be findable).
+
+% ---- fonts ------------------------------------------------------------------
+\font\titlefont=cmbx10 scaled\magstep2   % starred-section / page titles
+\font\eightrm=cmr8                       % small roman for cross-reference notes
+\font\eightit=cmti8
+
+% ---- page layout ------------------------------------------------------------
+\hsize=6.5in
+\vsize=8.9in
+\parindent=0pt
+\parskip=0pt
+\hbadness=10000 \hfuzz=300pt             % code lines may run wide; do not fuss
+\tolerance=2000
+\newdimen\Gindentunit \Gindentunit=1.4em % one indentation step in displayed code
+\newskip\Gsecskip     \Gsecskip=11pt plus 4pt minus 2pt
+% (plain TeX already provides \S for the section sign used in the notes below.)
+
+% ---- section openers --------------------------------------------------------
+% \GM{n} : an ordinary (unstarred) section, run-in number.
+\def\GM#1{\par\penalty-50\vskip\Gsecskip\noindent
+  \hbox{\bf #1.\enspace}\ignorespaces}
+
+% \GN{depth}{n}{title} : a starred section.  A depth-0 section begins a new page,
+% except for the very first one, which follows any title banner in the limbo.
+\newif\ifGfirst \Gfirsttrue
+\def\GN#1#2#3{\par
+  \ifnum#1=0
+    \ifGfirst \Gfirstfalse \vskip 6pt \else \penalty-300\vfil\eject \fi
+  \else \penalty-150\vskip 14pt plus 4pt \fi
+  \noindent{\titlefont #2.\enspace #3.}\par\nobreak\vskip 4pt
+  \noindent\ignorespaces}
+
+% ---- displayed Go code ------------------------------------------------------
+% \GB ... \GE bracket a code display; \GL typesets one line of it.
+\def\GB{\par\nobreak\vskip 3pt\begingroup
+  \baselineskip=11pt \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil}
+\def\GE{\par\endgroup\vskip 3pt}
+\def\GL#1#2{\par\noindent\kern#1\Gindentunit$#2$}
+
+% ---- code token fonts (called inside the math of \GL) -----------------------
+\def\GID#1{\hbox{\it #1\/}}      % identifier
+\def\GKW#1{\hbox{\bf #1}}        % reserved word or predeclared type
+\def\GST#1{\hbox{\tt #1}}        % string, rune, or verbatim text
+\def\GCM#1{\hbox{\rm #1}}        % comment
+\def\GNU#1{\hbox{\rm #1}}        % numeric literal
+
+% ---- named-section references and headlines ---------------------------------
+\def\Gangle#1#2{$\langle\,$#1\penalty100\thinspace{\sevenrm #2}$\,\rangle$}
+\def\GX#1#2{\hbox{\Gangle{#2}{#1}}}        % inline reference in code
+\def\GD#1#2{\par\vskip 3pt\noindent\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
+\def\GDp#1#2{\par\vskip 3pt\noindent
+  \hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
+
+% ---- cross-reference notes printed under a definition -----------------------
+\def\GU#1{\par\nobreak\vskip 2pt\noindent{\eightrm This code is used in \S#1.}\par}
+\def\GA#1{\par\nobreak\vskip 2pt\noindent{\eightrm This code is also defined in \S#1.}\par}
+\def\GUL#1{$\underline{\hbox{#1}}$} % an underlined (defining) section number
+
+% ---- index ------------------------------------------------------------------
+\def\Ginx{\par\vfil\eject\centerline{\titlefont Index}\vskip 14pt
+  \begingroup\parindent=0pt\parskip=2pt plus 1pt\rightskip=0pt plus 2em\relax}
+\def\GII#1#2{\noindent#1:\quad #2.\par}      % one index entry: head and sections
+\def\GIR#1{{\rm #1}}                          % @^...@>  roman index entry
+\def\GIT#1{{\tt #1}}                          % @....@>  typewriter index entry
+\def\9#1{{\rm #1}}                            % default for @:...@> entries
+\def\GIC#1{\9{#1}}
+
+% ---- list of named sections (refinements) -----------------------------------
+\def\Gfin{\par\endgroup\vfil\eject
+  \centerline{\titlefont List of Refinements}\vskip 14pt
+  \begingroup\parindent=0pt\parskip=3pt plus 1pt\rightskip=0pt plus 2em\relax}
+\def\GNS#1#2#3{\noindent\hbox{$\langle\,$#1$\,\rangle$}\quad
+  {\eightrm defined in \S#2; used in \S#3.}\par}
+
+% ---- closing ----------------------------------------------------------------
+\def\Gcon{\par\endgroup}

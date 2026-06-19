@@ -1,0 +1,17 @@
+# build outputs
+/bin/
+
+# tangled / woven artifacts
+*.go.tmp
+examples/*.go
+examples/*.tex
+examples/*.pdf
+examples/*.dvi
+examples/*.log
+examples/wc
+
+# but keep sources
+!examples/*.w
+
+# rasterized previews
+*.png
