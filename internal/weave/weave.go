@@ -135,6 +135,7 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 	indent := 0
 	atLineStart := true
 	pendingSpace := false
+	forceDef := false // set by @! to force the next identifier to index as a def
 
 	// prevSig* tracks the most recent significant token so that an identifier
 	// following func/var/const/type can be flagged as a definition.
@@ -199,11 +200,15 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 						pendingSpace = true
 					}
 				default:
-					if (t.kind == tkIdent || t.kind == tkBuiltin) && !wv.noIndex[t.text] {
-						if isDefinition(prevSigKind, prevSigText, toks, k) {
-							wv.xref.addIdentDef(t.text, secNum)
-						} else {
-							wv.xref.addIdentUse(t.text, secNum)
+					if t.kind == tkIdent || t.kind == tkBuiltin {
+						def := forceDef || isDefinition(prevSigKind, prevSigText, toks, k)
+						forceDef = false
+						if !wv.noIndex[t.text] {
+							if def {
+								wv.xref.addIdentDef(t.text, secNum)
+							} else {
+								wv.xref.addIdentUse(t.text, secNum)
+							}
 						}
 					}
 					emit(renderToken(token{kind: wv.effKind(t), text: t.text}))
@@ -236,6 +241,8 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 				pendingSpace = false
 				atLineStart = false
 			}
+		case web.AIndexDef:
+			forceDef = true // @!: the next identifier is a definition
 		}
 	}
 	flushLine()

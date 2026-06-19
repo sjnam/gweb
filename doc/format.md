@@ -54,6 +54,7 @@ semicolon) have no effect; they are accepted and ignored for portability.
 |-----------------|------------------------------------------------------------------|
 | `@f a b`        | format identifier `a` like identifier/keyword `b`                 |
 | `@s a b`        | like `@f` but the entry is omitted from the index                 |
+| `@!`            | index the next identifier as a definition (underline it)          |
 | `@^text@>`      | index entry, typeset in roman                                    |
 | `@.text@>`      | index entry, typeset in typewriter                               |
 | `@:text@>`      | index entry, typeset by the user macro `\9`                      |

@@ -13,6 +13,7 @@ const (
 	AIndex                    // @^/@./@: index entry
 	APaste                    // @& join (delete surrounding whitespace)
 	ALayout                   // @, @/ @| @# woven-output layout hints
+	AIndexDef                 // @! force the next identifier to index as a definition
 )
 
 // Atom is one element of a scanned code part.
@@ -108,6 +109,12 @@ func ScanCode(code string) []Atom {
 			flush()
 			atoms = append(atoms, Atom{Kind: ALayout, Index: d})
 			i += 2
+		case '!':
+			// Force the next identifier's index entry to be a definition,
+			// overriding the heuristic. Produces no output by itself.
+			flush()
+			atoms = append(atoms, Atom{Kind: AIndexDef})
+			i += 2
 		case '+', '[', ']', ';':
 			// CWEB prettyprinter hints (cancel break, expression brackets,
 			// invisible semicolon). GWEB mirrors the source instead of reflowing
@@ -115,7 +122,6 @@ func ScanCode(code string) []Atom {
 			i += 2
 		default:
 			i += 2 // unknown @x: drop it rather than corrupt the output
-			i += 2
 		}
 	}
 	flush()

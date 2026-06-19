@@ -214,3 +214,12 @@ func TestWeaveLayoutCodes(t *testing.T) {
 		}
 	}
 }
+
+func TestWeaveForceDefinition(t *testing.T) {
+	// foo is only *used* (inside a call), but @! forces it to be indexed as a
+	// definition, so its section number is underlined.
+	out := weaveString(t, "@ x\n@c\nfunc f() { use(@!foo) }\n")
+	if !strings.Contains(out, `\GII{\GID{foo}}{\GUL{1}}`) {
+		t.Errorf("@! should index foo as a definition (underlined):\n%s", out)
+	}
+}

@@ -222,7 +222,10 @@ Three control codes add hand-written entries to the index, each ending with
 
 \noindent Finally, \cw{@f a b} tells \cw{gweave} to format identifier \cw{a} the
 way it formats \cw{b} (for instance to make a type name bold); \cw{@s} does the
-same but omits the entry from the index.
+same but omits the entry from the index. \cw{gweave} underlines the index entry
+for the section where an identifier is defined, guessing definitions from
+context; write \cw{@!} just before an identifier to force its entry there to be
+underlined when the guess would miss it.
 
 A handful of codes adjust the woven layout directly, and are ignored by
 \cw{gtangle}: \cw{@,} inserts a thin space, \cw{@/} forces a line break, \cw{@|}

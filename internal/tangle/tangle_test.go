@@ -126,3 +126,16 @@ func TestTangleIgnoresLayoutCodes(t *testing.T) {
 		t.Errorf("layout/hint codes must not leak into tangled output:\n%s", got)
 	}
 }
+
+func TestTangleDropsUnknownCode(t *testing.T) {
+	// An unknown @x must drop exactly its two characters, not corrupt the rest
+	// (guards against a former double-skip bug).
+	const src = "@ x\n@c\npackage main\n\nvar a@?bc = 1\n"
+	outs, err := New(web.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(outs[0].Content); !strings.Contains(got, "var abc = 1") {
+		t.Errorf("unknown @x should drop exactly two chars:\n%s", got)
+	}
+}

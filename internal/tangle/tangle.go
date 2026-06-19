@@ -131,7 +131,7 @@ func (t *Tangler) expand(code string, o *buffer, stack []string) error {
 				return err
 			}
 			o.WriteString("\n")
-		case web.ATeX, web.AIndex, web.ALayout:
+		case web.ATeX, web.AIndex, web.ALayout, web.AIndexDef:
 			// woven-output only; ignored by tangle
 		}
 	}
