@@ -15,3 +15,7 @@ examples/wc
 
 # rasterized previews
 *.png
+
+# stray TeX scratch logs
+texput.log
+*.toc
