@@ -144,6 +144,11 @@ in'' the other sections. Under the first definition it lists every section that
 A name may be abbreviated by a trailing \cw{...}: \cw{@<Greet...@>} matches the
 unique full name beginning ``Greet''.
 
+A section name may itself contain Go code, written between vertical bars, which
+\cw{gweave} typesets like code: \cw{@<Update the counts for byte |b|@>} prints as
+$\langle\,$Update the counts for byte\/ {\it b}\thinspace$\rangle$. The bars are
+part of the name, so the definition and every reference must spell it the same way.
+
 \chapter{Producing more than one file}
 By default \cw{gtangle} writes the unnamed sections to \cw{basename.go}. To
 direct code to an additional file, define a section whose name is that file:

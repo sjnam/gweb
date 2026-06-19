@@ -49,6 +49,10 @@ All control codes begin with `@`. Use `@@` for a literal `@`.
 A section name may be abbreviated with a trailing `...`: `@<Set it up...@>`
 matches the unique full name beginning with `Set it up`.
 
+A section name may also contain Go code between vertical bars, which `gweave`
+typesets as code (e.g. `@<Update the counts for byte |b|@>`). The bars are part
+of the name, so the definition and all references must spell it identically.
+
 ## Change files
 
 Both tools accept an optional second argument, a **change file** (`.ch`), which

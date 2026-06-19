@@ -179,3 +179,23 @@ func f(p *int) {
 		}
 	}
 }
+
+func TestWeaveCodeInSectionName(t *testing.T) {
+	out := weaveString(t, `@ use
+@c
+package main
+
+var _ = @<Compute |area| now@>
+
+@ def
+@<Compute |area| now@>=
+w * h
+`)
+	want := `Compute $\GID{area}$ now`
+	if !strings.Contains(out, `\GX{2}{`+want+`}`) {
+		t.Errorf("reference name should typeset |area| as code; missing %q in:\n%s", want, out)
+	}
+	if !strings.Contains(out, `\GD{2}{`+want+`}`) {
+		t.Errorf("definition headline should typeset |area| as code; missing %q in:\n%s", want, out)
+	}
+}

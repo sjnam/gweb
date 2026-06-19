@@ -103,7 +103,7 @@ func countReader(r io.Reader) counts {
 			break
 		}
 		c.chars++
-		@<Update the line and word counts@>
+		@<Update the counts for byte |b|@>
 	}
 	return c
 }
@@ -111,7 +111,7 @@ func countReader(r io.Reader) counts {
 @ Every byte is a character; a newline additionally ends a line; and any white
 space ends the current word, while the first non-space after a gap starts a new
 one.
-@<Update the line and word counts@>=
+@<Update the counts for byte |b|@>=
 if b == '\n' {
 	c.lines++
 }

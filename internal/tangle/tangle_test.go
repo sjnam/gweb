@@ -93,3 +93,24 @@ var _ = @<a@>
 		t.Errorf("want circular-reference error, got %v", err)
 	}
 }
+
+func TestTangleCodeInName(t *testing.T) {
+	const src = `@ root
+@c
+package main
+
+var area = @<the |x| value@>
+
+@ helper
+@<the |x| value@>=
+42
+`
+	outs, err := New(web.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(outs[0].Content)
+	if !strings.Contains(got, "var area = 42") {
+		t.Errorf("name containing |x| should still match for tangling:\n%s", got)
+	}
+}

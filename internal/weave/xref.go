@@ -168,7 +168,7 @@ func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	for _, n := range sorted {
 		defs := secList(wv.xref.sectionDefs[n], nil)
 		uses := secList(wv.xref.sectionUses[n], nil)
-		fmt.Fprintf(bw, "\\GNS{%s}{%s}{%s}\n", escProse(n), defs, uses)
+		fmt.Fprintf(bw, "\\GNS{%s}{%s}{%s}\n", wv.renderName(n), defs, uses)
 	}
 }
 

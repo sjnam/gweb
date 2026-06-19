@@ -90,7 +90,7 @@ func (wv *Weaver) Weave(out io.Writer) error {
 
 func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 	if sec.Starred {
-		fmt.Fprintf(bw, "\n\\GN{%d}{%d}{%s}", sec.Depth, sec.Number, escProse(sec.Title))
+		fmt.Fprintf(bw, "\n\\GN{%d}{%d}{%s}", sec.Depth, sec.Number, wv.renderName(sec.Title))
 		rest := sec.Tex
 		if dot := strings.Index(rest, "."); dot >= 0 {
 			rest = rest[dot+1:]
@@ -110,7 +110,7 @@ func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 			if cont {
 				macro = "\\GDp" // continuation of an earlier definition
 			}
-			fmt.Fprintf(bw, "\n%s{%d}{%s}", macro, wv.defNum[name], escProse(name))
+			fmt.Fprintf(bw, "\n%s{%d}{%s}", macro, wv.defNum[name], wv.renderName(name))
 		}
 		bw.WriteString("\n\\GB%\n")
 		bw.WriteString(wv.renderCode(sec.Number, sec.Code))
@@ -198,7 +198,7 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 		case web.ARef:
 			name := wv.w.Resolve(a.Text)
 			wv.xref.addSectionUse(name, secNum)
-			emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], escProse(name)))
+			emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
 		case web.AVerbatim:
 			emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)))
 		case web.ATeX:
@@ -276,7 +276,7 @@ func (wv *Weaver) processTex(secNum int, s string) string {
 					end += i + 2
 					name := wv.w.Resolve(strings.TrimSpace(s[i+2 : end]))
 					wv.xref.addSectionUse(name, secNum)
-					fmt.Fprintf(&b, "\\GX{%d}{%s}", wv.defNum[name], escProse(name))
+					fmt.Fprintf(&b, "\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name))
 					i = end + 2
 					continue
 				}
@@ -295,9 +295,16 @@ func (wv *Weaver) processTex(secNum int, s string) string {
 	return b.String()
 }
 
-// renderInline formats a |...| inline Go fragment as one math group, mirroring
-// the source whitespace (an inline fragment is short, so it is not wrapped).
+// renderInline formats a |...| inline Go fragment (from prose) as one math
+// group, recording identifier uses in section secNum.
 func (wv *Weaver) renderInline(secNum int, code string) string {
+	return wv.inlineCode(code, secNum, true)
+}
+
+// inlineCode formats a short Go fragment as one math group, mirroring the source
+// whitespace (it is not wrapped). When record is true, identifier uses are added
+// to the cross-reference under secNum.
+func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	var st lexState
 	var b strings.Builder
 	b.WriteString("$")
@@ -314,7 +321,7 @@ func (wv *Weaver) renderInline(secNum int, code string) string {
 				b.WriteString("\\ ")
 				pendingSpace = false
 			}
-			if (t.kind == tkIdent || t.kind == tkBuiltin) && !wv.noIndex[t.text] {
+			if record && (t.kind == tkIdent || t.kind == tkBuiltin) && !wv.noIndex[t.text] {
 				wv.xref.addIdentUse(t.text, secNum)
 			}
 			b.WriteString(renderToken(token{kind: wv.effKind(t), text: t.text}))
@@ -322,6 +329,47 @@ func (wv *Weaver) renderInline(secNum int, code string) string {
 		}
 	}
 	b.WriteString("$")
+	return b.String()
+}
+
+// renderName typesets a section name (or starred-section title) for TeX text
+// mode. A |...| span is set as inline code (as in CWEB section names); the rest
+// is roman prose. A literal bar is written \|.
+func (wv *Weaver) renderName(name string) string {
+	var b strings.Builder
+	n := len(name)
+	i := 0
+	for i < n {
+		if name[i] == '\\' && i+1 < n && name[i+1] == '|' {
+			b.WriteString("|")
+			i += 2
+			continue
+		}
+		if name[i] == '|' {
+			j := i + 1
+			var code strings.Builder
+			for j < n {
+				if name[j] == '\\' && j+1 < n && name[j+1] == '|' {
+					code.WriteByte('|')
+					j += 2
+					continue
+				}
+				if name[j] == '|' {
+					break
+				}
+				code.WriteByte(name[j])
+				j++
+			}
+			b.WriteString(wv.inlineCode(code.String(), 0, false))
+			i = j + 1
+			continue
+		}
+		start := i
+		for i < n && name[i] != '|' && !(name[i] == '\\' && i+1 < n && name[i+1] == '|') {
+			i++
+		}
+		b.WriteString(escProse(name[start:i]))
+	}
 	return b.String()
 }
 
