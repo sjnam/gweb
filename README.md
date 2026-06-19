@@ -98,4 +98,7 @@ examples/        a worked example
   scrap-reduction prettyprinter.
 * **Definition detection** in the index is heuristic (an identifier following
   `func`/`var`/`const`/`type`, or just left of `:=`), not a full type check.
-* A running table of contents with page numbers is not yet generated.
+* **Table of contents.** Starred sections record themselves (number, title, page)
+  as the document is shaped, and `gwebmac.tex` typesets a contents page from that
+  data in a single TeX pass. As in CWEB, the contents page is emitted at the *end*
+  of the document; move it to the front when binding if you prefer.

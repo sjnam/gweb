@@ -15,8 +15,16 @@
 \hbadness=10000 \hfuzz=300pt             % code lines may run wide; do not fuss
 \tolerance=2000
 \newdimen\Gindentunit \Gindentunit=1.4em % one indentation step in displayed code
+\newdimen\Gtocindent  \Gtocindent=1.5em  % one indentation step in the contents
 \newskip\Gsecskip     \Gsecskip=11pt plus 4pt minus 2pt
 % (plain TeX already provides \S for the section sign used in the notes below.)
+
+% A starred section records itself in \jobname.toc as it is shipped out, so that
+% \Gcon can build a table of contents in a single TeX pass.  The page number is
+% captured by the deferred \write; the title is stashed in a control sequence so
+% it need not survive being written to (and read back from) a file.
+\newwrite\Gtoc
+\immediate\openout\Gtoc=\jobname.toc
 
 % ---- section openers --------------------------------------------------------
 % \GM{n} : an ordinary (unstarred) section, run-in number.
@@ -30,6 +38,10 @@
   \ifnum#1=0
     \ifGfirst \Gfirstfalse \vskip 6pt \else \penalty-300\vfil\eject \fi
   \else \penalty-150\vskip 14pt plus 4pt \fi
+  % Stash the title and record a contents line *after* any page break above, so
+  % the deferred \write captures the page this heading actually lands on.
+  \expandafter\gdef\csname Gtoctitle\number#2\endcsname{#3}%
+  \write\Gtoc{\string\GTline{#1}{#2}{\the\pageno}}%
   \noindent{\titlefont #2.\enspace #3.}\par\nobreak\vskip 4pt
   \noindent\ignorespaces}
 
@@ -75,5 +87,17 @@
 \def\GNS#1#2#3{\noindent\hbox{$\langle\,$#1$\,\rangle$}\quad
   {\eightrm defined in \S#2; used in \S#3.}\par}
 
-% ---- closing ----------------------------------------------------------------
-\def\Gcon{\par\endgroup}
+% ---- table of contents and closing -----------------------------------------
+% \GTline{depth}{n}{page} typesets one contents row; the title comes from the
+% control sequence stashed by \GN.  It is defined locally inside \Gcon.
+\def\Gcon{\par\endgroup            % close the refinements group opened by \Gfin
+  \vfil\eject                      % ship the last page so all \write's execute
+  \immediate\closeout\Gtoc
+  \centerline{\titlefont Table of Contents}\vskip 14pt
+  \begingroup
+    \parindent=0pt \parfillskip=0pt \rightskip=0pt \parskip=2pt plus 1pt
+    \def\GTline##1##2##3{\par\noindent\kern##1\Gtocindent
+      \hbox{\bf ##2.}\enspace\csname Gtoctitle\number##2\endcsname
+      \enspace\dotfill\enspace\hbox{##3}\par}%
+    \input \jobname.toc
+  \endgroup}
