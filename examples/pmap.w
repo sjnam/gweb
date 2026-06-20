@@ -1,5 +1,3 @@
-\input gwebmac
-
 @* Introduction.
 This example applies a function to every element of a slice {\it concurrently},
 using a fixed pool of worker goroutines, and returns the results in the original

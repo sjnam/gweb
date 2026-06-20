@@ -317,3 +317,16 @@ func TestBookmarkTitle(t *testing.T) {
 		}
 	}
 }
+
+func TestWeaveInjectsGwebmac(t *testing.T) {
+	// gweave supplies \input gwebmac; the .w file need not.
+	out := weaveString(t, "@ x\n@c\npackage main\n")
+	if !strings.HasPrefix(out, "\\input gwebmac\n") {
+		t.Errorf("woven output should start with \\input gwebmac, got:\n%.30q", out)
+	}
+	// A stray copy in the limbo is stripped, never duplicated.
+	out2 := weaveString(t, "\\input gwebmac\n@ x\n@c\npackage main\n")
+	if n := strings.Count(out2, "\\input gwebmac"); n != 1 {
+		t.Errorf("want exactly one \\input gwebmac, got %d", n)
+	}
+}

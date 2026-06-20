@@ -69,8 +69,9 @@ cross-references.
 
 \chapter{The structure of a web}
 A web is a sequence of {\it sections}. Material before the first section is
-called {\it limbo}: it is plain \TeX\ that \cw{gweave} copies to the output
-(typically \cw{\bs input gwebmac} and a title), and that \cw{gtangle} ignores.
+called {\it limbo}: it is plain \TeX\ that \cw{gweave} copies to the output (for
+example a redefinition of \cw{\bs title}), and that \cw{gtangle} ignores. You do
+not write \cw{\bs input gwebmac} yourself --- \cw{gweave} emits it automatically.
 
 Each section has up to three parts, always in this order:
 
@@ -196,9 +197,9 @@ Because changes are applied before anything else, they affect \cw{gtangle} and
 step. The bundled \cw{wc.ch} turns the \cw{wc} example's output into CSV.
 
 \chapter{The woven document}
-\cw{gweave} writes a \TeX\ file that expects the macros in \cw{gwebmac.tex} (the
-analogue of \cw{cwebmac.tex}); your limbo should therefore start with
-\cw{\bs input gwebmac}. Make sure \TeX\ can find that file, for example with
+\cw{gweave} writes a \TeX\ file that begins with \cw{\bs input gwebmac} (emitted
+automatically) and then expects those macros to be available. Make sure \TeX\ can
+find \cw{gwebmac.tex}, for example with
 \hbox{\cw{TEXINPUTS=/path/to/gweb/tex: pdftex foo.tex}}.
 
 The woven output prints each section in source order, pretty-printing the code:

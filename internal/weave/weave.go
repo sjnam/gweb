@@ -80,12 +80,29 @@ func (wv *Weaver) Weave(out io.Writer) error {
 	}
 
 	bw := bufio.NewWriter(out)
-	bw.WriteString(wv.w.Limbo)
+	// gweave supplies the macro package itself, so a .w file need not (and
+	// should not) \input it; drop any stray copy from the limbo.
+	bw.WriteString("\\input gwebmac\n")
+	bw.WriteString(stripGwebmacInput(wv.w.Limbo))
 	for _, sec := range wv.w.Sections {
 		wv.writeSection(bw, sec)
 	}
 	wv.writeBackMatter(bw)
 	return bw.Flush()
+}
+
+// stripGwebmacInput removes any "\input gwebmac" line from the limbo, since
+// gweave now emits it automatically.
+func stripGwebmacInput(limbo string) string {
+	lines := strings.Split(limbo, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, ln := range lines {
+		if strings.TrimSpace(ln) == "\\input gwebmac" {
+			continue
+		}
+		kept = append(kept, ln)
+	}
+	return strings.Join(kept, "\n")
 }
 
 func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
