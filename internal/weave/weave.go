@@ -32,8 +32,11 @@ func New(w *web.Web) *Weaver {
 		format:  map[string]tokKind{},
 		noIndex: map[string]bool{},
 	}
+	// Both refinements and @(file@>= outputs get a defining section number, so
+	// their headlines and links resolve; only @(file@>= names are never the
+	// target of a @<...@> reference.
 	for _, s := range w.Sections {
-		if s.HasCode && s.Name != "" && !s.IsFile {
+		if s.HasCode && s.Name != "" {
 			name := w.Resolve(s.Name)
 			if _, ok := wv.defNum[name]; !ok {
 				wv.defNum[name] = s.Number
@@ -107,10 +110,20 @@ func stripGwebmacInput(limbo string) string {
 
 func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 	if sec.Starred {
-		fmt.Fprintf(bw, "\n\\GN{%d}{%d}{%s}", sec.Depth, sec.Number, wv.renderName(sec.Title))
+		// A starred-section title is free TeX (it may contain \. typewriter and
+		// other control sequences), so it is passed through processTex rather than
+		// escaped like a refinement name.
+		fmt.Fprintf(bw, "\n\\GN{%d}{%d}{%s}", sec.Depth, sec.Number, wv.processTex(sec.Number, sec.Title))
+		// The commentary is whatever follows the title's terminating period (the
+		// first period at end of text or followed by whitespace, matching the web
+		// package's title rule so a period inside \. does not split early).
 		rest := sec.Tex
-		if dot := strings.Index(rest, "."); dot >= 0 {
-			rest = rest[dot+1:]
+		for i := 0; i < len(rest); i++ {
+			if rest[i] == '.' && (i+1 == len(rest) || rest[i+1] == ' ' ||
+				rest[i+1] == '\t' || rest[i+1] == '\n' || rest[i+1] == '\r') {
+				rest = rest[i+1:]
+				break
+			}
 		}
 		bw.WriteString(wv.processTex(sec.Number, rest))
 	} else {
@@ -289,7 +302,9 @@ func renderToken(t token) string {
 	case tkString:
 		return "\\GST{" + escTT(t.text) + "}"
 	case tkComment:
-		return "\\GCM{" + escTT(t.text) + "}"
+		// Comments are set in roman (\GCM), so escape them for roman text mode,
+		// not the typewriter \charNN codes that escTT emits.
+		return "\\GCM{" + escProse(t.text) + "}"
 	case tkOp:
 		return renderOp(t.text)
 	}

@@ -1,5 +1,3 @@
-% gweave's engine -- the analogue of CWEB's cweave.w.
-
 @* The \.{weave} package.
 This package implements \.{gweave}: it turns a parsed web into a TeX document
 with pretty-printed Go code (bold reserved words, italic identifiers), linked
@@ -22,7 +20,7 @@ import (
 )
 
 @ A |Weaver| carries the per-document state: the map from a named section to its
-first defining section, the |@@f|/|@@s| format overrides, and the
+first defining section, the \.{@@f}/\.{@@s} format overrides, and the
 cross-reference tables (built lazily).
 @(internal/weave/weave.go@>=
 // Weaver turns a parsed web into woven TeX.
@@ -47,8 +45,11 @@ func New(w *web.Web) *Weaver {
 		format:  map[string]tokKind{},
 		noIndex: map[string]bool{},
 	}
+	// Both refinements and @@(file@@>= outputs get a defining section number, so
+	// their headlines and links resolve; only @@(file@@>= names are never the
+	// target of a @@<...@@> reference.
 	for _, s := range w.Sections {
-		if s.HasCode && s.Name != "" && !s.IsFile {
+		if s.HasCode && s.Name != "" {
 			name := w.Resolve(s.Name)
 			if _, ok := wv.defNum[name]; !ok {
 				wv.defNum[name] = s.Number
@@ -72,7 +73,7 @@ func New(w *web.Web) *Weaver {
 	return wv
 }
 
-@ |effKind| returns the token class to typeset a token in, honoring |@@f|/|@@s|
+@ |effKind| returns the token class to typeset a token in, honoring \.{@@f}/\.{@@s}
 overrides for identifiers, keywords, and builtins.
 @(internal/weave/weave.go@>=
 // effKind returns the token class to typeset t in, honoring @@f/@@s overrides.
@@ -114,8 +115,8 @@ func (wv *Weaver) Weave(out io.Writer) error {
 	return bw.Flush()
 }
 
-@ A |.w| file need not \input the macros, so a stray copy is dropped from the
-limbo.
+@ |Weave| emits the macro package itself, so any stray copy of it in the limbo
+is dropped.
 @(internal/weave/weave.go@>=
 // stripGwebmacInput removes any "\input gwebmac" line from the limbo, since
 // gweave now emits it automatically.
@@ -137,10 +138,20 @@ the definition headline and cross-reference notes for a named section.
 @(internal/weave/weave.go@>=
 func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 	if sec.Starred {
-		fmt.Fprintf(bw, "\n\\GN{%d}{%d}{%s}", sec.Depth, sec.Number, wv.renderName(sec.Title))
+		// A starred-section title is free TeX (it may contain \. typewriter and
+		// other control sequences), so it is passed through processTex rather than
+		// escaped like a refinement name.
+		fmt.Fprintf(bw, "\n\\GN{%d}{%d}{%s}", sec.Depth, sec.Number, wv.processTex(sec.Number, sec.Title))
+		// The commentary is whatever follows the title's terminating period (the
+		// first period at end of text or followed by whitespace, matching the web
+		// package's title rule so a period inside \. does not split early).
 		rest := sec.Tex
-		if dot := strings.Index(rest, "."); dot >= 0 {
-			rest = rest[dot+1:]
+		for i := 0; i < len(rest); i++ {
+			if rest[i] == '.' && (i+1 == len(rest) || rest[i+1] == ' ' ||
+				rest[i+1] == '\t' || rest[i+1] == '\n' || rest[i+1] == '\r') {
+				rest = rest[i+1:]
+				break
+			}
 		}
 		bw.WriteString(wv.processTex(sec.Number, rest))
 	} else {
@@ -328,15 +339,17 @@ func renderToken(t token) string {
 	case tkString:
 		return "\\GST{" + escTT(t.text) + "}"
 	case tkComment:
-		return "\\GCM{" + escTT(t.text) + "}"
+		// Comments are set in roman (\GCM), so escape them for roman text mode,
+		// not the typewriter \charNN codes that escTT emits.
+		return "\\GCM{" + escProse(t.text) + "}"
 	case tkOp:
 		return renderOp(t.text)
 	}
 	return ""
 }
 
-@ |processTex| transforms commentary: |Go code| inline, |@@<refs@@>|, |@@@@| to
-a literal at-sign, and index entries (|@@^ @@. @@:|) are recorded and removed.
+@ |processTex| transforms commentary: |Go code| inline, \.{@@<refs@@>}, \.{@@@@} to
+a literal at-sign, and index entries (\.{@@\^ @@. @@:}) are recorded and removed.
 Everything else -- the user's TeX -- passes through unchanged.
 @(internal/weave/weave.go@>=
 // processTex transforms commentary: |Go code| inline, @@<refs@@>, @@@@->@@, and
@@ -552,7 +565,7 @@ func indentLevel(s string) int {
 Unlike |go/scanner| this lexer tolerates the partial fragments found in web
 sections and reports whitespace, newlines, and comments as tokens so the
 pretty-printer can preserve layout. State (an open block comment or raw string)
-is carried across calls because a code part may be interrupted by |@@<...@@>|
+is carried across calls because a code part may be interrupted by \.{@@<...@@>}
 references.
 @(internal/weave/gotok.go@>=
 package weave
@@ -995,6 +1008,12 @@ func escProse(s string) string {
 			b.WriteString("\\^{}")
 		case '~':
 			b.WriteString("\\~{}")
+		case '<':
+			b.WriteString("$<$") // cmr (OT1) has no < glyph; use math
+		case '>':
+			b.WriteString("$>$") // likewise for >
+		case '|':
+			b.WriteString("$\\vert$")
 		default:
 			b.WriteByte(c)
 		}
@@ -1005,7 +1024,7 @@ func escProse(s string) string {
 @* Cross-references and the index.
 The |xref| tables accumulate, during the first weaving pass, where each
 identifier is used and (heuristically) defined, where each named section is
-defined and used, and the manual index entries from |@@^ @@. @@:|. They are then
+defined and used, and the manual index entries from \.{@@\^ @@. @@:}. They are then
 consulted during the real pass and when emitting the back matter.
 @(internal/weave/xref.go@>=
 package weave
@@ -1111,8 +1130,8 @@ func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 }
 
 @ |writeBookmarks| emits one |\Gbookmark| per starred section, in document
-order, so pdftex can build a PDF outline whose nesting follows the |@@*|, |@@*1|,
-|@@*2| depths. Each entry declares its number of direct children.
+order, so pdftex can build a PDF outline whose nesting follows the \.{@@*}, \.{@@*1},
+\.{@@*2} depths. Each entry declares its number of direct children.
 @(internal/weave/xref.go@>=
 // writeBookmarks emits one \Gbookmark per starred section, in document (pre)
 // order, so pdftex can build a PDF outline whose nesting follows the @@*, @@*1,
@@ -1140,7 +1159,7 @@ func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 }
 
 @ |bookmarkTitle| reduces a starred-section title to plain text safe for a PDF
-outline: a |...| span keeps its inner text, |@@@@| becomes an at-sign, and the
+outline: a |...| span keeps its inner text, \.{@@@@} becomes an at-sign, and the
 (rare) TeX-special characters are dropped.
 @(internal/weave/xref.go@>=
 // bookmarkTitle reduces a starred-section title to plain text safe for a PDF
@@ -1160,7 +1179,24 @@ func bookmarkTitle(raw string) string {
 			i++
 		case c == '|':
 			// drop the bar; keep the inline code's text
-		case c == '\\' || c == '{' || c == '}' || c == '$' || c == '&' ||
+		case c == '\\':
+			// drop a TeX control sequence (backslash plus a run of letters, or
+			// backslash plus one symbol), so e.g. \.{web} reduces to "web".
+			if i+1 < n {
+				if d := raw[i+1]; (d >= 'a' && d <= 'z') || (d >= 'A' && d <= 'Z') {
+					i++
+					for i+1 < n {
+						if e := raw[i+1]; (e >= 'a' && e <= 'z') || (e >= 'A' && e <= 'Z') {
+							i++
+						} else {
+							break
+						}
+					}
+				} else {
+					i++
+				}
+			}
+		case c == '{' || c == '}' || c == '$' || c == '&' ||
 			c == '#' || c == '%' || c == '^' || c == '_' || c == '~':
 			// TeX-special: drop
 		default:

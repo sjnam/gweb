@@ -1,5 +1,3 @@
-% gtangle's engine -- the analogue of CWEB's ctangle.w.
-
 @* The \.{tangle} package.
 This package implements \.{gtangle}: it extracts compilable Go source from a
 parsed web, expanding named-section references in program order. It is the Go
@@ -32,7 +30,7 @@ type Output struct {
 }
 
 @ A |Tangler| holds the resolved named-section definitions for a web: the
-refinements (|defs|), the |@@(file@@>=| outputs, and the concatenated unnamed
+refinements (|defs|), the \.{@@(file@@>=} outputs, and the concatenated unnamed
 program text.
 @(internal/tangle/tangle.go@>=
 // Tangler holds the resolved named-section definitions for a web.
@@ -73,7 +71,7 @@ func New(w *web.Web) *Tangler {
 }
 
 @ |Tangle| produces all output files: first the unnamed program (written to
-|defaultFile|), then each |@@(file@@>=| target in sorted order.
+|defaultFile|), then each \.{@@(file@@>=} target in sorted order.
 @(internal/tangle/tangle.go@>=
 // Tangle produces all output files. defaultFile names the file that receives
 // the unnamed program text (typically "<basename>.go").
@@ -129,7 +127,7 @@ func (t *Tangler) renderOutput(file, code string) (Output, error) {
 }
 
 @ |expand| writes the expansion of a code part into the buffer, following
-|@@<...@@>| references recursively and guarding against cycles.
+\.{@@<...@@>} references recursively and guarding against cycles.
 @(internal/tangle/tangle.go@>=
 // expand writes the expansion of code into o, following @@<...@@> references.
 func (t *Tangler) expand(code string, o *buffer, stack []string) error {
@@ -165,7 +163,7 @@ func (t *Tangler) expand(code string, o *buffer, stack []string) error {
 	return nil
 }
 
-@ The output |buffer| accumulates bytes and supports the |@@&| paste operation,
+@ The output |buffer| accumulates bytes and supports the \.{@@\&} paste operation,
 which deletes the whitespace surrounding it.
 @(internal/tangle/tangle.go@>=
 // buffer accumulates output and supports the @@& paste operation.

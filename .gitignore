@@ -1,6 +1,7 @@
 # build outputs
 /bin/
 /.bootstrap/
+/build/
 
 # tangled / woven artifacts
 *.go.tmp

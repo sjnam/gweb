@@ -132,7 +132,24 @@ func bookmarkTitle(raw string) string {
 			i++
 		case c == '|':
 			// drop the bar; keep the inline code's text
-		case c == '\\' || c == '{' || c == '}' || c == '$' || c == '&' ||
+		case c == '\\':
+			// drop a TeX control sequence (backslash plus a run of letters, or
+			// backslash plus one symbol), so e.g. \.{web} reduces to "web".
+			if i+1 < n {
+				if d := raw[i+1]; (d >= 'a' && d <= 'z') || (d >= 'A' && d <= 'Z') {
+					i++
+					for i+1 < n {
+						if e := raw[i+1]; (e >= 'a' && e <= 'z') || (e >= 'A' && e <= 'Z') {
+							i++
+						} else {
+							break
+						}
+					}
+				} else {
+					i++
+				}
+			}
+		case c == '{' || c == '}' || c == '$' || c == '&' ||
 			c == '#' || c == '%' || c == '^' || c == '_' || c == '~':
 			// TeX-special: drop
 		default:

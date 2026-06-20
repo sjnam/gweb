@@ -134,6 +134,12 @@ func escProse(s string) string {
 			b.WriteString("\\^{}")
 		case '~':
 			b.WriteString("\\~{}")
+		case '<':
+			b.WriteString("$<$") // cmr (OT1) has no < glyph; use math
+		case '>':
+			b.WriteString("$>$") // likewise for >
+		case '|':
+			b.WriteString("$\\vert$")
 		default:
 			b.WriteByte(c)
 		}

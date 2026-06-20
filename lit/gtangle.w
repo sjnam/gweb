@@ -1,9 +1,8 @@
-% The gtangle command-line driver.
-
 @* Command \.{gtangle}.
-This is the command-line front end to the |tangle| package. The unnamed |@@c|
-sections are written to \<basename>|.go| (in the |-o| directory, default the
-input's directory); |@@(file@@>=| sections are written to their named files.
+This is the command-line front end to the |tangle| package. The unnamed \.{@@c}
+sections are written to the input's base name with a \.{.go} extension (in the
+|-o| directory, default the input's directory); \.{@@(file@@>=} sections are
+written to their named files.
 @(cmd/gtangle/main.go@>=
 // Command gtangle extracts compilable Go source from a GWEB (.w) file.
 //

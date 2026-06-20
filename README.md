@@ -112,6 +112,16 @@ Editing workflow: change `lit/*.w`, run `make tangle`, then commit both. The
 `bootstrap` target is the self-hosting proof — a freshly built `gtangle`
 reproduces its own source exactly. Tests stay as ordinary `_test.go` files.
 
+`lit/gweb.w` is a master that `@i`-includes the five component webs in reading
+order, so `gweave` can typeset the whole system as one document:
+
+```sh
+make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program
+```
+
+The result is GWEB documenting itself — the same pretty-printed code, index, and
+cross-references it produces for any other program.
+
 ## Design notes and limitations
 
 * **Lexing for free.** Tangle relies on `gofmt` (`go/format`) to canonicalize

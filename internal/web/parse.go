@@ -241,14 +241,28 @@ func findSectionHeaderEnd(src string, i int) ctrl {
 	return ctrl{end: j, depth: depth}
 }
 
-// extractTitle returns the text of a starred section up to its first period,
-// with whitespace collapsed, for use in the table of contents.
+// extractTitle returns the text of a starred section up to its terminating
+// period, with whitespace collapsed, for use in the table of contents. The
+// terminator is the first period at end of text or followed by whitespace, so a
+// period inside a control sequence such as \.{web} does not end the title early.
 func extractTitle(tex string) string {
 	t := strings.TrimLeft(tex, " \t\n")
-	if dot := strings.Index(t, "."); dot >= 0 {
-		t = t[:dot]
+	if i := titleEnd(t); i >= 0 {
+		t = t[:i]
 	}
 	return strings.Join(strings.Fields(t), " ")
+}
+
+// titleEnd returns the index of the period that ends a starred-section title --
+// the first '.' at end of s or followed by whitespace -- or -1 if there is none.
+func titleEnd(s string) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '.' && (i+1 == len(s) || s[i+1] == ' ' || s[i+1] == '\t' ||
+			s[i+1] == '\n' || s[i+1] == '\r') {
+			return i
+		}
+	}
+	return -1
 }
 
 // scanDiagnostics walks the source looking for malformed control codes —

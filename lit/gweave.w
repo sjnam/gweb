@@ -1,9 +1,7 @@
-% The gweave command-line driver.
-
 @* Command \.{gweave}.
 This is the command-line front end to the |weave| package. The woven document is
-written to \<basename>|.tex|; process it with a TeX engine that can find
-\.{gwebmac.tex} to produce a PDF.
+written to the input's base name with a \.{.tex} extension; process it with a
+TeX engine that can find \.{gwebmac.tex} to produce a PDF.
 @(cmd/gweave/main.go@>=
 // Command gweave turns a GWEB (.w) file into a TeX document.
 //

@@ -1,15 +1,12 @@
-% The shared front end of GWEB -- the analogue of CWEB's common.w.
-% gweave supplies \input gwebmac automatically; this file need not.
-
 @* The \.{web} package.
 This package is the shared front end of GWEB. It reads a |.w| source file,
-expands |@@i| includes, optionally applies a change file, and splits the
+expands \.{@@i} includes, optionally applies a change file, and splits the
 result into a sequence of {\it sections\/}. Both \.{gtangle} and \.{gweave}
 are built on top of it, so it plays the role of CWEB's \.{common.w}.
 
 We start with the package declaration, the imports, and the |Format| record,
-which captures one |@@f| or |@@s| directive: typeset identifier |Original| the
-way identifier or keyword |Like| is typeset; |NoIndex| is true for |@@s|.
+which captures one \.{@@f} or \.{@@s} directive: typeset identifier |Original| the
+way identifier or keyword |Like| is typeset; |NoIndex| is true for \.{@@s}.
 @(internal/web/web.go@>=
 // Package web parses GWEB source files (.w) into a sequence of sections that
 // gtangle and gweave consume. It is the shared front end of the GWEB system,
@@ -33,7 +30,7 @@ type Format struct {
 
 @ A |Section| is one numbered section of the web. Its three optional parts --
 commentary, definitions, and code -- are stored as raw text with the in-text
-and in-code |@@|-codes still embedded; the consumers interpret them later.
+and in-code \.{@@}-codes still embedded; the consumers interpret them later.
 @(internal/web/web.go@>=
 // Section is one numbered section of the web.
 type Section struct {
@@ -133,8 +130,8 @@ func (w *Web) at(line int) string {
 	return fmt.Sprintf("line %d", line)
 }
 
-@ Include expansion. As in CWEB, |@@i| is line-oriented: a line whose first
-non-blank text is |@@i| names a file whose expansion replaces that line. We
+@ Include expansion. As in CWEB, \.{@@i} is line-oriented: a line whose first
+non-blank text is \.{@@i} names a file whose expansion replaces that line. We
 keep a parallel origin map so diagnostics can cite the file the user wrote.
 @(internal/web/web.go@>=
 // expandIncludes reads file and splices in @@i includes, returning the combined
@@ -377,8 +374,8 @@ type ctrl struct {
 }
 
 @ |scanStruct| finds the next structural control at or after |i|. It skips
-literal |@@@@| and argument-terminated codes (|@@<...@@>|, |@@=...@@>|, and so
-on) so their contents never trigger a false section break. A |@@<...@@>| not
+literal \.{@@@@} and argument-terminated codes (\.{@@<...@@>}, \.{@@=...@@>}, and so
+on) so their contents never trigger a false section break. A \.{@@<...@@>} not
 followed by |=| is a reference, not a definition, and is skipped.
 @(internal/web/parse.go@>=
 // scanStruct finds the next structural control at or after i. It skips literal
@@ -454,9 +451,9 @@ func scanStruct(src string, i int) ctrl {
 	return ctrl{kind: cEOF, pos: n, end: n}
 }
 
-@ |findNextSection| scans forward to the next section break (|@@ | or |@@*|),
-skipping everything else. It is used inside code parts, where |@@c|, |@@d|, and
-|@@f| never legitimately appear.
+@ |findNextSection| scans forward to the next section break (\.{@@ } or \.{@@*}),
+skipping everything else. It is used inside code parts, where \.{@@c}, \.{@@d}, and
+\.{@@f} never legitimately appear.
 @(internal/web/parse.go@>=
 // findNextSection scans forward to the next section break (@@ or @@*), skipping
 // everything else including argument-terminated codes. Used inside code parts,
@@ -586,7 +583,7 @@ func parse(src string) *Web {
 	return w
 }
 
-@ |findSectionHeaderEnd| locates the end of a |@@*| header and its depth.
+@ |findSectionHeaderEnd| locates the end of a \.{@@*} header and its depth.
 @(internal/web/parse.go@>=
 func findSectionHeaderEnd(src string, i int) ctrl {
 	n := len(src)
@@ -606,18 +603,32 @@ func findSectionHeaderEnd(src string, i int) ctrl {
 @ |extractTitle| returns the text of a starred section up to its first period,
 with whitespace collapsed, for the table of contents.
 @(internal/web/parse.go@>=
-// extractTitle returns the text of a starred section up to its first period,
-// with whitespace collapsed, for use in the table of contents.
+// extractTitle returns the text of a starred section up to its terminating
+// period, with whitespace collapsed, for use in the table of contents. The
+// terminator is the first period at end of text or followed by whitespace, so a
+// period inside a control sequence such as \.{web} does not end the title early.
 func extractTitle(tex string) string {
 	t := strings.TrimLeft(tex, " \t\n")
-	if dot := strings.Index(t, "."); dot >= 0 {
-		t = t[:dot]
+	if i := titleEnd(t); i >= 0 {
+		t = t[:i]
 	}
 	return strings.Join(strings.Fields(t), " ")
 }
 
+// titleEnd returns the index of the period that ends a starred-section title --
+// the first '.' at end of s or followed by whitespace -- or -1 if there is none.
+func titleEnd(s string) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '.' && (i+1 == len(s) || s[i+1] == ' ' || s[i+1] == '\t' ||
+			s[i+1] == '\n' || s[i+1] == '\r') {
+			return i
+		}
+	}
+	return -1
+}
+
 @ |scanDiagnostics| walks the source looking for malformed control codes --
-currently argument-terminated codes missing their closing |@@>|.
+currently argument-terminated codes missing their closing \.{@@>}.
 @(internal/web/parse.go@>=
 // scanDiagnostics walks the source looking for malformed control codes —
 // currently argument-terminated codes (@@<, @@(, @@=, @@t, @@^, @@., @@:, @@q) that are
@@ -648,7 +659,7 @@ func (w *Web) scanDiagnostics(src string) []string {
 	return warns
 }
 
-@ |parseFormat| parses the body of an |@@f| or |@@s| directive: two identifiers.
+@ |parseFormat| parses the body of an \.{@@f} or \.{@@s} directive: two identifiers.
 @(internal/web/parse.go@>=
 // parseFormat parses the body of an @@f/@@s directive: two identifiers.
 func parseFormat(seg string, noIndex bool) (Format, bool) {
@@ -659,7 +670,7 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 	return Format{Original: fields[0], Like: fields[1], NoIndex: noIndex}, true
 }
 
-@ |extractLimboFormats| pulls |@@f|/|@@s| directives out of the limbo text and
+@ |extractLimboFormats| pulls \.{@@f}/\.{@@s} directives out of the limbo text and
 returns the cleaned text together with the formats. Other control codes and
 argument-terminated groups are copied through unchanged.
 @(internal/web/parse.go@>=
@@ -740,7 +751,7 @@ type Atom struct {
 	Index byte   // '^','.',':' for AIndex; ',' '/' '|' '#' for ALayout
 }
 
-@ The scanner itself. |@@@@| becomes a literal |@@| folded into the surrounding
+@ The scanner itself. \.{@@@@} becomes a literal \.{@@} folded into the surrounding
 text; every other control code flushes the pending text and appends its own
 atom.
 @(internal/web/code.go@>=

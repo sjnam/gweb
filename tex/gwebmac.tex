@@ -8,6 +8,20 @@
 \font\titlefont=cmr7 scaled\magstep4     % big title on the contents page
 \let\mainfont=\tenrm
 
+% \.{text} sets verbatim/typewriter text in prose (as in cwebmac). Inside it the
+% escaped specials \\ \{ \} \& \# \% \$ \^ \_ \~ print as the literal characters,
+% so e.g. \.{@\^} prints the control code @^. Used for file names, command names,
+% and control codes in commentary and section titles. (Plain TeX's \. is a dot
+% accent; we override it -- gweave documents need \tt strings, not accents.)
+% \protected so \.{...} survives unexpanded inside \mark, \edef, and \xdef (it
+% is carried into running headers and the contents through those), typesetting
+% only when actually shipped.
+\protected\def\.#1{{\tt
+  \def\\{\char92 }\def\{{\char123 }\def\}{\char125 }%
+  \def\&{\char38 }\def\^{\char94 }\def\_{\char95 }\def\~{\char126 }%
+  \def\${\char36 }\def\#{\char35 }\def\%{\char37 }%
+  #1}}
+
 % ---- page layout ------------------------------------------------------------
 \newdimen\Gpagewidth  \Gpagewidth=6.5in
 \newdimen\Gpageheight \Gpageheight=8.7in
