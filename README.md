@@ -121,5 +121,11 @@ examples/        a worked example
   each major starred section), `§sec  JOBNAME … GROUPTITLE  page` running heads, a
   title-less index that sits under your own `@* Index.` section, a *Names of the
   Sections* list, and a contents page (centered title, `Section`/`Page` columns,
-  dotted leaders). As in CWEB, the contents page is produced at the *end* in a
-  single TeX pass; move it to the front when binding if you prefer.
+  dotted leaders). The index is set in two columns. As in CWEB, the contents page
+  is produced at the *end* in a single TeX pass; move it to the front when binding
+  if you prefer.
+* **Hyperlinks.** When processed with `pdftex` (PDF mode), every section number
+  shown as a reference, in the index, in a cross-reference note, or on the
+  contents page is a blue link to that section; clicking it jumps to the section
+  (for the underlined index entries, to where the identifier is defined). With a
+  plain DVI engine the links are simply omitted.

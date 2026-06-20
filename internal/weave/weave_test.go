@@ -91,9 +91,9 @@ println(x)
 println(x + 1)
 `)
 	checks := []string{
-		`\GII{\GID{main}}{\GUL{1}}`, // main defined (underlined) in section 1
+		`\GII{\GID{main}}{\GsD{1}}`, // main defined (underlined) in section 1
 		`\GII{\GID{x}}{`,            // x indexed
-		`\GUL{1}`,                   // x defined via := in section 1
+		`\GsD{1}`,                   // x defined via := in section 1
 		`\GNS{use x}`,               // named section in the list
 		`\GU{`,                      // "used in" note
 		`\GA{`,                      // "also defined in" note (two def sites)
@@ -219,7 +219,7 @@ func TestWeaveForceDefinition(t *testing.T) {
 	// foo is only *used* (inside a call), but @! forces it to be indexed as a
 	// definition, so its section number is underlined.
 	out := weaveString(t, "@ x\n@c\nfunc f() { use(@!foo) }\n")
-	if !strings.Contains(out, `\GII{\GID{foo}}{\GUL{1}}`) {
+	if !strings.Contains(out, `\GII{\GID{foo}}{\GsD{1}}`) {
 		t.Errorf("@! should index foo as a definition (underlined):\n%s", out)
 	}
 }
@@ -247,10 +247,10 @@ func g() { @<chunk@> }
 		t.Errorf("the blank identifier _ should not be indexed:\n%s", out)
 	}
 	// chunk is used in two different sections (2 and 3), so the plural notes apply.
-	if !strings.Contains(out, `\GUs{2, 3}`) {
+	if !strings.Contains(out, `\GUs{\Gs{2}, \Gs{3}}`) {
 		t.Errorf("uses in two sections should emit \\GUs:\n%s", out)
 	}
-	if !strings.Contains(out, `\GNS{chunk}{1}{Used in sections 2, 3}`) {
+	if !strings.Contains(out, `\GNS{chunk}{1}{Used in sections \Gs{2}, \Gs{3}}`) {
 		t.Errorf("section-names entry malformed:\n%s", out)
 	}
 }

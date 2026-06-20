@@ -246,6 +246,12 @@ Both tools accept \cw{-o dir} to choose the output directory. \cw{gtangle} runs
 formatted Go; if the assembled program is not valid Go, \cw{gtangle} keeps the
 raw output and prints a warning.
 
+When the woven file is processed with \cw{pdftex}, the section numbers shown in
+references, in the index, in cross-reference notes, and on the contents page
+become blue hyperlinks: clicking one jumps to that section (and, for the
+underlined index entries, to where the identifier is defined). A plain DVI engine
+simply omits the links.
+
 Both tools also print diagnostics, each tagged with a \cw{file:line} location:
 an unterminated control code, a reference to an undefined section, an ambiguous
 \cw{...} abbreviation, or a section that is defined but never used. These are

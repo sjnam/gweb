@@ -62,15 +62,16 @@ func sortedKeys(m map[int]bool) []int {
 	return ks
 }
 
-// secList renders a set of section numbers, underlining those in def.
+// secList renders a set of section numbers as hyperlinks, with the defining
+// sections (those in def) additionally underlined.
 func secList(secs, def map[int]bool) string {
 	nums := sortedKeys(secs)
 	parts := make([]string, len(nums))
 	for i, n := range nums {
 		if def != nil && def[n] {
-			parts[i] = fmt.Sprintf("\\GUL{%d}", n)
+			parts[i] = fmt.Sprintf("\\GsD{%d}", n)
 		} else {
-			parts[i] = fmt.Sprintf("%d", n)
+			parts[i] = fmt.Sprintf("\\Gs{%d}", n)
 		}
 	}
 	return strings.Join(parts, ", ")
