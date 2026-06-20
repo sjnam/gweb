@@ -1,0 +1,1313 @@
+% gweave's engine -- the analogue of CWEB's cweave.w.
+
+@* The \.{weave} package.
+This package implements \.{gweave}: it turns a parsed web into a TeX document
+with pretty-printed Go code (bold reserved words, italic identifiers), linked
+section references, and -- assembled in the cross-reference part below -- an
+index and a list of section names. It is the Go analogue of CWEB's \.{cweave}.
+@(internal/weave/weave.go@>=
+// Package weave implements gweave: it turns a GWEB web into a TeX document with
+// pretty-printed Go code (bold reserved words, italic identifiers), linked
+// section references, and (see xref.go) cross-references and an index. It is the
+// Go analogue of CWEB's cweave.
+package weave
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/sjnam/gweb/internal/web"
+)
+
+@ A |Weaver| carries the per-document state: the map from a named section to its
+first defining section, the |@@f|/|@@s| format overrides, and the
+cross-reference tables (built lazily).
+@(internal/weave/weave.go@>=
+// Weaver turns a parsed web into woven TeX.
+type Weaver struct {
+	w      *web.Web
+	defNum map[string]int // canonical named-section -> first defining section
+
+	format  map[string]tokKind // @@f/@@s: identifier -> the token class to use
+	noIndex map[string]bool    // @@s: identifiers omitted from the index
+
+	xref *xref // identifier and section cross-references (built lazily)
+}
+
+@ |New| records the first defining section of each refinement and installs the
+global and per-section format directives (later ones win).
+@(internal/weave/weave.go@>=
+// New builds a Weaver for the given web.
+func New(w *web.Web) *Weaver {
+	wv := &Weaver{
+		w:       w,
+		defNum:  map[string]int{},
+		format:  map[string]tokKind{},
+		noIndex: map[string]bool{},
+	}
+	for _, s := range w.Sections {
+		if s.HasCode && s.Name != "" && !s.IsFile {
+			name := w.Resolve(s.Name)
+			if _, ok := wv.defNum[name]; !ok {
+				wv.defNum[name] = s.Number
+			}
+		}
+	}
+	// Format directives apply globally; later definitions win. The display
+	// class of identifier a (@@f a b) is the class b would be typeset in.
+	apply := func(fs []web.Format) {
+		for _, f := range fs {
+			wv.format[f.Original] = classifyWord(f.Like)
+			if f.NoIndex {
+				wv.noIndex[f.Original] = true
+			}
+		}
+	}
+	apply(w.Formats)
+	for _, s := range w.Sections {
+		apply(s.Formats)
+	}
+	return wv
+}
+
+@ |effKind| returns the token class to typeset a token in, honoring |@@f|/|@@s|
+overrides for identifiers, keywords, and builtins.
+@(internal/weave/weave.go@>=
+// effKind returns the token class to typeset t in, honoring @@f/@@s overrides.
+func (wv *Weaver) effKind(t token) tokKind {
+	switch t.kind {
+	case tkIdent, tkKeyword, tkBuiltin:
+		if k, ok := wv.format[t.text]; ok {
+			return k
+		}
+	}
+	return t.kind
+}
+
+@ |Weave| writes the whole document. It runs two passes: the first is discarded
+and only fills the cross-reference tables (so a ``used in section'' note can be
+printed under a definition even when the use occurs later); the second produces
+the real output. \.{gweave} supplies the macro package itself.
+@(internal/weave/weave.go@>=
+// Weave writes the complete TeX document to out. It runs two passes: the first
+// is discarded and only populates the cross-reference tables (so that, e.g.,
+// "used in section N" notes can be printed under a definition even when the use
+// occurs later); the second produces the real output.
+func (wv *Weaver) Weave(out io.Writer) error {
+	wv.xref = newXref()
+	scan := bufio.NewWriter(io.Discard)
+	for _, sec := range wv.w.Sections {
+		wv.writeSection(scan, sec)
+	}
+
+	bw := bufio.NewWriter(out)
+	// gweave supplies the macro package itself, so a .w file need not (and
+	// should not) \input it; drop any stray copy from the limbo.
+	bw.WriteString("\\input gwebmac\n")
+	bw.WriteString(stripGwebmacInput(wv.w.Limbo))
+	for _, sec := range wv.w.Sections {
+		wv.writeSection(bw, sec)
+	}
+	wv.writeBackMatter(bw)
+	return bw.Flush()
+}
+
+@ A |.w| file need not \input the macros, so a stray copy is dropped from the
+limbo.
+@(internal/weave/weave.go@>=
+// stripGwebmacInput removes any "\input gwebmac" line from the limbo, since
+// gweave now emits it automatically.
+func stripGwebmacInput(limbo string) string {
+	lines := strings.Split(limbo, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, ln := range lines {
+		if strings.TrimSpace(ln) == "\\input gwebmac" {
+			continue
+		}
+		kept = append(kept, ln)
+	}
+	return strings.Join(kept, "\n")
+}
+
+@ |writeSection| emits one section: its headline (starred or numbered), its
+commentary, and -- if present -- its code part bracketed by |\GB|...|\GE|, with
+the definition headline and cross-reference notes for a named section.
+@(internal/weave/weave.go@>=
+func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
+	if sec.Starred {
+		fmt.Fprintf(bw, "\n\\GN{%d}{%d}{%s}", sec.Depth, sec.Number, wv.renderName(sec.Title))
+		rest := sec.Tex
+		if dot := strings.Index(rest, "."); dot >= 0 {
+			rest = rest[dot+1:]
+		}
+		bw.WriteString(wv.processTex(sec.Number, rest))
+	} else {
+		fmt.Fprintf(bw, "\n\\GM{%d}", sec.Number)
+		bw.WriteString(wv.processTex(sec.Number, sec.Tex))
+	}
+
+	if sec.HasCode {
+		if sec.Name != "" {
+			name := wv.w.Resolve(sec.Name)
+			cont := wv.defNum[name] != sec.Number
+			wv.xref.addSectionDef(name, sec.Number)
+			macro := "\\GD"
+			if cont {
+				macro = "\\GDp" // continuation of an earlier definition
+			}
+			fmt.Fprintf(bw, "\n%s{%d}{%s}", macro, wv.defNum[name], wv.renderName(name))
+		}
+		bw.WriteString("\n\\GB%\n")
+		bw.WriteString(wv.renderCode(sec.Number, sec.Code))
+		bw.WriteString("\\GE\n")
+		if sec.Name != "" {
+			bw.WriteString(wv.crossRefNotes(wv.w.Resolve(sec.Name), sec.Number))
+		}
+	}
+}
+
+@ |renderCode| formats a code part into a sequence of |\GL| code lines. The
+spacing mirrors the source: a run of tokens with no source whitespace becomes
+one tight math ``chunk'' ($\ldots$), and a gap becomes a breakable |\GS| space
+between chunks. Because |gofmt| already encodes the grammar in its spacing, this
+reproduces it exactly (pointer |*T| vs.\ |a * b|, slice |[]T| vs.\ index |a[i]|)
+and lets long lines wrap at |\GS|.
+@(internal/weave/weave.go@>=
+// renderCode formats a code part into a sequence of \GL code lines. Spacing
+// mirrors the source: a run of tokens with no source whitespace between them
+// becomes one tight math "chunk" ($...$), and a gap in the source becomes a
+// breakable \GS space between chunks. Because gofmt-formatted Go already encodes
+// the grammar in its spacing, this reproduces it exactly (pointer *T vs a * b,
+// slice []T vs index a[i], and so on) and lets long lines wrap at \GS.
+func (wv *Weaver) renderCode(secNum int, code string) string {
+	var out strings.Builder
+	var line strings.Builder // the current source line: chunks joined by \GS
+	var run strings.Builder  // the current tight chunk (inside one $...$)
+	var st lexState
+	indent := 0
+	atLineStart := true
+	pendingSpace := false
+	forceDef := false     // set by @@! to force the next identifier to index as a def
+	haveContent := false  // at least one code line has been emitted
+	blankPending := false // a blank source line is waiting to become a \GBK gap
+
+	// prevSig* tracks the most recent significant token so that an identifier
+	// following func/var/const/type can be flagged as a definition.
+	prevSigKind := tkNewline
+	prevSigText := ""
+
+	flushRun := func() {
+		if run.Len() > 0 {
+			line.WriteString("$")
+			line.WriteString(run.String())
+			line.WriteString("$")
+			run.Reset()
+		}
+	}
+	emit := func(s string) {
+		if pendingSpace {
+			flushRun()
+			line.WriteString("\\GS ")
+			pendingSpace = false
+		}
+		run.WriteString(s)
+		atLineStart = false
+	}
+	// emitLine writes the accumulated line as a \GL but leaves indent intact. A
+	// blank source line between two code lines becomes a small \GBK gap, which
+	// gives a little air between, e.g., the import block and the function body.
+	emitLine := func() {
+		flushRun()
+		if strings.TrimSpace(line.String()) != "" {
+			if blankPending {
+				out.WriteString("\\GBK\n")
+				blankPending = false
+			}
+			fmt.Fprintf(&out, "\\GL{%d}{%s}%%\n", indent, line.String())
+			haveContent = true
+		} else if haveContent {
+			blankPending = true
+		}
+		line.Reset()
+	}
+	// flushLine ends a source line.
+	flushLine := func() {
+		emitLine()
+		indent = 0
+		atLineStart = true
+		pendingSpace = false
+	}
+	// forceBreak starts a fresh woven line at the same indent (@@/), optionally
+	// preceded by a blank line (@@#).
+	forceBreak := func(blank bool) {
+		emitLine()
+		if blank {
+			out.WriteString("\\GBL\n")
+		}
+		atLineStart = false
+		pendingSpace = false
+	}
+
+	for _, a := range web.ScanCode(code) {
+		switch a.Kind {
+		case web.AText:
+			toks := lexGo(a.Text, &st)
+			for k, t := range toks {
+				switch t.kind {
+				case tkNewline:
+					flushLine()
+				case tkSpace:
+					if atLineStart {
+						indent += indentLevel(t.text)
+					} else {
+						pendingSpace = true
+					}
+				default:
+					if t.kind == tkIdent || t.kind == tkBuiltin {
+						def := forceDef || isDefinition(prevSigKind, prevSigText, toks, k)
+						forceDef = false
+						if indexable(t.text) && !wv.noIndex[t.text] {
+							if def {
+								wv.xref.addIdentDef(t.text, secNum)
+							} else {
+								wv.xref.addIdentUse(t.text, secNum)
+							}
+						}
+					}
+					emit(renderToken(token{kind: wv.effKind(t), text: t.text}))
+					prevSigKind, prevSigText = t.kind, t.text
+				}
+			}
+		case web.ARef:
+			name := wv.w.Resolve(a.Text)
+			wv.xref.addSectionUse(name, secNum)
+			emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
+		case web.AVerbatim:
+			emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)))
+		case web.ATeX:
+			emit(a.Text)
+		case web.AIndex:
+			wv.xref.addManualIndex(a.Index, a.Text, secNum)
+		case web.APaste:
+			pendingSpace = false // join: no space before the next token
+		case web.ALayout:
+			switch a.Index {
+			case ',': // thin space, stays within the current chunk
+				emit("\\,")
+			case '/': // force a line break at the same indent
+				forceBreak(false)
+			case '#': // force a line break preceded by a blank line
+				forceBreak(true)
+			case '|': // optional (zero-width) line break between chunks
+				flushRun()
+				line.WriteString("\\GSO ")
+				pendingSpace = false
+				atLineStart = false
+			}
+		case web.AIndexDef:
+			forceDef = true // @@!: the next identifier is a definition
+		}
+	}
+	flushLine()
+	return out.String()
+}
+
+@ |renderToken| renders a single Go token as a TeX fragment (used inside math).
+@(internal/weave/weave.go@>=
+// renderToken renders a single Go token as a TeX fragment (used inside math).
+func renderToken(t token) string {
+	switch t.kind {
+	case tkKeyword, tkBuiltin:
+		return "\\GKW{" + escIdent(t.text) + "}"
+	case tkIdent:
+		return "\\GID{" + escIdent(t.text) + "}"
+	case tkNumber:
+		return "\\GNU{" + escTT(t.text) + "}"
+	case tkString:
+		return "\\GST{" + escTT(t.text) + "}"
+	case tkComment:
+		return "\\GCM{" + escTT(t.text) + "}"
+	case tkOp:
+		return renderOp(t.text)
+	}
+	return ""
+}
+
+@ |processTex| transforms commentary: |Go code| inline, |@@<refs@@>|, |@@@@| to
+a literal at-sign, and index entries (|@@^ @@. @@:|) are recorded and removed.
+Everything else -- the user's TeX -- passes through unchanged.
+@(internal/weave/weave.go@>=
+// processTex transforms commentary: |Go code| inline, @@<refs@@>, @@@@->@@, and
+// index entries (@@^ @@. @@:) are recorded and removed. Everything else (the
+// user's TeX) passes through unchanged.
+func (wv *Weaver) processTex(secNum int, s string) string {
+	var b strings.Builder
+	n := len(s)
+	i := 0
+	for i < n {
+		c := s[i]
+		if c == '\\' && i+1 < n && s[i+1] == '|' {
+			b.WriteString("|") // \| is a literal bar in prose
+			i += 2
+			continue
+		}
+		if c == '|' {
+			j := i + 1
+			var code strings.Builder
+			for j < n {
+				if s[j] == '\\' && j+1 < n && s[j+1] == '|' {
+					code.WriteByte('|')
+					j += 2
+					continue
+				}
+				if s[j] == '|' {
+					break
+				}
+				code.WriteByte(s[j])
+				j++
+			}
+			b.WriteString(wv.renderInline(secNum, code.String()))
+			i = j + 1
+			continue
+		}
+		if c == '@@' && i+1 < n {
+			switch d := s[i+1]; d {
+			case '@@':
+				b.WriteByte('@@')
+				i += 2
+				continue
+			case '<':
+				if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
+					end += i + 2
+					name := wv.w.Resolve(strings.TrimSpace(s[i+2 : end]))
+					wv.xref.addSectionUse(name, secNum)
+					fmt.Fprintf(&b, "\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name))
+					i = end + 2
+					continue
+				}
+			case '^', '.', ':':
+				if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
+					end += i + 2
+					wv.xref.addManualIndex(d, s[i+2:end], secNum)
+					i = end + 2
+					continue
+				}
+			}
+		}
+		b.WriteByte(c)
+		i++
+	}
+	return b.String()
+}
+
+@ |renderInline| and |inlineCode| format a |...| inline Go fragment from prose
+as one math group, mirroring the source whitespace (such fragments are not
+wrapped).
+@(internal/weave/weave.go@>=
+// renderInline formats a |...| inline Go fragment (from prose) as one math
+// group, recording identifier uses in section secNum.
+func (wv *Weaver) renderInline(secNum int, code string) string {
+	return wv.inlineCode(code, secNum, true)
+}
+
+// inlineCode formats a short Go fragment as one math group, mirroring the source
+// whitespace (it is not wrapped). When record is true, identifier uses are added
+// to the cross-reference under secNum.
+func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
+	var st lexState
+	var b strings.Builder
+	b.WriteString("$")
+	pendingSpace := false
+	started := false
+	for _, t := range lexGo(code, &st) {
+		switch t.kind {
+		case tkSpace, tkNewline:
+			if started {
+				pendingSpace = true
+			}
+		default:
+			if pendingSpace {
+				b.WriteString("\\ ")
+				pendingSpace = false
+			}
+			if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndex[t.text] {
+				wv.xref.addIdentUse(t.text, secNum)
+			}
+			b.WriteString(renderToken(token{kind: wv.effKind(t), text: t.text}))
+			started = true
+		}
+	}
+	b.WriteString("$")
+	return b.String()
+}
+
+@ |renderName| typesets a section name (or starred-section title) for text mode:
+a |...| span is set as inline code, as in CWEB section names, and the rest is
+roman prose.
+@(internal/weave/weave.go@>=
+// renderName typesets a section name (or starred-section title) for TeX text
+// mode. A |...| span is set as inline code (as in CWEB section names); the rest
+// is roman prose. A literal bar is written \|.
+func (wv *Weaver) renderName(name string) string {
+	var b strings.Builder
+	n := len(name)
+	i := 0
+	for i < n {
+		if name[i] == '\\' && i+1 < n && name[i+1] == '|' {
+			b.WriteString("|")
+			i += 2
+			continue
+		}
+		if name[i] == '|' {
+			j := i + 1
+			var code strings.Builder
+			for j < n {
+				if name[j] == '\\' && j+1 < n && name[j+1] == '|' {
+					code.WriteByte('|')
+					j += 2
+					continue
+				}
+				if name[j] == '|' {
+					break
+				}
+				code.WriteByte(name[j])
+				j++
+			}
+			b.WriteString(wv.inlineCode(code.String(), 0, false))
+			i = j + 1
+			continue
+		}
+		start := i
+		for i < n && name[i] != '|' && !(name[i] == '\\' && i+1 < n && name[i+1] == '|') {
+			i++
+		}
+		b.WriteString(escProse(name[start:i]))
+	}
+	return b.String()
+}
+
+@ |indexable| excludes the blank identifier from the index, and |declKeywords|
+lists the keywords that introduce a declaration.
+@(internal/weave/weave.go@>=
+// indexable reports whether an identifier should appear in the index. The blank
+// identifier "_" is excluded.
+func indexable(name string) bool { return name != "_" }
+
+var declKeywords = map[string]bool{
+	"func": true, "var": true, "const": true, "type": true,
+}
+
+@ |isDefinition| heuristically decides whether an identifier is being declared:
+it follows a |func|/|var|/|const|/|type| keyword, or it is immediately followed
+by |:=|. This is best-effort -- there is no full Go parse -- but it covers the
+cases CWEB underlines in its index.
+@(internal/weave/weave.go@>=
+// isDefinition heuristically decides whether the identifier at toks[k] is being
+// declared: it follows a func/var/const/type keyword, or it is immediately
+// followed by ":=". This is best-effort (no full Go parse) but covers the
+// common cases CWEB underlines in its index.
+func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
+	if prevKind == tkKeyword && declKeywords[prevText] {
+		return true
+	}
+	for j := k + 1; j < len(toks); j++ {
+		switch toks[j].kind {
+		case tkSpace:
+			continue
+		case tkOp:
+			return toks[j].text == ":="
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+@ |indentLevel| measures a leading-whitespace run: one level per tab, plus one
+per four spaces.
+@(internal/weave/weave.go@>=
+// indentLevel returns the indentation level of a leading-whitespace run: one
+// level per tab, plus one per four spaces.
+func indentLevel(s string) int {
+	level, spaces := 0, 0
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\t':
+			level++
+			spaces = 0
+		case ' ':
+			spaces++
+			if spaces == 4 {
+				level++
+				spaces = 0
+			}
+		}
+	}
+	return level
+}
+
+@* A Go lexer for the woven output.
+Unlike |go/scanner| this lexer tolerates the partial fragments found in web
+sections and reports whitespace, newlines, and comments as tokens so the
+pretty-printer can preserve layout. State (an open block comment or raw string)
+is carried across calls because a code part may be interrupted by |@@<...@@>|
+references.
+@(internal/weave/gotok.go@>=
+package weave
+
+// A small, line-oriented Go lexer for the woven output. Unlike go/scanner it
+// tolerates the partial fragments found in web sections and reports whitespace,
+// newlines, and comments as tokens so the pretty-printer can preserve layout.
+// State (open block comment / raw string) is carried across calls because a
+// code part may be interrupted by @@<...@@> references.
+
+type tokKind int
+
+@ The token kinds.
+@(internal/weave/gotok.go@>=
+const (
+	tkIdent   tokKind = iota // ordinary identifier
+	tkKeyword                // Go reserved word
+	tkBuiltin                // predeclared type or constant (also set bold)
+	tkNumber                 // numeric literal
+	tkString                 // "..." or `...` or '...'
+	tkComment                // // or /* */ text (no trailing newline)
+	tkOp                     // operator or punctuation run
+	tkSpace                  // a run of spaces/tabs
+	tkNewline                // a single '\n'
+)
+
+@ A |token| pairs a kind with its text; |lexState| carries the cross-fragment
+state.
+@(internal/weave/gotok.go@>=
+type token struct {
+	kind tokKind
+	text string
+}
+
+// lexState carries lexer state across fragments of one code part.
+type lexState struct {
+	inBlockComment bool
+	inRawString    bool
+}
+
+@ The reserved words and the predeclared types and constants (both set bold).
+@(internal/weave/gotok.go@>=
+var goKeywords = map[string]bool{
+	"break": true, "case": true, "chan": true, "const": true, "continue": true,
+	"default": true, "defer": true, "else": true, "fallthrough": true, "for": true,
+	"func": true, "go": true, "goto": true, "if": true, "import": true,
+	"interface": true, "map": true, "package": true, "range": true, "return": true,
+	"select": true, "struct": true, "switch": true, "type": true, "var": true,
+}
+
+var goBuiltins = map[string]bool{
+	"bool": true, "byte": true, "complex64": true, "complex128": true, "error": true,
+	"float32": true, "float64": true, "int": true, "int8": true, "int16": true,
+	"int32": true, "int64": true, "rune": true, "string": true, "uint": true,
+	"uint8": true, "uint16": true, "uint32": true, "uint64": true, "uintptr": true,
+	"true": true, "false": true, "iota": true, "nil": true, "any": true,
+	"comparable": true,
+}
+
+@ |classifyWord| maps a word to its class; the character-class predicates follow
+the Go spec closely enough for typesetting.
+@(internal/weave/gotok.go@>=
+func classifyWord(w string) tokKind {
+	switch {
+	case goKeywords[w]:
+		return tkKeyword
+	case goBuiltins[w]:
+		return tkBuiltin
+	default:
+		return tkIdent
+	}
+}
+
+func isIdentStart(c byte) bool {
+	return c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c >= 0x80
+}
+func isIdentPart(c byte) bool {
+	return isIdentStart(c) || (c >= '0' && c <= '9')
+}
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }
+
+@ |lexGo| tokenizes a fragment, updating |*st|. Newlines and whitespace runs are
+returned as their own tokens.
+@(internal/weave/gotok.go@>=
+// lexGo tokenizes src, updating *st. Newlines and whitespace runs are returned
+// as their own tokens.
+func lexGo(src string, st *lexState) []token {
+	var toks []token
+	n := len(src)
+	i := 0
+	for i < n {
+		// Resume an open block comment.
+		if st.inBlockComment {
+			if end := indexStr(src, "*/", i); end >= 0 {
+				toks = append(toks, token{tkComment, src[i : end+2]})
+				st.inBlockComment = false
+				i = end + 2
+			} else if nl := indexByte(src, '\n', i); nl >= 0 {
+				if nl > i {
+					toks = append(toks, token{tkComment, src[i:nl]})
+				}
+				toks = append(toks, token{tkNewline, "\n"})
+				i = nl + 1
+			} else {
+				toks = append(toks, token{tkComment, src[i:]})
+				i = n
+			}
+			continue
+		}
+		// Resume an open raw string.
+		if st.inRawString {
+			if end := indexByte(src, '`', i); end >= 0 {
+				toks = append(toks, token{tkString, src[i : end+1]})
+				st.inRawString = false
+				i = end + 1
+			} else if nl := indexByte(src, '\n', i); nl >= 0 {
+				if nl > i {
+					toks = append(toks, token{tkString, src[i:nl]})
+				}
+				toks = append(toks, token{tkNewline, "\n"})
+				i = nl + 1
+			} else {
+				toks = append(toks, token{tkString, src[i:]})
+				i = n
+			}
+			continue
+		}
+
+		c := src[i]
+		switch {
+		case c == '\n':
+			toks = append(toks, token{tkNewline, "\n"})
+			i++
+		case c == ' ' || c == '\t' || c == '\r':
+			j := i
+			for j < n && (src[j] == ' ' || src[j] == '\t' || src[j] == '\r') {
+				j++
+			}
+			toks = append(toks, token{tkSpace, src[i:j]})
+			i = j
+		case c == '/' && i+1 < n && src[i+1] == '/':
+			j := indexByte(src, '\n', i)
+			if j < 0 {
+				j = n
+			}
+			toks = append(toks, token{tkComment, src[i:j]})
+			i = j
+		case c == '/' && i+1 < n && src[i+1] == '*':
+			if end := indexStr(src, "*/", i+2); end >= 0 {
+				toks = append(toks, token{tkComment, src[i : end+2]})
+				i = end + 2
+			} else if nl := indexByte(src, '\n', i); nl >= 0 {
+				toks = append(toks, token{tkComment, src[i:nl]})
+				toks = append(toks, token{tkNewline, "\n"})
+				st.inBlockComment = true
+				i = nl + 1
+			} else {
+				toks = append(toks, token{tkComment, src[i:]})
+				st.inBlockComment = true
+				i = n
+			}
+		case c == '"':
+			i = lexQuoted(src, i, '"', &toks)
+		case c == '\'':
+			i = lexQuoted(src, i, '\'', &toks)
+		case c == '`':
+			if end := indexByte(src, '`', i+1); end >= 0 {
+				toks = append(toks, token{tkString, src[i : end+1]})
+				i = end + 1
+			} else if nl := indexByte(src, '\n', i+1); nl >= 0 {
+				toks = append(toks, token{tkString, src[i:nl]})
+				toks = append(toks, token{tkNewline, "\n"})
+				st.inRawString = true
+				i = nl + 1
+			} else {
+				toks = append(toks, token{tkString, src[i:]})
+				st.inRawString = true
+				i = n
+			}
+		case isIdentStart(c):
+			j := i + 1
+			for j < n && isIdentPart(src[j]) {
+				j++
+			}
+			w := src[i:j]
+			toks = append(toks, token{classifyWord(w), w})
+			i = j
+		case isDigit(c) || (c == '.' && i+1 < n && isDigit(src[i+1])):
+			j := i + 1
+			for j < n && isNumberPart(src[j]) {
+				j++
+			}
+			toks = append(toks, token{tkNumber, src[i:j]})
+			i = j
+		default:
+			if l := matchOp(src, i); l > 0 {
+				toks = append(toks, token{tkOp, src[i : i+l]})
+				i += l
+			} else {
+				toks = append(toks, token{tkOp, string(c)})
+				i++
+			}
+		}
+	}
+	return toks
+}
+
+@ The multi-character operators (longest first) and the greedy matcher that
+combines them into single tokens. The empty pairs |[]| and |{}| are kept whole
+so the typesetter can give them a thin space.
+@(internal/weave/gotok.go@>=
+// multiOps lists Go's multi-character operators, longest first, so matchOp can
+// greedily combine them into single tokens.
+var multiOps = []string{
+	"<<=", ">>=", "&^=", "...",
+	"<-", "++", "--", "==", "!=", "<=", ">=", ":=", "&&", "||",
+	"<<", ">>", "&^", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=",
+	"[]", // the empty brackets of a slice/array type, kept as one token
+	"{}", // empty braces (struct{}, interface{}, T{}), kept as one token
+}
+
+func matchOp(src string, i int) int {
+	for _, op := range multiOps {
+		if i+len(op) <= len(src) && src[i:i+len(op)] == op {
+			return len(op)
+		}
+	}
+	return 0
+}
+
+@ |lexQuoted| scans an interpreted string or rune literal, honoring backslash
+escapes and tolerating an unterminated literal.
+@(internal/weave/gotok.go@>=
+// lexQuoted scans an interpreted string ("...") or rune ('...') starting at i,
+// honoring backslash escapes, and appends a tkString token. It stops at the
+// closing quote or end of line (unterminated literals are tolerated).
+func lexQuoted(src string, i int, quote byte, toks *[]token) int {
+	n := len(src)
+	j := i + 1
+	for j < n {
+		if src[j] == '\\' && j+1 < n {
+			j += 2
+			continue
+		}
+		if src[j] == quote || src[j] == '\n' {
+			break
+		}
+		j++
+	}
+	if j < n && src[j] == quote {
+		j++
+	}
+	*toks = append(*toks, token{tkString, src[i:j]})
+	return j
+}
+
+@ Number characters and two small string-search helpers.
+@(internal/weave/gotok.go@>=
+func isNumberPart(c byte) bool {
+	// Note: '+'/'-' (exponent signs) are intentionally excluded so that "1+2"
+	// is not swallowed as a single number; "1e+10" splits harmlessly instead.
+	return isDigit(c) || c == '.' || c == '_' ||
+		(c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F') ||
+		c == 'x' || c == 'X' || c == 'o' || c == 'O' || c == 'b' || c == 'B' ||
+		c == 'p' || c == 'P'
+}
+
+func indexByte(s string, b byte, from int) int {
+	for i := from; i < len(s); i++ {
+		if s[i] == b {
+			return i
+		}
+	}
+	return -1
+}
+
+func indexStr(s, sub string, from int) int {
+	for i := from; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return i
+		}
+	}
+	return -1
+}
+
+@* TeX escaping.
+Three contexts need different treatment: identifiers and keywords (only |_| is
+troublesome); typewriter text for strings and comments (every TeX special is
+emitted as a |\charNN| code so it prints literally); and prose names and math
+operators (text- or math-mode-safe sequences).
+@(internal/weave/tex.go@>=
+package weave
+
+import (
+	"fmt"
+	"strings"
+)
+
+// TeX escaping. Three contexts need different treatment:
+//
+//   - identifiers/keywords: only '_' is troublesome (\_ works in text mode);
+//   - typewriter text (strings, comments): every TeX special is emitted as a
+//     \charNN code so it prints literally regardless of the current font;
+//   - prose names and math operators: text-mode / math-mode safe sequences.
+
+@ |escIdent| escapes an identifier or keyword for text mode.
+@(internal/weave/tex.go@>=
+// escIdent escapes an identifier or keyword for text mode.
+func escIdent(s string) string {
+	return strings.ReplaceAll(s, "_", "\\_")
+}
+
+@ |escTT| escapes arbitrary text for a typewriter box.
+@(internal/weave/tex.go@>=
+// escTT escapes arbitrary text for a typewriter (\tt) box. Specials become
+// \charNN so braces, backslashes, etc. survive.
+func escTT(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch c {
+		case '\\', '{', '}', '$', '&', '#', '%', '^', '_', '~':
+			fmt.Fprintf(&b, "\\char%d ", c)
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
+}
+
+@ |escMathOp| encodes an operator run so it is safe inside math mode.
+@(internal/weave/tex.go@>=
+// escMathOp encodes an operator/punctuation run so it is safe inside math mode.
+func escMathOp(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; c {
+		case '{':
+			b.WriteString("\\{")
+		case '}':
+			b.WriteString("\\}")
+		case '&':
+			b.WriteString("\\&")
+		case '#':
+			b.WriteString("\\#")
+		case '%':
+			b.WriteString("\\%")
+		case '$':
+			b.WriteString("\\$")
+		case '_':
+			b.WriteString("\\_")
+		case '^':
+			b.WriteString("\\char94 ")
+		case '~':
+			b.WriteString("\\char126 ")
+		case '|':
+			b.WriteString("\\char124 ")
+		case '\\':
+			b.WriteString("\\backslash ")
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
+}
+
+@ |renderOp| typesets a Go operator as a single tight math atom, using real math
+symbols where they exist. Because inter-token spacing comes from the source, the
+unary/binary distinction for |*|, |&|, and friends needs no grammar analysis.
+@(internal/weave/tex.go@>=
+// renderOp typesets a Go operator token as a single tight math atom (no math
+// spacing of its own), using real math symbols where they exist. Inter-token
+// spacing is supplied by the surrounding source whitespace, so the result
+// reproduces gofmt's spacing exactly and the unary/binary distinction for *, &,
+// etc. needs no grammar analysis.
+func renderOp(s string) string {
+	switch s {
+	case "<=":
+		return "\\mathord{\\leq}"
+	case ">=":
+		return "\\mathord{\\geq}"
+	case "!=":
+		return "\\mathord{\\neq}"
+	case "<-":
+		return "\\mathord{\\leftarrow}"
+	case "...":
+		return "\\mathord{\\ldots}"
+	case "[]":
+		// empty slice/array brackets: a thin space keeps them from jamming
+		return "\\mathord{[}\\,\\mathord{]}"
+	case "{}":
+		// empty braces (struct{}, interface{}, T{}): likewise a thin space
+		return "\\mathord{\\{}\\,\\mathord{\\}}"
+	}
+	if len(s) == 1 {
+		return "\\mathord{" + escMathOp(s) + "}"
+	}
+	return tightMathOp(s)
+}
+
+@ |tightMathOp| sets each character of an operator as an ordinary atom, so |==|
+or |<<| prints with its characters adjacent.
+@(internal/weave/tex.go@>=
+// tightMathOp encodes each character of an operator as an ordinary atom, so that
+// e.g. "==" or "<<" prints with the characters adjacent rather than spaced.
+func tightMathOp(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		b.WriteString("\\mathord{")
+		b.WriteString(escMathOp(s[i : i+1]))
+		b.WriteString("}")
+	}
+	return b.String()
+}
+
+@ |escProse| escapes text for ordinary roman text mode (used for section names).
+@(internal/weave/tex.go@>=
+// escProse escapes text for ordinary roman text mode (used for section names).
+func escProse(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; c {
+		case '_':
+			b.WriteString("\\_")
+		case '&':
+			b.WriteString("\\&")
+		case '#':
+			b.WriteString("\\#")
+		case '%':
+			b.WriteString("\\%")
+		case '$':
+			b.WriteString("\\$")
+		case '{':
+			b.WriteString("$\\{$")
+		case '}':
+			b.WriteString("$\\}$")
+		case '\\':
+			b.WriteString("$\\backslash$")
+		case '^':
+			b.WriteString("\\^{}")
+		case '~':
+			b.WriteString("\\~{}")
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
+}
+
+@* Cross-references and the index.
+The |xref| tables accumulate, during the first weaving pass, where each
+identifier is used and (heuristically) defined, where each named section is
+defined and used, and the manual index entries from |@@^ @@. @@:|. They are then
+consulted during the real pass and when emitting the back matter.
+@(internal/weave/xref.go@>=
+package weave
+
+import (
+	"bufio"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/sjnam/gweb/internal/web"
+)
+
+@ The tables themselves and a manual index entry.
+@(internal/weave/xref.go@>=
+// xref accumulates cross-reference information while a web is woven:
+//   - where each identifier is used and (heuristically) defined;
+//   - where each named section is defined and used;
+//   - manual index entries from @@^ @@. @@: control codes.
+//
+// It is populated during a first (discarded) weaving pass and then consulted
+// during the real pass and when emitting the back matter.
+type xref struct {
+	identUse    map[string]map[int]bool
+	identDef    map[string]map[int]bool
+	sectionDefs map[string]map[int]bool
+	sectionUses map[string]map[int]bool
+	manualIndex []manualEntry
+}
+
+type manualEntry struct {
+	kind byte // '^', '.', ':'
+	text string
+	sec  int
+}
+
+@ The constructor and the small accumulator helpers.
+@(internal/weave/xref.go@>=
+func newXref() *xref {
+	return &xref{
+		identUse:    map[string]map[int]bool{},
+		identDef:    map[string]map[int]bool{},
+		sectionDefs: map[string]map[int]bool{},
+		sectionUses: map[string]map[int]bool{},
+	}
+}
+
+func addTo(m map[string]map[int]bool, key string, sec int) {
+	if m[key] == nil {
+		m[key] = map[int]bool{}
+	}
+	m[key][sec] = true
+}
+
+func (x *xref) addIdentUse(name string, sec int)   { addTo(x.identUse, name, sec) }
+func (x *xref) addIdentDef(name string, sec int)   { addTo(x.identDef, name, sec) }
+func (x *xref) addSectionDef(name string, sec int) { addTo(x.sectionDefs, name, sec) }
+func (x *xref) addSectionUse(name string, sec int) { addTo(x.sectionUses, name, sec) }
+func (x *xref) addManualIndex(kind byte, text string, sec int) {
+	x.manualIndex = append(x.manualIndex, manualEntry{kind, text, sec})
+}
+
+@ |sortedKeys| orders a section set, and |secList| renders it as hyperlinks with
+the defining sections underlined.
+@(internal/weave/xref.go@>=
+// sortedKeys returns the keys of a section set in ascending order.
+func sortedKeys(m map[int]bool) []int {
+	ks := make([]int, 0, len(m))
+	for k := range m {
+		ks = append(ks, k)
+	}
+	sort.Ints(ks)
+	return ks
+}
+
+// secList renders a set of section numbers as hyperlinks, with the defining
+// sections (those in def) additionally underlined.
+func secList(secs, def map[int]bool) string {
+	nums := sortedKeys(secs)
+	parts := make([]string, len(nums))
+	for i, n := range nums {
+		if def != nil && def[n] {
+			parts[i] = fmt.Sprintf("\\GsD{%d}", n)
+		} else {
+			parts[i] = fmt.Sprintf("\\Gs{%d}", n)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+@ |writeBackMatter| emits the PDF bookmarks, the index, the list of named
+sections, and the table of contents that close a woven document.
+@(internal/weave/xref.go@>=
+// writeBackMatter emits the index, the list of named sections, and the table of
+// contents that close a woven document.
+func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
+	wv.writeBookmarks(bw)
+	bw.WriteString("\n\\Ginx\n")
+	wv.writeIndex(bw)
+	bw.WriteString("\\Gfin\n")
+	wv.writeSectionNames(bw)
+	bw.WriteString("\\Gcon\n\\end\n")
+}
+
+@ |writeBookmarks| emits one |\Gbookmark| per starred section, in document
+order, so pdftex can build a PDF outline whose nesting follows the |@@*|, |@@*1|,
+|@@*2| depths. Each entry declares its number of direct children.
+@(internal/weave/xref.go@>=
+// writeBookmarks emits one \Gbookmark per starred section, in document (pre)
+// order, so pdftex can build a PDF outline whose nesting follows the @@*, @@*1,
+// @@*2 ... depths. Each entry declares its number of direct children.
+func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
+	var starred []*web.Section
+	for _, s := range wv.w.Sections {
+		if s.Starred {
+			starred = append(starred, s)
+		}
+	}
+	if len(starred) == 0 {
+		return
+	}
+	bw.WriteString("\n\\par")
+	for i, s := range starred {
+		children := 0
+		for j := i + 1; j < len(starred) && starred[j].Depth > s.Depth; j++ {
+			if starred[j].Depth == s.Depth+1 {
+				children++
+			}
+		}
+		fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%s}%%\n", s.Number, children, bookmarkTitle(s.Title))
+	}
+}
+
+@ |bookmarkTitle| reduces a starred-section title to plain text safe for a PDF
+outline: a |...| span keeps its inner text, |@@@@| becomes an at-sign, and the
+(rare) TeX-special characters are dropped.
+@(internal/weave/xref.go@>=
+// bookmarkTitle reduces a starred-section title to plain text safe for a PDF
+// outline: |code| spans keep their inner text, @@@@ becomes @@, and TeX-special
+// characters (which are rare in titles) are dropped.
+func bookmarkTitle(raw string) string {
+	var b strings.Builder
+	n := len(raw)
+	for i := 0; i < n; i++ {
+		c := raw[i]
+		switch {
+		case c == '\\' && i+1 < n && raw[i+1] == '|':
+			b.WriteByte('|')
+			i++
+		case c == '@@' && i+1 < n && raw[i+1] == '@@':
+			b.WriteByte('@@')
+			i++
+		case c == '|':
+			// drop the bar; keep the inline code's text
+		case c == '\\' || c == '{' || c == '}' || c == '$' || c == '&' ||
+			c == '#' || c == '%' || c == '^' || c == '_' || c == '~':
+			// TeX-special: drop
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
+@ The index. Each |indexItem| collects the sections where an entry appears;
+|writeIndex| merges identifier uses and definitions with the manual entries,
+sorts them case-insensitively, and emits one |\GII| line apiece.
+@(internal/weave/xref.go@>=
+// indexItem is one alphabetized entry of the identifier/manual index.
+type indexItem struct {
+	sortKey string
+	render  string // typeset form of the entry head (\GID{...}, \GIR{...}, ...)
+	secs    map[int]bool
+	defs    map[int]bool
+}
+
+func (wv *Weaver) writeIndex(bw *bufio.Writer) {
+	items := map[string]*indexItem{}
+	get := func(render, sortKey string) *indexItem {
+		it := items[render]
+		if it == nil {
+			it = &indexItem{sortKey: sortKey, render: render,
+				secs: map[int]bool{}, defs: map[int]bool{}}
+			items[render] = it
+		}
+		return it
+	}
+
+	for name, secs := range wv.xref.identUse {
+		it := get("\\GID{"+escIdent(name)+"}", strings.ToLower(name))
+		for s := range secs {
+			it.secs[s] = true
+		}
+	}
+	for name, secs := range wv.xref.identDef {
+		it := get("\\GID{"+escIdent(name)+"}", strings.ToLower(name))
+		for s := range secs {
+			it.secs[s] = true
+			it.defs[s] = true
+		}
+	}
+	for _, e := range wv.xref.manualIndex {
+		var render string
+		switch e.kind {
+		case '.':
+			render = "\\GIT{" + escTT(e.text) + "}"
+		case ':':
+			render = "\\GIC{" + e.text + "}"
+		default: // '^'
+			render = "\\GIR{" + escProse(e.text) + "}"
+		}
+		it := get(render, strings.ToLower(e.text))
+		it.secs[e.sec] = true
+	}
+
+	list := make([]*indexItem, 0, len(items))
+	for _, it := range items {
+		list = append(list, it)
+	}
+	sort.Slice(list, func(i, j int) bool {
+		if list[i].sortKey != list[j].sortKey {
+			return list[i].sortKey < list[j].sortKey
+		}
+		return list[i].render < list[j].render
+	})
+	for _, it := range list {
+		fmt.Fprintf(bw, "\\GII{%s}{%s}\n", it.render, secList(it.secs, it.defs))
+	}
+}
+
+@ |writeSectionNames| emits the list of named sections with their defining and
+using section numbers.
+@(internal/weave/xref.go@>=
+// writeSectionNames emits the list of named sections with their defining and
+// using section numbers.
+func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
+	names := map[string]bool{}
+	for n := range wv.xref.sectionDefs {
+		names[n] = true
+	}
+	for n := range wv.xref.sectionUses {
+		names[n] = true
+	}
+	sorted := make([]string, 0, len(names))
+	for n := range names {
+		sorted = append(sorted, n)
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return strings.ToLower(sorted[i]) < strings.ToLower(sorted[j])
+	})
+	for _, n := range sorted {
+		fmt.Fprintf(bw, "\\GNS{%s}{%d}{%s}\n",
+			wv.renderName(n), wv.defNum[n], usedNote(wv.xref.sectionUses[n]))
+	}
+}
+
+@ |usedNote| renders the ``Used in section(s) \dots'' note, or |""| when the
+section is never used.
+@(internal/weave/xref.go@>=
+// usedNote renders the "Used in section(s) ..." note for the section-names list,
+// or "" when the section is never used.
+func usedNote(uses map[int]bool) string {
+	if len(uses) == 0 {
+		return ""
+	}
+	noun := "section"
+	if len(uses) > 1 {
+		noun = "sections"
+	}
+	return "Used in " + noun + " " + secList(uses, nil)
+}
+
+@ |crossRefNotes| returns the ``also defined in'' and ``used in'' notes printed
+under the first definition of a named section.
+@(internal/weave/xref.go@>=
+// crossRefNotes returns the "also defined in"/"used in" notes printed under the
+// first definition of a named section, or "" if none apply.
+func (wv *Weaver) crossRefNotes(name string, secNum int) string {
+	if wv.defNum[name] != secNum {
+		return "" // notes appear only under the first definition
+	}
+	var b strings.Builder
+	defs := wv.xref.sectionDefs[name]
+	if len(defs) > 1 {
+		others := map[int]bool{}
+		for s := range defs {
+			if s != secNum {
+				others[s] = true
+			}
+		}
+		macro := "\\GA"
+		if len(others) > 1 {
+			macro = "\\GAs"
+		}
+		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(others, nil))
+	}
+	if uses := wv.xref.sectionUses[name]; len(uses) > 0 {
+		macro := "\\GU"
+		if len(uses) > 1 {
+			macro = "\\GUs"
+		}
+		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(uses, nil))
+	}
+	return b.String()
+}

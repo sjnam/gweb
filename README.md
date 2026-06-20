@@ -90,9 +90,27 @@ internal/web     shared front end: parses .w into sections (CWEB's common.w)
 internal/tangle  the tangle engine
 internal/weave   the weave engine: Go lexer, pretty-printer, cross-references
 tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
+lit/             GWEB written in itself: the .w sources the Go tree is tangled from
 doc/             format reference and the gwebman.tex manual
 examples/        a worked example
 ```
+
+## Self-hosting
+
+Like CWEB, GWEB is written in itself. The literate sources in [lit/](lit/) —
+`web.w`, `tangle.w`, `weave.w`, `gtangle.w`, `gweave.w` — are the source of
+truth; the `.go` files under `internal/` and `cmd/` are tangled from them (and
+committed too, so a fresh checkout still builds without a `gtangle` to hand).
+
+```sh
+make tangle       # re-tangle lit/*.w back into the Go tree
+make bootstrap    # tangle into a scratch tree and verify it is byte-for-byte
+                  # identical to the committed sources (the fixpoint)
+```
+
+Editing workflow: change `lit/*.w`, run `make tangle`, then commit both. The
+`bootstrap` target is the self-hosting proof — a freshly built `gtangle`
+reproduces its own source exactly. Tests stay as ordinary `_test.go` files.
 
 ## Design notes and limitations
 

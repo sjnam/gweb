@@ -1,11 +1,18 @@
+% The gtangle command-line driver.
+
+@* Command \.{gtangle}.
+This is the command-line front end to the |tangle| package. The unnamed |@@c|
+sections are written to \<basename>|.go| (in the |-o| directory, default the
+input's directory); |@@(file@@>=| sections are written to their named files.
+@(cmd/gtangle/main.go@>=
 // Command gtangle extracts compilable Go source from a GWEB (.w) file.
 //
 // Usage:
 //
 //	gtangle [-o dir] file.w
 //
-// The unnamed @c sections are written to <basename>.go (in -o dir, default the
-// input's directory); @(file@>= sections are written to their named files.
+// The unnamed @@c sections are written to <basename>.go (in -o dir, default the
+// input's directory); @@(file@@>= sections are written to their named files.
 package main
 
 import (
@@ -19,6 +26,8 @@ import (
 	"github.com/sjnam/gweb/internal/web"
 )
 
+@ The entry point parses the flags and arguments and dispatches to |run|.
+@(cmd/gtangle/main.go@>=
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
 	flag.Usage = usage
@@ -33,11 +42,16 @@ func main() {
 	}
 }
 
+@ Usage.
+@(cmd/gtangle/main.go@>=
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file.w [change.ch]")
 	flag.PrintDefaults()
 }
 
+@ |run| parses the web (applying a change file if given), prints any warnings,
+tangles, and writes each output file, creating its directory if necessary.
+@(cmd/gtangle/main.go@>=
 func run(input, changeFile, outDir string) error {
 	w, err := web.ParseWithChange(input, changeFile)
 	if err != nil {
