@@ -197,6 +197,7 @@ var multiOps = []string{
 	"<-", "++", "--", "==", "!=", "<=", ">=", ":=", "&&", "||",
 	"<<", ">>", "&^", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=",
 	"[]", // the empty brackets of a slice/array type, kept as one token
+	"{}", // empty braces (struct{}, interface{}, T{}), kept as one token
 }
 
 func matchOp(src string, i int) int {

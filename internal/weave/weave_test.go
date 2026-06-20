@@ -266,4 +266,13 @@ func TestWeaveEmptyBrackets(t *testing.T) {
 	if strings.Contains(out2, `\mathord{[}\,`) {
 		t.Errorf("index brackets a[i] should not get a thin space:\n%s", out2)
 	}
+	// Empty braces (struct{}, ...) get a thin space; non-empty braces do not.
+	out3 := weaveString(t, "@ x\n@c\ntype E struct{}\n")
+	if !strings.Contains(out3, `\mathord{\{}\,\mathord{\}}`) {
+		t.Errorf("empty braces {} should get a thin space:\n%s", out3)
+	}
+	out4 := weaveString(t, "@ x\n@c\nv := T{x}\n")
+	if strings.Contains(out4, `\mathord{\{}\,`) {
+		t.Errorf("non-empty braces should not get a thin space:\n%s", out4)
+	}
 }

@@ -87,6 +87,9 @@ func renderOp(s string) string {
 	case "[]":
 		// empty slice/array brackets: a thin space keeps them from jamming
 		return "\\mathord{[}\\,\\mathord{]}"
+	case "{}":
+		// empty braces (struct{}, interface{}, T{}): likewise a thin space
+		return "\\mathord{\\{}\\,\\mathord{\\}}"
 	}
 	if len(s) == 1 {
 		return "\\mathord{" + escMathOp(s) + "}"
