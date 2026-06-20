@@ -37,6 +37,10 @@ gweave  foo.w     # -> foo.tex
 pdftex  foo.tex   # -> foo.pdf   (gwebmac.tex must be on TEXINPUTS)
 ```
 
+The `.w` extension may be omitted, as in CWEB — `gtangle foo` reads `foo.w` (and
+a bare change-file name gets `.ch`). Each command prints a brief cweb-style
+progress line, one `*N` per starred (chapter) section.
+
 For a hyperlinked PDF you can also go through DVI, exactly as CWEB does — request
 the `\special{pdf:…}` back end with `\let\pdf+`, then convert with `dvipdfmx`:
 

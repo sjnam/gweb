@@ -130,6 +130,20 @@ func (w *Web) at(line int) string {
 	return fmt.Sprintf("line %d", line)
 }
 
+@ |DefaultExt| supplies a default extension when the user omits one, so the
+commands accept a bare web name as CWEB does (|gtangle wc| reads \.{wc.w}). A
+name that already has an extension, or is empty, is returned unchanged.
+@(internal/web/web.go@>=
+// DefaultExt returns name with ext appended when name has no extension of its
+// own (and is non-empty), so "wc" becomes "wc.w". A name that already carries an
+// extension is left alone.
+func DefaultExt(name, ext string) string {
+	if name == "" || filepath.Ext(name) != "" {
+		return name
+	}
+	return name + ext
+}
+
 @ Include expansion. As in CWEB, \.{@@i} is line-oriented: a line whose first
 non-blank text is \.{@@i} names a file whose expansion replaces that line. We
 keep a parallel origin map so diagnostics can cite the file the user wrote.

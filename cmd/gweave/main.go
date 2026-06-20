@@ -2,10 +2,11 @@
 //
 // Usage:
 //
-//	gweave [-o dir] file.w
+//	gweave [-o dir] file[.w] [change[.ch]]
 //
-// The woven document is written to <basename>.tex. Process it with a TeX engine
-// that can find gwebmac.tex (e.g. "pdftex file.tex") to produce a PDF.
+// The .w (and .ch) extension may be omitted. The woven document is written to
+// <basename>.tex. Process it with a TeX engine that can find gwebmac.tex (e.g.
+// "pdftex file.tex") to produce a PDF.
 package main
 
 import (
@@ -34,11 +35,22 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: gweave [-o dir] file.w [change.ch]")
+	fmt.Fprintln(os.Stderr, "usage: gweave [-o dir] file[.w] [change[.ch]]")
 	flag.PrintDefaults()
 }
 
+func reportProgress(w *web.Web) {
+	for _, s := range w.Sections {
+		if s.Starred {
+			fmt.Fprintf(os.Stderr, "*%d", s.Number)
+		}
+	}
+	fmt.Fprintln(os.Stderr)
+}
+
 func run(input, changeFile, outDir string) error {
+	input = web.DefaultExt(input, ".w")
+	changeFile = web.DefaultExt(changeFile, ".ch")
 	w, err := web.ParseWithChange(input, changeFile)
 	if err != nil {
 		return err
@@ -46,6 +58,7 @@ func run(input, changeFile, outDir string) error {
 	for _, warn := range w.Warnings {
 		fmt.Fprintln(os.Stderr, "gweave: warning:", warn)
 	}
+	reportProgress(w)
 	if outDir == "" {
 		outDir = filepath.Dir(input)
 	}

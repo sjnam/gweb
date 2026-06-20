@@ -2,10 +2,11 @@
 //
 // Usage:
 //
-//	gtangle [-o dir] file.w
+//	gtangle [-o dir] file[.w] [change[.ch]]
 //
-// The unnamed @c sections are written to <basename>.go (in -o dir, default the
-// input's directory); @(file@>= sections are written to their named files.
+// The .w (and .ch) extension may be omitted. The unnamed @c sections are
+// written to <basename>.go (in -o dir, default the input's directory);
+// @(file@>= sections are written to their named files.
 package main
 
 import (
@@ -34,11 +35,22 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file.w [change.ch]")
+	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file[.w] [change[.ch]]")
 	flag.PrintDefaults()
 }
 
+func reportProgress(w *web.Web) {
+	for _, s := range w.Sections {
+		if s.Starred {
+			fmt.Fprintf(os.Stderr, "*%d", s.Number)
+		}
+	}
+	fmt.Fprintln(os.Stderr)
+}
+
 func run(input, changeFile, outDir string) error {
+	input = web.DefaultExt(input, ".w")
+	changeFile = web.DefaultExt(changeFile, ".ch")
 	w, err := web.ParseWithChange(input, changeFile)
 	if err != nil {
 		return err
@@ -46,6 +58,7 @@ func run(input, changeFile, outDir string) error {
 	for _, warn := range w.Warnings {
 		fmt.Fprintln(os.Stderr, "gtangle: warning:", warn)
 	}
+	reportProgress(w)
 	if outDir == "" {
 		outDir = filepath.Dir(input)
 	}

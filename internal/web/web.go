@@ -106,6 +106,16 @@ func (w *Web) at(line int) string {
 	return fmt.Sprintf("line %d", line)
 }
 
+// DefaultExt returns name with ext appended when name has no extension of its
+// own (and is non-empty), so "wc" becomes "wc.w". A name that already carries an
+// extension is left alone.
+func DefaultExt(name, ext string) string {
+	if name == "" || filepath.Ext(name) != "" {
+		return name
+	}
+	return name + ext
+}
+
 // expandIncludes reads file and splices in @i includes, returning the combined
 // lines together with a parallel origin map. As in CWEB, @i is line-oriented: a
 // line whose first non-blank text is "@i" (followed by whitespace) names a file

@@ -84,6 +84,21 @@ func TestResolveAbbrev(t *testing.T) {
 	}
 }
 
+func TestDefaultExt(t *testing.T) {
+	cases := []struct{ name, ext, want string }{
+		{"wc", ".w", "wc.w"},         // bare name gets the extension
+		{"wc.w", ".w", "wc.w"},       // already has one: unchanged
+		{"foo.bar", ".w", "foo.bar"}, // a different extension is respected
+		{"dir/wc", ".w", "dir/wc.w"}, // path components are fine
+		{"", ".ch", ""},              // empty (e.g. no change file) stays empty
+	}
+	for _, c := range cases {
+		if got := DefaultExt(c.name, c.ext); got != c.want {
+			t.Errorf("DefaultExt(%q, %q) = %q, want %q", c.name, c.ext, got, c.want)
+		}
+	}
+}
+
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && indexFrom(s, sub, 0) >= 0
 }

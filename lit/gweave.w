@@ -1,16 +1,19 @@
 @* Command \.{gweave}.
-This is the command-line front end to the |weave| package. The woven document is
-written to the input's base name with a \.{.tex} extension; process it with a
-TeX engine that can find \.{gwebmac.tex} to produce a PDF.
+This is the command-line front end to the |weave| package. The input may be
+named with or without its \.{.w} extension (|gweave wc| reads \.{wc.w}, as in
+cweb). The woven document is written to the input's base name with a \.{.tex}
+extension; process it with a TeX engine that can find \.{gwebmac.tex} to produce
+a PDF.
 @(cmd/gweave/main.go@>=
 // Command gweave turns a GWEB (.w) file into a TeX document.
 //
 // Usage:
 //
-//	gweave [-o dir] file.w
+//	gweave [-o dir] file[.w] [change[.ch]]
 //
-// The woven document is written to <basename>.tex. Process it with a TeX engine
-// that can find gwebmac.tex (e.g. "pdftex file.tex") to produce a PDF.
+// The .w (and .ch) extension may be omitted. The woven document is written to
+// <basename>.tex. Process it with a TeX engine that can find gwebmac.tex (e.g.
+// "pdftex file.tex") to produce a PDF.
 package main
 
 import (
@@ -43,14 +46,30 @@ func main() {
 @ Usage.
 @(cmd/gweave/main.go@>=
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: gweave [-o dir] file.w [change.ch]")
+	fmt.Fprintln(os.Stderr, "usage: gweave [-o dir] file[.w] [change[.ch]]")
 	flag.PrintDefaults()
 }
 
-@ |run| parses the web (applying a change file if given), prints any warnings,
-and writes the woven TeX.
+@ A brief progress report in the style of cweb: one |*N| on the standard error
+for each starred (chapter) section, giving a sense of the web's structure as it
+is processed.
+@(cmd/gweave/main.go@>=
+func reportProgress(w *web.Web) {
+	for _, s := range w.Sections {
+		if s.Starred {
+			fmt.Fprintf(os.Stderr, "*%d", s.Number)
+		}
+	}
+	fmt.Fprintln(os.Stderr)
+}
+
+@ |run| supplies the default \.{.w} (and \.{.ch}) extension, parses the web
+(applying a change file if given), prints any warnings and a short progress
+report, and writes the woven TeX.
 @(cmd/gweave/main.go@>=
 func run(input, changeFile, outDir string) error {
+	input = web.DefaultExt(input, ".w")
+	changeFile = web.DefaultExt(changeFile, ".ch")
 	w, err := web.ParseWithChange(input, changeFile)
 	if err != nil {
 		return err
@@ -58,6 +77,7 @@ func run(input, changeFile, outDir string) error {
 	for _, warn := range w.Warnings {
 		fmt.Fprintln(os.Stderr, "gweave: warning:", warn)
 	}
+	reportProgress(w)
 	if outDir == "" {
 		outDir = filepath.Dir(input)
 	}

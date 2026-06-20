@@ -1,17 +1,19 @@
 @* Command \.{gtangle}.
-This is the command-line front end to the |tangle| package. The unnamed \.{@@c}
-sections are written to the input's base name with a \.{.go} extension (in the
-|-o| directory, default the input's directory); \.{@@(file@@>=} sections are
-written to their named files.
+This is the command-line front end to the |tangle| package. The input may be
+named with or without its \.{.w} extension (|gtangle wc| reads \.{wc.w}, as in
+cweb). The unnamed \.{@@c} sections are written to the input's base name with a
+\.{.go} extension (in the |-o| directory, default the input's directory);
+\.{@@(file@@>=} sections are written to their named files.
 @(cmd/gtangle/main.go@>=
 // Command gtangle extracts compilable Go source from a GWEB (.w) file.
 //
 // Usage:
 //
-//	gtangle [-o dir] file.w
+//	gtangle [-o dir] file[.w] [change[.ch]]
 //
-// The unnamed @@c sections are written to <basename>.go (in -o dir, default the
-// input's directory); @@(file@@>= sections are written to their named files.
+// The .w (and .ch) extension may be omitted. The unnamed @@c sections are
+// written to <basename>.go (in -o dir, default the input's directory);
+// @@(file@@>= sections are written to their named files.
 package main
 
 import (
@@ -44,14 +46,31 @@ func main() {
 @ Usage.
 @(cmd/gtangle/main.go@>=
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file.w [change.ch]")
+	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file[.w] [change[.ch]]")
 	flag.PrintDefaults()
 }
 
-@ |run| parses the web (applying a change file if given), prints any warnings,
-tangles, and writes each output file, creating its directory if necessary.
+@ A brief progress report in the style of cweb: one |*N| on the standard error
+for each starred (chapter) section, giving a sense of the web's structure as it
+is processed.
+@(cmd/gtangle/main.go@>=
+func reportProgress(w *web.Web) {
+	for _, s := range w.Sections {
+		if s.Starred {
+			fmt.Fprintf(os.Stderr, "*%d", s.Number)
+		}
+	}
+	fmt.Fprintln(os.Stderr)
+}
+
+@ |run| supplies the default \.{.w} (and \.{.ch}) extension, parses the web
+(applying a change file if given), prints any warnings and a short progress
+report, tangles, and writes each output file, creating its directory if
+necessary.
 @(cmd/gtangle/main.go@>=
 func run(input, changeFile, outDir string) error {
+	input = web.DefaultExt(input, ".w")
+	changeFile = web.DefaultExt(changeFile, ".ch")
 	w, err := web.ParseWithChange(input, changeFile)
 	if err != nil {
 		return err
@@ -59,6 +78,7 @@ func run(input, changeFile, outDir string) error {
 	for _, warn := range w.Warnings {
 		fmt.Fprintln(os.Stderr, "gtangle: warning:", warn)
 	}
+	reportProgress(w)
 	if outDir == "" {
 		outDir = filepath.Dir(input)
 	}
