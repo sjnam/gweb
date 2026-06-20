@@ -166,10 +166,22 @@ func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 		return strings.ToLower(sorted[i]) < strings.ToLower(sorted[j])
 	})
 	for _, n := range sorted {
-		defs := secList(wv.xref.sectionDefs[n], nil)
-		uses := secList(wv.xref.sectionUses[n], nil)
-		fmt.Fprintf(bw, "\\GNS{%s}{%s}{%s}\n", wv.renderName(n), defs, uses)
+		fmt.Fprintf(bw, "\\GNS{%s}{%d}{%s}\n",
+			wv.renderName(n), wv.defNum[n], usedNote(wv.xref.sectionUses[n]))
 	}
+}
+
+// usedNote renders the "Used in section(s) ..." note for the section-names list,
+// or "" when the section is never used.
+func usedNote(uses map[int]bool) string {
+	if len(uses) == 0 {
+		return ""
+	}
+	noun := "section"
+	if len(uses) > 1 {
+		noun = "sections"
+	}
+	return "Used in " + noun + " " + secList(uses, nil)
 }
 
 // crossRefNotes returns the "also defined in"/"used in" notes printed under the
@@ -187,10 +199,18 @@ func (wv *Weaver) crossRefNotes(name string, secNum int) string {
 				others[s] = true
 			}
 		}
-		fmt.Fprintf(&b, "\\GA{%s}%%\n", secList(others, nil))
+		macro := "\\GA"
+		if len(others) > 1 {
+			macro = "\\GAs"
+		}
+		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(others, nil))
 	}
 	if uses := wv.xref.sectionUses[name]; len(uses) > 0 {
-		fmt.Fprintf(&b, "\\GU{%s}%%\n", secList(uses, nil))
+		macro := "\\GU"
+		if len(uses) > 1 {
+			macro = "\\GUs"
+		}
+		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(uses, nil))
 	}
 	return b.String()
 }

@@ -1,11 +1,5 @@
 \input gwebmac
 
-\def\title{WC --- Word Count}
-\centerline{\titlefont WC --- a literate word counter}
-\vskip 6pt
-\centerline{(an example GWEB program)}
-\vskip 18pt
-
 @* Introduction.
 This is the GWEB version of the classic \.{wc} word-counting program, modeled on
 the example that accompanies CWEB. It reads each file named on the command line

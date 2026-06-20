@@ -203,7 +203,7 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 					if t.kind == tkIdent || t.kind == tkBuiltin {
 						def := forceDef || isDefinition(prevSigKind, prevSigText, toks, k)
 						forceDef = false
-						if !wv.noIndex[t.text] {
+						if indexable(t.text) && !wv.noIndex[t.text] {
 							if def {
 								wv.xref.addIdentDef(t.text, secNum)
 							} else {
@@ -357,7 +357,7 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 				b.WriteString("\\ ")
 				pendingSpace = false
 			}
-			if record && (t.kind == tkIdent || t.kind == tkBuiltin) && !wv.noIndex[t.text] {
+			if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndex[t.text] {
 				wv.xref.addIdentUse(t.text, secNum)
 			}
 			b.WriteString(renderToken(token{kind: wv.effKind(t), text: t.text}))
@@ -408,6 +408,10 @@ func (wv *Weaver) renderName(name string) string {
 	}
 	return b.String()
 }
+
+// indexable reports whether an identifier should appear in the index. The blank
+// identifier "_" is excluded.
+func indexable(name string) bool { return name != "_" }
 
 var declKeywords = map[string]bool{
 	"func": true, "var": true, "const": true, "type": true,

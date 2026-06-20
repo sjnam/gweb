@@ -116,7 +116,10 @@ examples/        a worked example
   stops if it must actually expand an undefined reference. An origin map kept in
   step through `@i` includes and change-file edits makes every location point
   back to the file (and line) you actually wrote.
-* **Table of contents.** Starred sections record themselves (number, title, page)
-  as the document is shaped, and `gwebmac.tex` typesets a contents page from that
-  data in a single TeX pass. As in CWEB, the contents page is emitted at the *end*
-  of the document; move it to the front when binding if you prefer.
+* **Page layout follows cweave.** `gwebmac.tex` gives the woven document the same
+  furniture CWEB produces: run-in bold section headings (with a page break before
+  each major starred section), `§sec  JOBNAME … GROUPTITLE  page` running heads, a
+  title-less index that sits under your own `@* Index.` section, a *Names of the
+  Sections* list, and a contents page (centered title, `Section`/`Page` columns,
+  dotted leaders). As in CWEB, the contents page is produced at the *end* in a
+  single TeX pass; move it to the front when binding if you prefer.

@@ -1,65 +1,91 @@
 % gwebmac.tex -- plain-TeX macros for documents produced by gweave.
-% This is the GWEB analogue of CWEB's cwebmac.tex.  Process a woven file with
-% a plain-TeX engine, e.g.  pdftex foo.tex  (gwebmac.tex must be findable).
+% This is the GWEB analogue of CWEB's cwebmac.tex; it is independent macro code
+% written to give gweave output the same page layout that cweave produces.
+% Process a woven file with a plain-TeX engine, e.g. pdftex foo.tex.
 
 % ---- fonts ------------------------------------------------------------------
-\font\titlefont=cmbx10 scaled\magstep2   % starred-section / page titles
-\font\eightrm=cmr8                       % small roman for cross-reference notes
-\font\eightit=cmti8
+\font\eightrm=cmr8                       % small roman for notes, headers, index
+\font\titlefont=cmr7 scaled\magstep4     % big title on the contents page
+\let\mainfont=\tenrm
 
 % ---- page layout ------------------------------------------------------------
 \hsize=6.5in
-\vsize=8.9in
-\parindent=0pt
+\vsize=8.7in
+\parindent=1em
 \parskip=0pt
-\hbadness=10000 \hfuzz=300pt             % code lines may run wide; do not fuss
+\hbadness=10000
 \tolerance=2000
 \newdimen\Gindentunit \Gindentunit=1.4em % one indentation step in displayed code
-\newdimen\Gtocindent  \Gtocindent=1.5em  % one indentation step in the contents
-\newskip\Gsecskip     \Gsecskip=11pt plus 4pt minus 2pt
-% (plain TeX already provides \S for the section sign used in the notes below.)
+\newskip\Gsecskip     \Gsecskip=12pt plus 4pt minus 3pt % space between sections
+\newcount\Gsecpagedepth \Gsecpagedepth=1 % starred sections this deep start a page
 
-% A starred section records itself in \jobname.toc as it is shipped out, so that
-% \Gcon can build a table of contents in a single TeX pass.  The page number is
-% captured by the deferred \write; the title is stashed in a control sequence so
-% it need not survive being written to (and read back from) a file.
+% ---- running headers --------------------------------------------------------
+% The document title is the upper-cased job name; the current group title is set
+% by each starred section. Each section deposits a \mark of the form
+% {section-number}{group-title}; the headline reads it back through \topmark.
+{\uppercase{\xdef\Gtitle{\jobname}}}
+\let\GgroupUP\Gtitle
+\def\Ggroup{\GgroupUP}
+\def\Gsetmark#1{\mark{{#1}{\Ggroup}}}
+\def\Gtakeone#1#2{#1}
+\def\Gtaketwo#1#2{#2}
+\def\Gempty{}
+
+\newif\ifGtitlepage % true only while shipping the contents page (no header)
+\def\Gsechead{\S\thinspace\expandafter\Gtakeone\Gtm} % left/right end: section number
+\def\Ggrouphead{\expandafter\Gtaketwo\Gtm}   % middle: current group title
+\def\Grunhead{%
+  \edef\Gtm{\topmark}\ifx\Gtm\Gempty\edef\Gtm{\firstmark}\fi
+  \ifx\Gtm\Gempty\edef\Gtm{{}{\Gtitle}}\fi
+  \mainfont
+  \ifodd\pageno
+    \line{\Gsechead\enspace{\eightrm\Gtitle}\hfil
+      {\eightrm\Ggrouphead}\enspace\folio}%
+  \else
+    \line{\folio\enspace{\eightrm\Ggrouphead}\hfil
+      {\eightrm\Gtitle}\enspace\Gsechead}%
+  \fi}
+\headline={\ifGtitlepage\hfil\else\Grunhead\fi}
+\footline={\hfil}
+
+% A starred section records itself in \jobname.toc as it is shipped, so \Gcon can
+% build the contents in one pass; the page number is captured by the deferred
+% \write, the title is stashed in a control sequence.
 \newwrite\Gtoc
 \immediate\openout\Gtoc=\jobname.toc
 
 % ---- section openers --------------------------------------------------------
-% \GM{n} : an ordinary (unstarred) section, run-in number.
-\def\GM#1{\par\penalty-50\vskip\Gsecskip\noindent
-  \hbox{\bf #1.\enspace}\ignorespaces}
+% \GM{n} : an ordinary (unstarred) section, run-in bold number.
+\def\GM#1{\par\penalty-100\vskip\Gsecskip
+  \Gsetmark{#1}\noindent{\bf #1.\quad}\rightskip=0pt\ignorespaces}
 
-% \GN{depth}{n}{title} : a starred section.  A depth-0 section begins a new page,
-% except for the very first one, which follows any title banner in the limbo.
+% \GN{depth}{n}{title} : a starred section. Major sections (depth < secpagedepth)
+% begin a new page; the first one does not, so it follows any limbo banner.
 \newif\ifGfirst \Gfirsttrue
 \def\GN#1#2#3{\par
-  \ifnum#1=0
-    \ifGfirst \Gfirstfalse \vskip 6pt \else \penalty-300\vfil\eject \fi
-  \else \penalty-150\vskip 14pt plus 4pt \fi
-  % Stash the title and record a contents line *after* any page break above, so
-  % the deferred \write captures the page this heading actually lands on.
+  {\uppercase{\xdef\GgroupUP{#3}}}\global\let\Ggroup\GgroupUP
   \expandafter\gdef\csname Gtoctitle\number#2\endcsname{#3}%
+  \Gsetmark{#2}% set the mark before any page break, so the new page's \topmark
+  \ifGfirst \Gfirstfalse \vskip 6pt
+  \else \ifnum#1<\Gsecpagedepth \vfil\eject
+        \else \penalty-200\vfil\penalty-200\vfilneg\vskip\Gsecskip \fi
+  \fi
   \write\Gtoc{\string\GTline{#1}{#2}{\the\pageno}}%
-  \noindent{\titlefont #2.\enspace #3.}\par\nobreak\vskip 4pt
-  \noindent\ignorespaces}
+  \noindent{\bf #2.\quad #3.\quad}\rightskip=0pt\ignorespaces}
 
 % ---- displayed Go code ------------------------------------------------------
-% \GB ... \GE bracket a code display; \GL typesets one line of it.
 \def\GB{\par\nobreak\vskip 3pt\begingroup
   \baselineskip=11pt \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil
-  \hfuzz=2pt \emergencystretch=3em}
+  \hfuzz=2pt \emergencystretch=3em \parindent=0pt}
 \def\GE{\par\endgroup\vskip 3pt}
-% One displayed code line: #1 indentation steps, #2 the body, which is a series
-% of tight math chunks ($...$) joined by \GS.  Lines that exceed \hsize wrap at
-% a \GS, with continuation lines indented one step deeper than the line itself.
+% One displayed code line: #1 indentation steps, #2 the body (math chunks $...$
+% joined by \GS). Long lines wrap at a \GS, continuation indented one step more.
 \def\GL#1#2{\par
   \hangindent=\dimexpr\Gindentunit*\numexpr#1+1\relax\relax \hangafter=1
   \noindent\kern#1\Gindentunit\relax #2}
 \def\GS{\penalty0\hskip .5em plus .3em minus .15em\relax} % breakable code space
-\def\GSO{\penalty0\hskip 0pt\relax}                       % @| optional zero-width break
-\def\GBL{\par\smallskip}                                  % @# blank line between code lines
+\def\GSO{\penalty0\hskip 0pt\relax}                       % @| optional break
+\def\GBL{\par\smallskip}                                  % @# blank line in code
 
 % ---- code token fonts (called inside the math of \GL) -----------------------
 \def\GID#1{\hbox{\it #1\/}}      % identifier
@@ -69,44 +95,52 @@
 \def\GNU#1{\hbox{\rm #1}}        % numeric literal
 
 % ---- named-section references and headlines ---------------------------------
-\def\Gangle#1#2{$\langle\,$#1\penalty100\thinspace{\sevenrm #2}$\,\rangle$}
+\def\Gangle#1#2{$\langle\,$#1{\eightrm\kern.4em #2}$\,\rangle$}
 \def\GX#1#2{\hbox{\Gangle{#2}{#1}}}        % inline reference in code
 \def\GD#1#2{\par\vskip 3pt\noindent\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
 \def\GDp#1#2{\par\vskip 3pt\noindent
   \hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
 
 % ---- cross-reference notes printed under a definition -----------------------
-\def\GU#1{\par\nobreak\vskip 2pt\noindent{\eightrm This code is used in \S#1.}\par}
-\def\GA#1{\par\nobreak\vskip 2pt\noindent{\eightrm This code is also defined in \S#1.}\par}
+\def\Gnote#1{\par\penalty-1\vskip 2pt\noindent{\eightrm #1.}\par}
+\def\GU#1{\Gnote{This code is used in section #1}}
+\def\GUs#1{\Gnote{This code is used in sections #1}}
+\def\GA#1{\Gnote{This code is also defined in section #1}}
+\def\GAs#1{\Gnote{This code is also defined in sections #1}}
 \def\GUL#1{$\underline{\hbox{#1}}$} % an underlined (defining) section number
 
-% ---- index ------------------------------------------------------------------
-\def\Ginx{\par\vfil\eject\centerline{\titlefont Index}\vskip 14pt
-  \begingroup\parindent=0pt\parskip=2pt plus 1pt\rightskip=0pt plus 2em\relax}
-\def\GII#1#2{\noindent#1:\quad #2.\par}      % one index entry: head and sections
+% ---- index: title-less (the heading is the user's `@* Index.' section) -------
+\def\Ginx{\par\vskip 12pt plus 2pt
+  \begingroup
+  \parindent=0pt \parskip=0pt plus .5pt \rm
+  \rightskip=0pt plus 2.5em \tolerance=10000 \hyphenpenalty=10000}
+\def\GII#1#2{\noindent\hangindent2em #1:\kern.5em #2.\par} % one index entry
 \def\GIR#1{{\rm #1}}                          % @^...@>  roman index entry
 \def\GIT#1{{\tt #1}}                          % @....@>  typewriter index entry
 \def\9#1{{\rm #1}}                            % default for @:...@> entries
 \def\GIC#1{\9{#1}}
 
-% ---- list of named sections (refinements) -----------------------------------
+% ---- list of section names (a `Names of the Sections' page) -----------------
 \def\Gfin{\par\endgroup\vfil\eject
-  \centerline{\titlefont List of Refinements}\vskip 14pt
-  \begingroup\parindent=0pt\parskip=3pt plus 1pt\rightskip=0pt plus 2em\relax}
-\def\GNS#1#2#3{\noindent\hbox{$\langle\,$#1$\,\rangle$}\quad
-  {\eightrm defined in \S#2; used in \S#3.}\par}
-
-% ---- table of contents and closing -----------------------------------------
-% \GTline{depth}{n}{page} typesets one contents row; the title comes from the
-% control sequence stashed by \GN.  It is defined locally inside \Gcon.
-\def\Gcon{\par\endgroup            % close the refinements group opened by \Gfin
-  \vfil\eject                      % ship the last page so all \write's execute
-  \immediate\closeout\Gtoc
-  \centerline{\titlefont Table of Contents}\vskip 14pt
+  \global\def\Gsechead{}% no section number in the header here
+  \global\def\Ggrouphead{NAMES OF THE SECTIONS}%
   \begingroup
-    \parindent=0pt \parfillskip=0pt \rightskip=0pt \parskip=2pt plus 1pt
-    \def\GTline##1##2##3{\par\noindent\kern##1\Gtocindent
-      \hbox{\bf ##2.}\enspace\csname Gtoctitle\number##2\endcsname
-      \enspace\dotfill\enspace\hbox{##3}\par}%
+  \parindent=0pt \parskip=2pt plus 1pt \rightskip=0pt plus 2em \rm}
+\def\GNS#1#2#3{\noindent\hangindent2em \Gangle{#1}{#2}%
+  \ifx\Gempty#3\else\quad{\eightrm#3}\fi\par}
+
+% ---- contents page: centered title, Section/Page columns, dot leaders --------
+\def\GTline#1#2#3{\line{\Gconsetup{#1}%
+  \csname Gtoctitle\number#2\endcsname\ %
+  \rm\leaders\hbox to .5em{\hss.\hss}\hfil\ #2\hbox to 3em{\hss#3}}}
+\def\Gconsetup#1{\ifcase#1 \or\hskip2em\or\hskip4em\or\hskip6em\else\hskip8em\fi}
+\def\Gcon{\par\endgroup\vfil\eject % finish the section names
+  \immediate\closeout\Gtoc
+  \Gtitlepagetrue \pageno=0
+  \parindent=0pt
+  \centerline{\titlefont\Gtitle}\vskip .7in \vfill
+  \line{\hfil{\eightrm Section}\hbox to 3em{\hss\eightrm Page}}%
+  \begingroup \rm
     \input \jobname.toc
-  \endgroup}
+  \endgroup
+  \vfill\end}

@@ -223,3 +223,34 @@ func TestWeaveForceDefinition(t *testing.T) {
 		t.Errorf("@! should index foo as a definition (underlined):\n%s", out)
 	}
 }
+
+func TestWeaveIndexExcludesBlankAndPluralizes(t *testing.T) {
+	out := weaveString(t, `@ def
+@<chunk@>=
+println(1)
+
+@ first user
+@c
+package main
+
+func f() {
+	for _, x := range xs {
+		@<chunk@>
+	}
+}
+
+@ second user
+@c
+func g() { @<chunk@> }
+`)
+	if strings.Contains(out, `\GII{\GID{_}}`) {
+		t.Errorf("the blank identifier _ should not be indexed:\n%s", out)
+	}
+	// chunk is used in two different sections (2 and 3), so the plural notes apply.
+	if !strings.Contains(out, `\GUs{2, 3}`) {
+		t.Errorf("uses in two sections should emit \\GUs:\n%s", out)
+	}
+	if !strings.Contains(out, `\GNS{chunk}{1}{Used in sections 2, 3}`) {
+		t.Errorf("section-names entry malformed:\n%s", out)
+	}
+}

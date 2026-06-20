@@ -1,11 +1,5 @@
 \input gwebmac
 
-\def\title{PMAP --- a parallel map}
-\centerline{\titlefont PMAP --- a generic parallel map}
-\vskip 6pt
-\centerline{(an example GWEB program)}
-\vskip 18pt
-
 @* Introduction.
 This example applies a function to every element of a slice {\it concurrently},
 using a fixed pool of worker goroutines, and returns the results in the original
