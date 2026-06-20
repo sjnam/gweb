@@ -13,10 +13,10 @@
 % so e.g. \.{@\^} prints the control code @^. Used for file names, command names,
 % and control codes in commentary and section titles. (Plain TeX's \. is a dot
 % accent; we override it -- gweave documents need \tt strings, not accents.)
-% \protected so \.{...} survives unexpanded inside \mark, \edef, and \xdef (it
-% is carried into running headers and the contents through those), typesetting
-% only when actually shipped.
-\protected\def\.#1{{\tt
+% This is a plain \def (not e-TeX's \protected, so bare `tex' works for the DVI
+% route): the running-head and contents machinery below is written to carry the
+% title without ever expanding \. (see \Gsetmark and \Grunhead).
+\def\.#1{{\tt
   \def\\{\char92 }\def\{{\char123 }\def\}{\char125 }%
   \def\&{\char38 }\def\^{\char94 }\def\_{\char95 }\def\~{\char126 }%
   \def\${\char36 }\def\#{\char35 }\def\%{\char37 }%
@@ -50,7 +50,9 @@
 \def\Gtitle{\title}
 \let\GgroupUP\Gtitle
 \def\Ggroup{\GgroupUP}
-\def\Gsetmark#1{\mark{{#1}{\Ggroup}}}
+% The mark carries the group title without expanding it (\noexpand\Ggroup), so a
+% \. in the title survives into \topmark for typesetting in the header.
+\def\Gsetmark#1{\mark{{#1}{\noexpand\Ggroup}}}
 \def\Gtakeone#1#2{#1}
 \def\Gtaketwo#1#2{#2}
 \def\Gempty{}
@@ -62,8 +64,11 @@
 % \Grunhead builds the header as one \Gpagewidth-wide box (used both by the
 % normal \headline and by the index's own output routine).
 \def\Grunhead{%
-  \edef\Gtm{\topmark}\ifx\Gtm\Gempty\edef\Gtm{\firstmark}\fi
-  \ifx\Gtm\Gempty\edef\Gtm{{}{\Gtitle}}\fi
+  % Capture the mark tokens without expanding them (a \. in the title must not be
+  % expanded here); \expandafter expands \topmark exactly once into \Gtm.
+  \expandafter\def\expandafter\Gtm\expandafter{\topmark}%
+  \ifx\Gtm\Gempty\expandafter\def\expandafter\Gtm\expandafter{\firstmark}\fi
+  \ifx\Gtm\Gempty\def\Gtm{{}{\Gtitle}}\fi
   \ifodd\pageno
     \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\eightrm\Gtitle}\hfil
       {\eightrm\Ggrouphead}\enspace\folio}%
@@ -110,7 +115,9 @@
 % begin a new page; the first one does not, so it follows any limbo banner.
 \newif\ifGfirst \Gfirsttrue
 \def\GN#1#2#3{\par
-  {\uppercase{\xdef\GgroupUP{#3}}}\global\let\Ggroup\GgroupUP
+  % \gdef (not \xdef) so a \. in the title is stored unexpanded; \uppercase only
+  % upper-cases the letter tokens, leaving control sequences intact.
+  {\uppercase{\gdef\GgroupUP{#3}}}\global\let\Ggroup\GgroupUP
   \expandafter\gdef\csname Gtoctitle\number#2\endcsname{#3}%
   \Gsetmark{#2}% set the mark before any page break, so the new page's \topmark
   \ifGfirst \Gfirstfalse \vskip 6pt
