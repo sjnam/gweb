@@ -97,16 +97,19 @@
   \noindent\Gdest{#2}{\bf #2.\quad #3.\quad}\rightskip=0pt\ignorespaces}
 
 % ---- displayed Go code ------------------------------------------------------
+\newdimen\Gcodeindent \Gcodeindent=\Gindentunit % displayed code is indented this
+                                                % far (about one tab) from the margin
 \def\GB{\par\nobreak\vskip 3pt\begingroup
-  \baselineskip=11pt \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil
+  \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil
   \hfuzz=2pt \emergencystretch=3em \parindent=0pt}
 \def\GE{\par\endgroup\vskip 3pt}
 % One displayed code line: #1 indentation steps, #2 the body (math chunks $...$
-% joined by \GS). Long lines wrap at a \GS, continuation indented one step more.
+% joined by \GS). The whole display is offset by \Gcodeindent from the margin;
+% long lines wrap at a \GS, continuation indented one step deeper.
 \def\GL#1#2{\par
-  \Gtmpcount=#1 \advance\Gtmpcount by1 \Gtmpdimen=\Gtmpcount\Gindentunit
-  \hangindent=\Gtmpdimen \hangafter=1
-  \noindent\kern#1\Gindentunit\relax #2}
+  \Gtmpcount=#1 \Gtmpdimen=\Gtmpcount\Gindentunit \advance\Gtmpdimen by\Gcodeindent
+  \hangindent=\Gtmpdimen \advance\hangindent by\Gindentunit \hangafter=1
+  \noindent\kern\Gtmpdimen #2}
 \def\GS{\penalty0\hskip .5em plus .3em minus .15em\relax} % breakable code space
 \def\GSO{\penalty0\hskip 0pt\relax}                       % @| optional break
 \def\GBL{\par\smallskip}                                  % @# blank line in code
