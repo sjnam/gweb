@@ -254,3 +254,16 @@ func g() { @<chunk@> }
 		t.Errorf("section-names entry malformed:\n%s", out)
 	}
 }
+
+func TestWeaveEmptyBrackets(t *testing.T) {
+	// The empty brackets of a slice type get a thin space so they don't jam.
+	out := weaveString(t, "@ x\n@c\nvar s []byte\n")
+	if !strings.Contains(out, `\mathord{[}\,\mathord{]}`) {
+		t.Errorf("slice brackets [] should get a thin space:\n%s", out)
+	}
+	// Indexing a[i] must stay tight (the brackets are not empty).
+	out2 := weaveString(t, "@ x\n@c\nvar v = a[i]\n")
+	if strings.Contains(out2, `\mathord{[}\,`) {
+		t.Errorf("index brackets a[i] should not get a thin space:\n%s", out2)
+	}
+}

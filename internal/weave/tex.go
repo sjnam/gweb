@@ -84,6 +84,9 @@ func renderOp(s string) string {
 		return "\\mathord{\\leftarrow}"
 	case "...":
 		return "\\mathord{\\ldots}"
+	case "[]":
+		// empty slice/array brackets: a thin space keeps them from jamming
+		return "\\mathord{[}\\,\\mathord{]}"
 	}
 	if len(s) == 1 {
 		return "\\mathord{" + escMathOp(s) + "}"
