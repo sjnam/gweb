@@ -155,13 +155,15 @@
     \global\setbox\Gsbox=\vbox{}\global\vsize=\Gpageheight \gdef\Glr{L}%
   \fi}
 \def\Ginx{\par
+  \vskip 9pt plus 2pt           % gap between the Index heading/prose and entries
   \output={\global\setbox\Gsbox=\box255}\eject % stash heading+prose, hold page
   \setbox\Gsbox=\vbox{\unvbox\Gsbox}%
-  \global\vsize=\Gpageheight \global\advance\vsize by-\ht\Gsbox
+  \global\vsize=\Gpageheight
+  \global\advance\vsize by-\ht\Gsbox \global\advance\vsize by-\dp\Gsbox
   \global\hsize=\Gcolwidth
   \global\output={\Gcoloutput}\gdef\Glr{L}%
   \begingroup
-  \parindent=0pt \parskip=0pt plus .5pt \rm
+  \baselineskip=12pt \parindent=0pt \parskip=1pt plus .5pt \rm
   \rightskip=0pt plus 2.5em \tolerance=10000 \hyphenpenalty=10000}
 \def\GII#1#2{\noindent\hangindent2em #1:\kern.5em #2.\par} % one index entry
 \def\GIR#1{{\rm #1}}                          % @^...@>  roman index entry
