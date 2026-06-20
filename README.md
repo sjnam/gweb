@@ -56,6 +56,12 @@ make -C examples NAME=pmap   # just one example
   output matches the system `wc`. It also shows `@f` setting a user type in bold.
 * [examples/pmap.w](examples/pmap.w) — a generic concurrent `map` over a slice,
   exercising generics, goroutines, channels, and `sync.WaitGroup`.
+* [examples/floyd.w](examples/floyd.w) — Floyd's partition problem, the classic
+  "toy problem" Knuth discusses in *Are Toy Problems Useful?*: partition
+  √1…√50 into two nearly-equal halves. A worked literate solution
+  (meet-in-the-middle search, Gray-code enumeration, compensated summation, and
+  a `math/big` verification) based on
+  [github.com/sjnam/floyd-partition](https://github.com/sjnam/floyd-partition).
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.

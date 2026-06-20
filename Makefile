@@ -53,6 +53,7 @@ install:
 example: build
 	$(MAKE) -C examples NAME=wc
 	$(MAKE) -C examples NAME=pmap
+	$(MAKE) -C examples NAME=floyd
 
 clean:
 	rm -rf $(BIN) build
