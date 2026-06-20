@@ -64,7 +64,8 @@ func buildExample(t *testing.T, path string) {
 		}
 	}
 	if !haveMod {
-		const mod = "module gwebexample\n\ngo 1.21\n"
+		// go 1.23 so examples may use range-over-func iterators (e.g. seq.w).
+		const mod = "module gwebexample\n\ngo 1.23\n"
 		if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -106,7 +107,7 @@ func TestChangeFileBuilds(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "wc.go"), outs[0].Content, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module gwebexample\n\ngo 1.21\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module gwebexample\n\ngo 1.23\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command("go", "build", "-o", os.DevNull, ".")

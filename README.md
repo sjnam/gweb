@@ -64,6 +64,10 @@ make -C examples NAME=pmap   # just one example
   output matches the system `wc`. It also shows `@f` setting a user type in bold.
 * [examples/pmap.w](examples/pmap.w) — a generic concurrent `map` over a slice,
   exercising generics, goroutines, channels, and `sync.WaitGroup`.
+* [examples/seq.w](examples/seq.w) — a tiny lazy-sequence library (`Map`,
+  `Filter`, `Take` over infinite Fibonacci numbers), showing off the Go features
+  C has no answer to: first-class functions and closures, anonymous functions,
+  generics, and Go 1.23 range-over-func iterators.
 * [examples/floyd.w](examples/floyd.w) — Floyd's partition problem, the classic
   "toy problem" Knuth discusses in *Are Toy Problems Useful?*: partition
   √1…√50 into two nearly-equal halves. A worked literate solution
