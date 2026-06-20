@@ -28,9 +28,12 @@
 % by each starred section. Each section deposits a \mark of the form
 % {section-number}{group-title}; the headline reads it back through \topmark.
 % Upper-case the (expanded) job name for the running header and contents title.
-\edef\Gtitle{\jobname}
-\def\Gtitleaux#1{\uppercase{\gdef\Gtitle{#1}}}
-\expandafter\Gtitleaux\expandafter{\Gtitle}
+% \title is shown in the running header and on the contents page; it defaults to
+% the upper-cased job name and may be redefined in limbo.
+\edef\title{\jobname}
+\def\Gtitleaux#1{\uppercase{\gdef\title{#1}}}
+\expandafter\Gtitleaux\expandafter{\title}
+\def\Gtitle{\title}
 \let\GgroupUP\Gtitle
 \def\Ggroup{\GgroupUP}
 \def\Gsetmark#1{\mark{{#1}{\Ggroup}}}
@@ -38,7 +41,8 @@
 \def\Gtaketwo#1#2{#2}
 \def\Gempty{}
 
-\newif\ifGtitlepage % true only while shipping the contents page (no header)
+\newif\iftitle % true only while shipping the contents page (suppresses the header)
+\def\contentspagenumber{0} % page number of the contents page; redefine in limbo
 \def\Gsechead{\S\thinspace\expandafter\Gtakeone\Gtm} % left/right end: section number
 \def\Ggrouphead{\expandafter\Gtaketwo\Gtm}   % middle: current group title
 % \Grunhead builds the header as one \Gpagewidth-wide box (used both by the
@@ -53,7 +57,7 @@
     \hbox to\Gpagewidth{\mainfont\folio\enspace{\eightrm\Ggrouphead}\hfil
       {\eightrm\Gtitle}\enspace\Gsechead}%
   \fi}
-\headline={\ifGtitlepage\hfil\else\Grunhead\fi}
+\headline={\iftitle\hfil\else\Grunhead\fi}
 \footline={\hfil}
 
 % ---- hyperlinks (active in pdfTeX PDF mode; a no-op for dvi) ------------------
@@ -199,7 +203,7 @@
 \def\Gconsetup#1{\ifcase#1 \or\hskip2em\or\hskip4em\or\hskip6em\else\hskip8em\fi}
 \def\Gcon{\par\endgroup\vfil\eject % finish the section names
   \immediate\closeout\Gtoc
-  \Gtitlepagetrue \pageno=0
+  \titletrue \pageno=\contentspagenumber
   \parindent=0pt
   \centerline{\titlefont\Gtitle}\vskip .7in \vfill
   \line{\hfil{\eightrm Section}\hbox to 3em{\hss\eightrm Page}}%

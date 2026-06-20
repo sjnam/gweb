@@ -234,6 +234,23 @@ blank line. Since \cw{gweave} mirrors the source rather than reflowing it, CWEB'
 prettyprinter hints \cw{@+}, \cw{@[}\thinspace$\ldots$\thinspace\cw{@]}, and
 \cw{@;} are unnecessary; they are accepted and ignored.
 
+\section{Customizing the page}
+A few macros, redefinable in the limbo of your \cw{.w} file (after \cw{\bs input
+gwebmac}), tune the woven pages, just as in CWEB:
+
+\bull \cw{\bs def\bs title\char123 ...\char125} sets the title shown in the
+running header and on the contents page; it defaults to the upper-cased file name.
+
+\bull \cw{\bs pagewidth}, \cw{\bs pageheight} (and the column gutter) set the page
+size.
+
+\bull To number the pages for inclusion in a larger document, set the contents
+page number and the first text page number, e.g.\
+\cw{\bs def\bs contentspagenumber\char123 14\char125\bs pageno=15}.
+
+\noindent The header is suppressed on any page for which \cw{\bs iftitle} is true
+(\cw{gweave} sets it on the contents page, which is therefore unnumbered).
+
 \chapter{Running the programs}
 Build the tools once with \cw{make build} (or \cw{go install ./...}), then:
 \begincode
