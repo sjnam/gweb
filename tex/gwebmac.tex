@@ -4,9 +4,30 @@
 % Process a woven file with a plain-TeX engine, e.g. pdftex foo.tex.
 
 % ---- fonts ------------------------------------------------------------------
+% The font set mirrors cwebmac.tex so woven output matches cweave's typefaces.
 \font\eightrm=cmr8                       % small roman for notes, headers, index
+\font\ninerm=cmr9 \let\mc=\ninerm        % medium caps (\CEE/, \GO/, ...)
+\let\sc=\eightrm                         % smallish caps
 \font\titlefont=cmr7 scaled\magstep4     % big title on the contents page
+\font\ttitlefont=cmtt10 scaled\magstep2  % typewriter title (for use in limbo)
+\font\tentex=cmtex10                      % TeX extended set, for strings (as cweb)
+\fontdimen7\tentex=0pt                    % no extra space after sentences
 \let\mainfont=\tenrm
+\let\cmntfont=\tenrm                      % font for comments (cf. cweb's \cmntfont)
+
+% Language and prose helpers borrowed from cwebmac, for use in commentary; each
+% is invoked with a trailing slash, e.g. ``written in \GO/''.
+\def\CEE/{{\mc C\spacefactor1000}}
+\def\GO/{{\mc Go\spacefactor1000}}
+\def\UNIX/{{\mc U\kern-.05emNIX\spacefactor1000}}
+\def\TEX/{\TeX}
+% \\{id} sets an identifier in italics in prose, as in cweb. (The GWEB idiom is
+% to write inline code as |id|; this is provided for porting cweb commentary.
+% cweb's \& and \| are deliberately not redefined: \& is used here as a literal
+% ampersand by the comment/section-name escaper, and gweave rewrites \| to a bar.)
+\def\\#1{\leavevmode\hbox{\it#1\/\kern.05em}}
+% A thin space that works in either math or text mode (cwebmac's \,).
+\def\,{\relax\ifmmode\mskip\thinmuskip\else\thinspace\fi}
 
 % \.{text} sets verbatim/typewriter text in prose (as in cwebmac). Inside it the
 % escaped specials \\ \{ \} \& \# \% \$ \^ \_ \~ print as the literal characters,
@@ -16,7 +37,7 @@
 % This is a plain \def (not e-TeX's \protected, so bare `tex' works for the DVI
 % route): the running-head and contents machinery below is written to carry the
 % title without ever expanding \. (see \Gsetmark and \Grunhead).
-\def\.#1{{\tt
+\def\.#1{{\tentex
   \def\\{\char92 }\def\{{\char123 }\def\}{\char125 }%
   \def\&{\char38 }\def\^{\char94 }\def\_{\char95 }\def\~{\char126 }%
   \def\${\char36 }\def\#{\char35 }\def\%{\char37 }%
@@ -177,8 +198,8 @@
 % ---- code token fonts (called inside the math of \GL) -----------------------
 \def\GID#1{\hbox{\it #1\/}}      % identifier
 \def\GKW#1{\hbox{\bf #1}}        % reserved word or predeclared type
-\def\GST#1{\hbox{\tt #1}}        % string, rune, or verbatim text
-\def\GCM#1{\hbox{\rm #1}}        % comment
+\def\GST#1{\hbox{\tentex #1}}    % string, rune, or verbatim text (cweb's \tentex)
+\def\GCM#1{\hbox{\cmntfont #1}}  % comment
 \def\GNU#1{\hbox{\rm #1}}        % numeric literal
 
 % ---- named-section references and headlines ---------------------------------
@@ -227,7 +248,7 @@
   \rightskip=0pt plus 2.5em \tolerance=10000 \hyphenpenalty=10000}
 \def\GII#1#2{\noindent\hangindent2em #1:\kern.5em #2.\par} % one index entry
 \def\GIR#1{{\rm #1}}                          % @^...@>  roman index entry
-\def\GIT#1{{\tt #1}}                          % @....@>  typewriter index entry
+\def\GIT#1{{\tentex #1}}                      % @....@>  typewriter index entry
 \def\9#1{{\rm #1}}                            % default for @:...@> entries
 \def\GIC#1{\9{#1}}
 

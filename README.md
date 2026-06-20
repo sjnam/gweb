@@ -173,7 +173,10 @@ cross-references it produces for any other program.
   Sections* list, and a contents page (centered title, `Section`/`Page` columns,
   dotted leaders). The index is set in two columns. As in CWEB, the contents page
   is produced at the *end* in a single TeX pass; move it to the front when binding
-  if you prefer.
+  if you prefer. The font set mirrors `cwebmac.tex` (medium-caps `\mc`, the
+  `cmtex10` string font, …), and a few `cwebmac` prose helpers are available in
+  commentary: `\CEE/`, `\GO/`, `\UNIX/`, `\TEX/`, and `\\{id}` for an italic
+  identifier (though the GWEB idiom for inline code is `|id|`).
 * **Hyperlinks and bookmarks.** Every section number shown as a reference, in the
   index, in a cross-reference note, or on the contents page is a blue link to that
   section; clicking it jumps there (for the underlined index entries, to where the
