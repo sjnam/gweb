@@ -1,4 +1,4 @@
-# GWEB — literate programming for Go
+# GWEB — Literate programming for Go
 
 GWEB is a [literate programming](https://en.wikipedia.org/wiki/Literate_programming)
 system for the Go language, modeled closely on Donald Knuth and Silvio Levy's
