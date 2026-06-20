@@ -9,8 +9,11 @@
 \let\mainfont=\tenrm
 
 % ---- page layout ------------------------------------------------------------
-\hsize=6.5in
-\vsize=8.7in
+\newdimen\Gpagewidth  \Gpagewidth=6.5in
+\newdimen\Gpageheight \Gpageheight=8.7in
+\newdimen\Gcolwidth   \Gcolwidth=.5\Gpagewidth \advance\Gcolwidth by-10pt
+\hsize=\Gpagewidth
+\vsize=\Gpageheight
 \parindent=1em
 \parskip=0pt
 \hbadness=10000
@@ -34,19 +37,24 @@
 \newif\ifGtitlepage % true only while shipping the contents page (no header)
 \def\Gsechead{\S\thinspace\expandafter\Gtakeone\Gtm} % left/right end: section number
 \def\Ggrouphead{\expandafter\Gtaketwo\Gtm}   % middle: current group title
+% \Grunhead builds the header as one \Gpagewidth-wide box (used both by the
+% normal \headline and by the index's own output routine).
 \def\Grunhead{%
   \edef\Gtm{\topmark}\ifx\Gtm\Gempty\edef\Gtm{\firstmark}\fi
   \ifx\Gtm\Gempty\edef\Gtm{{}{\Gtitle}}\fi
-  \mainfont
   \ifodd\pageno
-    \line{\Gsechead\enspace{\eightrm\Gtitle}\hfil
+    \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\eightrm\Gtitle}\hfil
       {\eightrm\Ggrouphead}\enspace\folio}%
   \else
-    \line{\folio\enspace{\eightrm\Ggrouphead}\hfil
+    \hbox to\Gpagewidth{\mainfont\folio\enspace{\eightrm\Ggrouphead}\hfil
       {\eightrm\Gtitle}\enspace\Gsechead}%
   \fi}
 \headline={\ifGtitlepage\hfil\else\Grunhead\fi}
 \footline={\hfil}
+% \Gmakeheadline places \Grunhead like plain TeX's \makeheadline, for use inside
+% the index's custom \shipout (where the plain \headline machinery is bypassed).
+\def\Gmakeheadline{\vbox to 0pt{\vskip-22.5pt
+  \hbox to\Gpagewidth{\vbox to8.5pt{}\Grunhead}\vss}\nointerlineskip}
 
 % A starred section records itself in \jobname.toc as it is shipped, so \Gcon can
 % build the contents in one pass; the page number is captured by the deferred
@@ -109,8 +117,31 @@
 \def\GAs#1{\Gnote{This code is also defined in sections #1}}
 \def\GUL#1{$\underline{\hbox{#1}}$} % an underlined (defining) section number
 
-% ---- index: title-less (the heading is the user's `@* Index.' section) -------
-\def\Ginx{\par\vskip 12pt plus 2pt
+% ---- index: title-less, set in two columns ----------------------------------
+% The index is set in two columns. \Ginx stashes the preceding material (the
+% user's `@* Index.' heading and prose) in \Gsbox, then narrows \hsize to one
+% column and installs \Gcoloutput: it fills the left column to the column height,
+% saves it, fills the right column, and ships a page carrying the stashed
+% material above the two columns. \Gfin flushes the last column.
+\newbox\Gsbox \newbox\Glbox
+\def\Glr{L}
+\def\Gcoloutput{%
+  \if L\Glr
+    \global\setbox\Glbox=\box255 \gdef\Glr{R}%
+  \else
+    \shipout\vbox{\Gmakeheadline
+      \vbox to\Gpageheight{\boxmaxdepth=\maxdimen
+        \box\Gsbox\vss
+        \hbox to\Gpagewidth{\box\Glbox\hfil\box255}}}%
+    \global\advance\pageno by1
+    \global\setbox\Gsbox=\vbox{}\global\vsize=\Gpageheight \gdef\Glr{L}%
+  \fi}
+\def\Ginx{\par
+  \output={\global\setbox\Gsbox=\box255}\eject % stash heading+prose, hold page
+  \setbox\Gsbox=\vbox{\unvbox\Gsbox}%
+  \global\vsize=\Gpageheight \global\advance\vsize by-\ht\Gsbox
+  \global\hsize=\Gcolwidth
+  \global\output={\Gcoloutput}\gdef\Glr{L}%
   \begingroup
   \parindent=0pt \parskip=0pt plus .5pt \rm
   \rightskip=0pt plus 2.5em \tolerance=10000 \hyphenpenalty=10000}
@@ -121,7 +152,12 @@
 \def\GIC#1{\9{#1}}
 
 % ---- list of section names (a `Names of the Sections' page) -----------------
-\def\Gfin{\par\endgroup\vfil\eject
+\def\Gfin{\par\vfil\eject       % seal/ship the current index column
+  \if L\Glr\else\null\vfil\eject\fi % a left column is pending: ship its page
+  \endgroup                     % close the index paragraph group
+  \global\output={\plainoutput}% back to ordinary single-column pages
+  \global\hsize=\Gpagewidth \global\vsize=\Gpageheight
+  \vfil\eject
   \global\def\Gsechead{}% no section number in the header here
   \global\def\Ggrouphead{NAMES OF THE SECTIONS}%
   \begingroup
