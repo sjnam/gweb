@@ -64,7 +64,9 @@ semicolon) have no effect; they are accepted and ignored for portability.
 ## Name abbreviation
 
 A section name may be abbreviated with a trailing `...`: `@<Set it up...@>`
-matches the unique full name beginning with `Set it up`.
+matches the unique full name beginning with `Set it up`. The full (unabbreviated)
+name need appear only once, at the definition **or** at any reference; all the
+`...` forms then resolve to it.
 
 A section name may also contain Go code between vertical bars, which `gweave`
 typesets as code (e.g. `@<Update the counts for byte |b|@>`). The bars are part

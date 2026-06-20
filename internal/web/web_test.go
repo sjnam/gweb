@@ -224,3 +224,20 @@ func TestIncludeLineMapping(t *testing.T) {
 		t.Errorf("section 2 origin = %q, want a part.w location", got)
 	}
 }
+
+func TestResolveAbbrevEitherSide(t *testing.T) {
+	// The full name may appear only at a reference, with the definition
+	// abbreviated -- and vice versa. Neither should warn.
+	srcs := []string{
+		"@ x\n@c\nvar _ = @<The parallel-map function@>\n@ d\n@<The parallel...@>=\n1\n",
+		"@ x\n@c\nvar _ = @<The parallel...@>\n@ d\n@<The parallel-map function@>=\n1\n",
+	}
+	for _, src := range srcs {
+		w := ParseString(src)
+		for _, bad := range []string{"undefined", "ambiguous", "never"} {
+			if hasWarning(w.Warnings, bad) {
+				t.Errorf("unexpected %q warning for %q: %v", bad, src, w.Warnings)
+			}
+		}
+	}
+}

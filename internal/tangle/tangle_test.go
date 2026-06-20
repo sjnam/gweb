@@ -139,3 +139,15 @@ func TestTangleDropsUnknownCode(t *testing.T) {
 		t.Errorf("unknown @x should drop exactly two chars:\n%s", got)
 	}
 }
+
+func TestTangleAbbrevAtDefinition(t *testing.T) {
+	// The reference carries the full name; the definition is abbreviated.
+	const src = "@ x\n@c\npackage main\n\nvar v = @<the value@>\n\n@ d\n@<the val...@>=\n42\n"
+	outs, err := New(web.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(outs[0].Content); !strings.Contains(got, "var v = 42") {
+		t.Errorf("abbreviated definition should resolve:\n%s", got)
+	}
+}

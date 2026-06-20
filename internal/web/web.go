@@ -162,16 +162,28 @@ func includeDirective(line string) (name string, ok bool) {
 	return name, name != ""
 }
 
-// collectNames records the set of canonical (non-abbreviated) named sections so
-// abbreviations ending in "..." can be resolved. Output files (@(...@>=) are
-// roots, not referable refinements, so they are excluded.
+// collectNames records the set of canonical (non-abbreviated) section names so
+// abbreviations ending in "..." can be resolved. A full name may appear at a
+// definition (@<name@>=) or at any reference (@<name@>), in code or in
+// commentary, so all of those are scanned. Output files (@(...@>=) are roots,
+// not referable refinements, so their names are excluded.
 func (w *Web) collectNames() {
 	seen := map[string]bool{}
+	add := func(name string) {
+		if name != "" && !strings.HasSuffix(name, "...") && !seen[name] {
+			seen[name] = true
+			w.full = append(w.full, name)
+		}
+	}
 	for _, s := range w.Sections {
-		if s.Name != "" && !s.IsFile && !strings.HasSuffix(s.Name, "...") {
-			if !seen[s.Name] {
-				seen[s.Name] = true
-				w.full = append(w.full, s.Name)
+		if !s.IsFile {
+			add(s.Name) // a definition's name
+		}
+		for _, raw := range []string{s.Code, s.Tex} {
+			for _, a := range ScanCode(raw) {
+				if a.Kind == ARef {
+					add(a.Text) // a reference's name
+				}
 			}
 		}
 	}
@@ -193,9 +205,13 @@ func (w *Web) prefixMatches(prefix string) int {
 // defined but never used. All are warnings (gtangle still fails hard if it
 // actually meets an undefined reference while expanding).
 func (w *Web) checkNames() []string {
+	// "defined" is the set of sections that actually have a definition (not just
+	// the full names known for abbreviation resolution, which include references).
 	defined := map[string]bool{}
-	for _, n := range w.full {
-		defined[n] = true
+	for _, s := range w.Sections {
+		if s.Name != "" && !s.IsFile {
+			defined[w.Resolve(s.Name)] = true
+		}
 	}
 	used := map[string]bool{}
 	var warns []string
