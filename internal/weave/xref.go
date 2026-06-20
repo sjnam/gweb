@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/sjnam/gweb/internal/web"
 )
 
 // xref accumulates cross-reference information while a web is woven:
@@ -80,11 +82,64 @@ func secList(secs, def map[int]bool) string {
 // writeBackMatter emits the index, the list of named sections, and the table of
 // contents that close a woven document.
 func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
+	wv.writeBookmarks(bw)
 	bw.WriteString("\n\\Ginx\n")
 	wv.writeIndex(bw)
 	bw.WriteString("\\Gfin\n")
 	wv.writeSectionNames(bw)
 	bw.WriteString("\\Gcon\n\\end\n")
+}
+
+// writeBookmarks emits one \Gbookmark per starred section, in document (pre)
+// order, so pdftex can build a PDF outline whose nesting follows the @*, @*1,
+// @*2 ... depths. Each entry declares its number of direct children.
+func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
+	var starred []*web.Section
+	for _, s := range wv.w.Sections {
+		if s.Starred {
+			starred = append(starred, s)
+		}
+	}
+	if len(starred) == 0 {
+		return
+	}
+	bw.WriteString("\n\\par")
+	for i, s := range starred {
+		children := 0
+		for j := i + 1; j < len(starred) && starred[j].Depth > s.Depth; j++ {
+			if starred[j].Depth == s.Depth+1 {
+				children++
+			}
+		}
+		fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%s}%%\n", s.Number, children, bookmarkTitle(s.Title))
+	}
+}
+
+// bookmarkTitle reduces a starred-section title to plain text safe for a PDF
+// outline: |code| spans keep their inner text, @@ becomes @, and TeX-special
+// characters (which are rare in titles) are dropped.
+func bookmarkTitle(raw string) string {
+	var b strings.Builder
+	n := len(raw)
+	for i := 0; i < n; i++ {
+		c := raw[i]
+		switch {
+		case c == '\\' && i+1 < n && raw[i+1] == '|':
+			b.WriteByte('|')
+			i++
+		case c == '@' && i+1 < n && raw[i+1] == '@':
+			b.WriteByte('@')
+			i++
+		case c == '|':
+			// drop the bar; keep the inline code's text
+		case c == '\\' || c == '{' || c == '}' || c == '$' || c == '&' ||
+			c == '#' || c == '%' || c == '^' || c == '_' || c == '~':
+			// TeX-special: drop
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return strings.TrimSpace(b.String())
 }
 
 // indexItem is one alphabetized entry of the identifier/manual index.

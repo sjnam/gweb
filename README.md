@@ -124,8 +124,10 @@ examples/        a worked example
   dotted leaders). The index is set in two columns. As in CWEB, the contents page
   is produced at the *end* in a single TeX pass; move it to the front when binding
   if you prefer.
-* **Hyperlinks.** When processed with `pdftex` (PDF mode), every section number
-  shown as a reference, in the index, in a cross-reference note, or on the
-  contents page is a blue link to that section; clicking it jumps to the section
-  (for the underlined index entries, to where the identifier is defined). With a
-  plain DVI engine the links are simply omitted.
+* **Hyperlinks and bookmarks.** When processed with `pdftex` (PDF mode), every
+  section number shown as a reference, in the index, in a cross-reference note,
+  or on the contents page is a blue link to that section; clicking it jumps to
+  the section (for the underlined index entries, to where the identifier is
+  defined). The starred sections also become a PDF outline (bookmark tree),
+  nested by their `@*`, `@*1`, `@*2` depths. With a plain DVI engine the links
+  and bookmarks are simply omitted.

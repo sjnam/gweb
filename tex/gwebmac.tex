@@ -69,6 +69,9 @@
   \else #2\fi}
 \def\Gs#1{\Glink{#1}{#1}}                        % a linked section number
 \def\GsD#1{\Glink{#1}{$\underline{\hbox{#1}}$}}  % linked + underlined (definition)
+% A PDF outline (bookmark) entry: #1 section number, #2 number of direct
+% children (its sign opens/closes the entry), #3 the plain-text title.
+\def\Gbookmark#1#2#3{\ifGpdf\pdfoutline goto num #1 count #2 {\pdfescapestring{#3}}\fi}
 % \Gmakeheadline places \Grunhead like plain TeX's \makeheadline, for use inside
 % the index's custom \shipout (where the plain \headline machinery is bypassed).
 \def\Gmakeheadline{\vbox to 0pt{\vskip-22.5pt

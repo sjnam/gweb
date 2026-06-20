@@ -276,3 +276,44 @@ func TestWeaveEmptyBrackets(t *testing.T) {
 		t.Errorf("non-empty braces should not get a thin space:\n%s", out4)
 	}
 }
+
+func TestWeaveBookmarks(t *testing.T) {
+	out := weaveString(t, `@* Chapter one. intro.
+@c
+package main
+@*1 Sub A. first.
+@<a@>=
+1
+@*1 Sub B. second.
+@<b@>=
+2
+@* Chapter two. more.
+@c
+var _ = 0
+`)
+	// Chapter one (section 1) has two direct children: the @*1 subsections.
+	for _, want := range []string{
+		`\Gbookmark{1}{2}{Chapter one}`,
+		`\Gbookmark{2}{0}{Sub A}`,
+		`\Gbookmark{3}{0}{Sub B}`,
+		`\Gbookmark{4}{0}{Chapter two}`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing bookmark %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestBookmarkTitle(t *testing.T) {
+	cases := map[string]string{
+		"The scanner":        "The scanner",
+		"Update for |b| now": "Update for b now",
+		"Foo \\& Bar":        "Foo  Bar",
+		"a @@ b":             "a @ b",
+	}
+	for in, want := range cases {
+		if got := bookmarkTitle(in); got != want {
+			t.Errorf("bookmarkTitle(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

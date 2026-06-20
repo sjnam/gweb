@@ -249,8 +249,9 @@ raw output and prints a warning.
 When the woven file is processed with \cw{pdftex}, the section numbers shown in
 references, in the index, in cross-reference notes, and on the contents page
 become blue hyperlinks: clicking one jumps to that section (and, for the
-underlined index entries, to where the identifier is defined). A plain DVI engine
-simply omits the links.
+underlined index entries, to where the identifier is defined). The starred
+sections also form a PDF outline (the bookmark tree), nested by their \cw{@*},
+\cw{@*1}, \cw{@*2} depths. A plain DVI engine simply omits the links and outline.
 
 Both tools also print diagnostics, each tagged with a \cw{file:line} location:
 an unterminated control code, a reference to an undefined section, an ambiguous

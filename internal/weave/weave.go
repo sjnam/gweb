@@ -135,8 +135,8 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 	indent := 0
 	atLineStart := true
 	pendingSpace := false
-	forceDef := false    // set by @! to force the next identifier to index as a def
-	haveContent := false // at least one code line has been emitted
+	forceDef := false     // set by @! to force the next identifier to index as a def
+	haveContent := false  // at least one code line has been emitted
 	blankPending := false // a blank source line is waiting to become a \GBK gap
 
 	// prevSig* tracks the most recent significant token so that an identifier
