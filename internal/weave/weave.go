@@ -135,7 +135,9 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 	indent := 0
 	atLineStart := true
 	pendingSpace := false
-	forceDef := false // set by @! to force the next identifier to index as a def
+	forceDef := false    // set by @! to force the next identifier to index as a def
+	haveContent := false // at least one code line has been emitted
+	blankPending := false // a blank source line is waiting to become a \GBK gap
 
 	// prevSig* tracks the most recent significant token so that an identifier
 	// following func/var/const/type can be flagged as a definition.
@@ -159,11 +161,20 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 		run.WriteString(s)
 		atLineStart = false
 	}
-	// emitLine writes the accumulated line as a \GL but leaves indent intact.
+	// emitLine writes the accumulated line as a \GL but leaves indent intact. A
+	// blank source line between two code lines becomes a small \GBK gap, which
+	// gives a little air between, e.g., the import block and the function body.
 	emitLine := func() {
 		flushRun()
 		if strings.TrimSpace(line.String()) != "" {
+			if blankPending {
+				out.WriteString("\\GBK\n")
+				blankPending = false
+			}
 			fmt.Fprintf(&out, "\\GL{%d}{%s}%%\n", indent, line.String())
+			haveContent = true
+		} else if haveContent {
+			blankPending = true
 		}
 		line.Reset()
 	}

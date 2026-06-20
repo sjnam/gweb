@@ -27,7 +27,10 @@
 % The document title is the upper-cased job name; the current group title is set
 % by each starred section. Each section deposits a \mark of the form
 % {section-number}{group-title}; the headline reads it back through \topmark.
-{\uppercase{\xdef\Gtitle{\jobname}}}
+% Upper-case the (expanded) job name for the running header and contents title.
+\edef\Gtitle{\jobname}
+\def\Gtitleaux#1{\uppercase{\gdef\Gtitle{#1}}}
+\expandafter\Gtitleaux\expandafter{\Gtitle}
 \let\GgroupUP\Gtitle
 \def\Ggroup{\GgroupUP}
 \def\Gsetmark#1{\mark{{#1}{\Ggroup}}}
@@ -109,10 +112,11 @@
 \def\GL#1#2{\par
   \Gtmpcount=#1 \Gtmpdimen=\Gtmpcount\Gindentunit \advance\Gtmpdimen by\Gcodeindent
   \hangindent=\Gtmpdimen \advance\hangindent by\Gindentunit \hangafter=1
-  \noindent\kern\Gtmpdimen #2}
+  \noindent\kern\Gtmpdimen \strut #2}
 \def\GS{\penalty0\hskip .5em plus .3em minus .15em\relax} % breakable code space
 \def\GSO{\penalty0\hskip 0pt\relax}                       % @| optional break
 \def\GBL{\par\smallskip}                                  % @# blank line in code
+\def\GBK{\par\vskip 2.5pt}    % a blank source line: a little air between groups
 
 % ---- code token fonts (called inside the math of \GL) -----------------------
 \def\GID#1{\hbox{\it #1\/}}      % identifier
