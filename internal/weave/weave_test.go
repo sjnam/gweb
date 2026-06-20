@@ -291,12 +291,13 @@ package main
 @c
 var _ = 0
 `)
-	// Chapter one (section 1) has two direct children: the @*1 subsections.
+	// Chapter one (depth 0, section 1) has two direct children: the @*1
+	// subsections (depth 1). \Gbookmark is {depth}{secNum}{children}{title}.
 	for _, want := range []string{
-		`\Gbookmark{1}{2}{Chapter one}`,
-		`\Gbookmark{2}{0}{Sub A}`,
-		`\Gbookmark{3}{0}{Sub B}`,
-		`\Gbookmark{4}{0}{Chapter two}`,
+		`\Gbookmark{0}{1}{2}{Chapter one}`,
+		`\Gbookmark{1}{2}{0}{Sub A}`,
+		`\Gbookmark{1}{3}{0}{Sub B}`,
+		`\Gbookmark{0}{4}{0}{Chapter two}`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing bookmark %q:\n%s", want, out)

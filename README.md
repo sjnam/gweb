@@ -37,6 +37,14 @@ gweave  foo.w     # -> foo.tex
 pdftex  foo.tex   # -> foo.pdf   (gwebmac.tex must be on TEXINPUTS)
 ```
 
+For a hyperlinked PDF you can also go through DVI, exactly as CWEB does — request
+the `\special{pdf:…}` back end with `\let\pdf+`, then convert with `dvipdfmx`:
+
+```sh
+tex "\let\pdf+ \input foo.tex"   # -> foo.dvi  (with pdf: specials)
+dvipdfmx foo.dvi                 # -> foo.pdf  (links + bookmarks)
+```
+
 Both commands accept `-o <dir>` to choose an output directory, and an optional
 **change file** as a second argument — `gtangle foo.w foo.ch` — which patches the
 master source without editing it (CWEB's `.ch` mechanism; see
@@ -158,10 +166,12 @@ cross-references it produces for any other program.
   dotted leaders). The index is set in two columns. As in CWEB, the contents page
   is produced at the *end* in a single TeX pass; move it to the front when binding
   if you prefer.
-* **Hyperlinks and bookmarks.** When processed with `pdftex` (PDF mode), every
-  section number shown as a reference, in the index, in a cross-reference note,
-  or on the contents page is a blue link to that section; clicking it jumps to
-  the section (for the underlined index entries, to where the identifier is
-  defined). The starred sections also become a PDF outline (bookmark tree),
-  nested by their `@*`, `@*1`, `@*2` depths. With a plain DVI engine the links
-  and bookmarks are simply omitted.
+* **Hyperlinks and bookmarks.** Every section number shown as a reference, in the
+  index, in a cross-reference note, or on the contents page is a blue link to that
+  section; clicking it jumps there (for the underlined index entries, to where the
+  identifier is defined). The starred sections also become a PDF outline (bookmark
+  tree), nested by their `@*`, `@*1`, `@*2` depths. Two back ends produce these:
+  `pdftex`/`luatex` in PDF mode use the engine's own primitives, while the DVI
+  route emits `\special{pdf:…}` commands for `dvipdfmx` when you ask for them with
+  `\let\pdf+` (the same convention as CWEB). With a plain DVI engine and no
+  `\let\pdf+`, the links and bookmarks are simply omitted.

@@ -79,22 +79,50 @@
 \headline={\iftitle\hfil\else\Grunhead\fi}
 \footline={\hfil}
 
-% ---- hyperlinks (active in pdfTeX PDF mode; a no-op for dvi) ------------------
+% ---- hyperlinks --------------------------------------------------------------
 % Each section deposits a numbered destination; section numbers shown as
-% references, in the index, in cross-reference notes, and in the contents are
-% links to those destinations, drawn in blue like cweave.
-\newif\ifGpdf
+% references, in the index, in cross-reference notes, and in the contents link
+% to those destinations, drawn in blue like cweave. Two back ends are supported:
+%   * pdfTeX/luaTeX primitives, when producing PDF directly (\pdfoutput>0);
+%   * \special{pdf:...} commands for the  tex -> dvipdfmx  route. As in cweb,
+%     that route is requested by defining \pdf, e.g.
+%         tex "\let\pdf+ \input foo.tex"   then   dvipdfmx foo.dvi
+% With a plain dvi engine and no \pdf, the links and bookmarks are omitted.
+% For the dvipdfmx route, destinations are named with roman numerals (as in
+% cwebmac); links and bookmarks reference those names, so they work even though
+% gweave emits all the bookmarks together at the end of the document.
+\newif\ifGpdf      % native pdfTeX/luaTeX PDF output
+\newif\ifGdvipdf   % dvipdfmx \special{pdf:...} route
 \ifx\pdfoutput\undefined\else\ifnum\pdfoutput>0 \Gpdftrue\fi\fi
-\def\Gdest#1{\ifGpdf\pdfdest num #1 fith\relax\fi}
-\def\Glink#1#2{\ifGpdf
+\ifGpdf\else\ifx\pdf\undefined\else\Gdvipdftrue\fi\fi
+\newbox\Glinkbox
+\def\Gdest#1{%
+  \ifGpdf \pdfdest num #1 fith\relax
+  \else\ifGdvipdf
+    \smash{\raise\baselineskip\hbox to0pt{%
+      \special{pdf: dest (\romannumeral#1) [ @thispage /FitH @ypos ]}\hss}}%
+  \fi\fi}
+\def\Glink#1#2{%
+  \ifGpdf
     \pdfstartlink attr{/Border[0 0 0]}goto num #1\relax
     \pdfliteral{0 0 1 rg}#2\pdfliteral{0 g}\pdfendlink
-  \else #2\fi}
+  \else\ifGdvipdf
+    \setbox\Glinkbox=\hbox{\special{pdf: bc [ 0 0 1 ]}#2\special{pdf: ec}}%
+    \special{pdf: ann width \the\wd\Glinkbox\space height \the\ht\Glinkbox\space
+       depth \the\dp\Glinkbox\space << /Subtype /Link /Border [ 0 0 0 ]
+       /A << /S /GoTo /D (\romannumeral#1) >> >>}\box\Glinkbox\relax
+  \else #2\fi\fi}
 \def\Gs#1{\Glink{#1}{#1}}                        % a linked section number
 \def\GsD#1{\Glink{#1}{$\underline{\hbox{#1}}$}}  % linked + underlined (definition)
-% A PDF outline (bookmark) entry: #1 section number, #2 number of direct
-% children (its sign opens/closes the entry), #3 the plain-text title.
-\def\Gbookmark#1#2#3{\ifGpdf\pdfoutline goto num #1 count #2 {\pdfescapestring{#3}}\fi}
+% A PDF outline (bookmark) entry: #1 group depth, #2 section number, #3 number of
+% direct children (pdfTeX's open/close model), #4 the plain-text title. The
+% dvipdfmx route nests by depth and links to the named destination.
+\def\Gbookmark#1#2#3#4{%
+  \ifGpdf \pdfoutline goto num #2 count #3 {\pdfescapestring{#4}}%
+  \else\ifGdvipdf
+    \special{pdf: outline #1 << /Title (#4)
+       /A << /S /GoTo /D (\romannumeral#2) >> >>}%
+  \fi\fi}
 % \Gmakeheadline places \Grunhead like plain TeX's \makeheadline, for use inside
 % the index's custom \shipout (where the plain \headline machinery is bypassed).
 \def\Gmakeheadline{\vbox to 0pt{\vskip-22.5pt

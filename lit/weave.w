@@ -1130,12 +1130,14 @@ func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 }
 
 @ |writeBookmarks| emits one |\Gbookmark| per starred section, in document
-order, so pdftex can build a PDF outline whose nesting follows the \.{@@*}, \.{@@*1},
-\.{@@*2} depths. Each entry declares its number of direct children.
+order, so a PDF outline can be built whose nesting follows the \.{@@*}, \.{@@*1},
+\.{@@*2} depths. Each entry carries its depth (for the dvipdfmx route, which
+nests by level) and its number of direct children (for pdftex's count model).
 @(internal/weave/xref.go@>=
 // writeBookmarks emits one \Gbookmark per starred section, in document (pre)
-// order, so pdftex can build a PDF outline whose nesting follows the @@*, @@*1,
-// @@*2 ... depths. Each entry declares its number of direct children.
+// order, so a PDF outline can be built whose nesting follows the @@*, @@*1,
+// @@*2 ... depths. Each entry carries its depth (the dvipdfmx route nests by
+// level) and its number of direct children (pdftex's count model).
 func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 	var starred []*web.Section
 	for _, s := range wv.w.Sections {
@@ -1154,7 +1156,7 @@ func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 				children++
 			}
 		}
-		fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%s}%%\n", s.Number, children, bookmarkTitle(s.Title))
+		fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%d}{%s}%%\n", s.Depth, s.Number, children, bookmarkTitle(s.Title))
 	}
 }
 
