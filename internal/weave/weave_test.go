@@ -134,6 +134,20 @@ func f(ch chan int) {
 	}
 }
 
+func TestWeaveShiftOperators(t *testing.T) {
+	// << and >> render as the tight double-angle symbols \ll and \gg (as cweb),
+	// not two separate less-than/greater-than signs.
+	out := weaveString(t, "@ x\n@c\nvar a = b<<2 | c>>3\n")
+	for _, want := range []string{`\mathord{\ll}`, `\mathord{\gg}`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("want %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, `\mathord{<}\mathord{<}`) {
+		t.Errorf("<< should not render as two less-than signs:\n%s", out)
+	}
+}
+
 func TestWeaveFormatDirective(t *testing.T) {
 	out := weaveString(t, `\input gwebmac
 @f Counts int

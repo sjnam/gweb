@@ -951,6 +951,14 @@ func renderOp(s string) string {
 		return "\\mathord{\\neq}"
 	case "<-":
 		return "\\mathord{\\leftarrow}"
+	case "<<":
+		return "\\mathord{\\ll}" // left shift, as cweb (a tight double angle)
+	case ">>":
+		return "\\mathord{\\gg}" // right shift
+	case "<<=":
+		return "\\mathord{\\ll}\\mathord{=}"
+	case ">>=":
+		return "\\mathord{\\gg}\\mathord{=}"
 	case "...":
 		return "\\mathord{\\ldots}"
 	case "[]":
@@ -967,7 +975,7 @@ func renderOp(s string) string {
 }
 
 @ |tightMathOp| sets each character of an operator as an ordinary atom, so |==|
-or |<<| prints with its characters adjacent.
+or |&&| prints with its characters adjacent.
 @(internal/weave/tex.go@>=
 // tightMathOp encodes each character of an operator as an ordinary atom, so that
 // e.g. "==" or "<<" prints with the characters adjacent rather than spaced.
