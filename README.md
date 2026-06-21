@@ -150,8 +150,21 @@ lit/             GWEB written in itself: the .w sources the Go tree is tangled f
 man/             gtangle.1 and gweave.1 man pages
 doc/             format reference and the gwebman.tex manual
 examples/        worked examples
+editors/vscode   VS Code syntax highlighting for .w files
 install.sh       installer for the commands, gwebmac.tex, and man pages
 ```
+
+## Editor support
+
+A VS Code extension in [editors/vscode/](editors/vscode/) highlights `.w` files:
+the control codes, embedded **Go** in code parts and `|…|` spans, and the TeX
+commentary. To use it, copy the folder into your extensions directory and reload:
+
+```sh
+cp -r editors/vscode ~/.vscode/extensions/gweb-0.1.0   # then reload the window
+```
+
+See [editors/vscode/README.md](editors/vscode/README.md) for details.
 
 ## Self-hosting
 

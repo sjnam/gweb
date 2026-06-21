@@ -1,0 +1,32 @@
+{
+  "name": "gweb",
+  "displayName": "GWEB (literate Go)",
+  "description": "Syntax highlighting for GWEB literate-programming files (.w, .ch): control codes, embedded Go, and TeX commentary.",
+  "version": "0.1.0",
+  "publisher": "sjnam",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/sjnam/gweb" },
+  "engines": { "vscode": "^1.60.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "gweb",
+        "aliases": ["GWEB", "gweb"],
+        "extensions": [".w", ".ch"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gweb",
+        "scopeName": "source.gweb",
+        "path": "./syntaxes/gweb.tmLanguage.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.go": "go",
+          "meta.embedded.inline.go": "go"
+        }
+      }
+    ]
+  }
+}

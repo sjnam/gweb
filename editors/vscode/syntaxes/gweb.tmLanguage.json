@@ -1,0 +1,169 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GWEB",
+  "scopeName": "source.gweb",
+  "patterns": [
+    { "include": "#change-control" },
+    { "include": "#section-opener" },
+    { "include": "#code-section" },
+    { "include": "#directives" },
+    { "include": "#include-line" },
+    { "include": "#control-text" },
+    { "include": "#section-ref" },
+    { "include": "#at-escape" },
+    { "include": "#at-punct" },
+    { "include": "#inline-code" },
+    { "include": "#tex" }
+  ],
+  "repository": {
+    "change-control": {
+      "comment": "@x / @y / @z lines of a change file, in column 1",
+      "match": "^@[xyz]\\s*$",
+      "name": "keyword.control.change.gweb"
+    },
+    "section-opener": {
+      "patterns": [
+        {
+          "comment": "@* , @** , @*N : starred (chapter) section",
+          "match": "^@\\*+[0-9]*",
+          "name": "keyword.control.section.star.gweb"
+        },
+        {
+          "comment": "@<space>, @<tab>, @ at end of line : ordinary section",
+          "match": "^@(?=[ \\t]|$)",
+          "name": "keyword.control.section.gweb"
+        }
+      ]
+    },
+    "code-section": {
+      "comment": "A code part: @c / @p, or @<name@>= , or @(file@>= . Embeds Go until the next section opener.",
+      "begin": "^(@[cp])(?=[ \\t]|$)|^(@<(?:[^@]|@@)*?@>)[ \\t]*(=)|^(@\\((?:[^@]|@@)*?@>)[ \\t]*(=)",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.codestart.gweb" },
+        "2": { "name": "entity.name.section.gweb" },
+        "3": { "name": "keyword.operator.gweb" },
+        "4": { "name": "entity.name.section.file.gweb" },
+        "5": { "name": "keyword.operator.gweb" }
+      },
+      "end": "(?=^@\\*)|(?=^@(?:[ \\t]|$))",
+      "contentName": "meta.embedded.block.go",
+      "patterns": [
+        { "include": "#in-code-codes" },
+        { "include": "source.go" }
+      ]
+    },
+    "directives": {
+      "comment": "@d / @f / @s formatting directives",
+      "match": "^(@[dfs])(?=[ \\t])",
+      "captures": { "1": { "name": "keyword.control.directive.gweb" } }
+    },
+    "include-line": {
+      "comment": "@i include",
+      "match": "^(@i)([ \\t]+)(.*)$",
+      "captures": {
+        "1": { "name": "keyword.control.import.gweb" },
+        "3": { "name": "string.unquoted.include.gweb" }
+      }
+    },
+    "control-text": {
+      "comment": "Argument-terminated control codes @^ @. @: (index), @= (verbatim), @t (TeX), @q (ignored)",
+      "patterns": [
+        {
+          "begin": "@\\^",
+          "end": "@>",
+          "name": "meta.index.roman.gweb",
+          "beginCaptures": { "0": { "name": "keyword.control.index.gweb" } },
+          "endCaptures": { "0": { "name": "keyword.control.index.gweb" } }
+        },
+        {
+          "begin": "@\\.",
+          "end": "@>",
+          "name": "meta.index.typewriter.gweb",
+          "beginCaptures": { "0": { "name": "keyword.control.index.gweb" } },
+          "endCaptures": { "0": { "name": "keyword.control.index.gweb" } }
+        },
+        {
+          "begin": "@:",
+          "end": "@>",
+          "name": "meta.index.custom.gweb",
+          "beginCaptures": { "0": { "name": "keyword.control.index.gweb" } },
+          "endCaptures": { "0": { "name": "keyword.control.index.gweb" } }
+        },
+        {
+          "begin": "@=",
+          "end": "@>",
+          "name": "string.other.verbatim.gweb",
+          "beginCaptures": { "0": { "name": "keyword.control.gweb" } },
+          "endCaptures": { "0": { "name": "keyword.control.gweb" } }
+        },
+        {
+          "begin": "@t",
+          "end": "@>",
+          "name": "meta.tex.inserted.gweb",
+          "beginCaptures": { "0": { "name": "keyword.control.gweb" } },
+          "endCaptures": { "0": { "name": "keyword.control.gweb" } }
+        },
+        {
+          "begin": "@q",
+          "end": "@>",
+          "name": "comment.block.gweb",
+          "beginCaptures": { "0": { "name": "keyword.control.gweb" } },
+          "endCaptures": { "0": { "name": "keyword.control.gweb" } }
+        }
+      ]
+    },
+    "section-ref": {
+      "comment": "@<name@> reference to a named section",
+      "match": "@<(?:[^@]|@@)*?@>",
+      "name": "entity.name.section.gweb"
+    },
+    "at-escape": {
+      "comment": "@@ literal at-sign, and @% line comment",
+      "patterns": [
+        { "match": "@@", "name": "constant.character.escape.gweb" },
+        { "match": "@%.*$", "name": "comment.line.at-percent.gweb" }
+      ]
+    },
+    "at-punct": {
+      "comment": "single-character control codes: @& @, @/ @| @# @! @+ @[ @] @;",
+      "match": "@[&,/|#!+;\\[\\]]",
+      "name": "keyword.operator.control.gweb"
+    },
+    "in-code-codes": {
+      "patterns": [
+        { "include": "#control-text" },
+        { "include": "#section-ref" },
+        { "include": "#at-escape" },
+        { "include": "#at-punct" }
+      ]
+    },
+    "inline-code": {
+      "comment": "|...| inline Go code inside TeX commentary; \\| is a literal bar",
+      "begin": "(?<!\\\\)\\|",
+      "end": "(?<!\\\\)\\|",
+      "beginCaptures": { "0": { "name": "punctuation.definition.code.gweb" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.code.gweb" } },
+      "contentName": "meta.embedded.inline.go",
+      "patterns": [{ "include": "source.go" }]
+    },
+    "tex": {
+      "comment": "Light TeX highlighting for the commentary/limbo",
+      "patterns": [
+        { "match": "(?<!\\\\)%.*$", "name": "comment.line.percentage.tex" },
+        { "match": "\\\\[a-zA-Z@]+", "name": "support.function.general.tex" },
+        { "match": "\\\\.", "name": "constant.character.escape.tex" },
+        {
+          "begin": "(?<!\\\\)\\$\\$",
+          "end": "\\$\\$",
+          "name": "markup.math.display.tex"
+        },
+        {
+          "begin": "(?<!\\\\)\\$",
+          "end": "(?<!\\\\)\\$",
+          "name": "markup.math.inline.tex"
+        },
+        { "match": "[{}]", "name": "punctuation.definition.group.tex" }
+      ]
+    }
+  }
+}
