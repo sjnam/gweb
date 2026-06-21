@@ -1,0 +1,80 @@
+.TH GTANGLE 1 "2026-06-21" "GWEB" "GWEB Manual"
+.SH NAME
+gtangle \- extract compilable Go source from a GWEB literate program
+.SH SYNOPSIS
+.B gtangle
+.RB [ \-o
+.IR dir ]
+.IR file [ .w ]
+.RI [ change [ .ch ]]
+.SH DESCRIPTION
+.B gtangle
+is the
+.I tangle
+half of GWEB, a literate\-programming system for Go modeled on CWEB. It reads a
+GWEB source file
+.RI ( .w ),
+expands the named\-section references in program order, runs
+.BR gofmt (1)
+on the result, and writes the Go source the compiler needs. It is the Go
+analogue of CWEB's
+.BR ctangle (1).
+.PP
+The unnamed
+.B @c
+sections become the program text, written to the input's base name with a
+.B .go
+extension. Sections introduced with
+.BI @( file @>=
+are written to their own named files instead, so one web can emit several
+files (and a
+.BR go.mod ).
+.PP
+The
+.B .w
+extension may be omitted:
+.B gtangle wc
+reads
+.IR wc.w .
+An optional second argument names a change file (CWEB's
+.B .ch
+mechanism), which patches the master source without editing it; its
+.B .ch
+extension may likewise be omitted. As it runs,
+.B gtangle
+prints a brief progress report to standard error, one
+.BI * N
+per starred (chapter) section.
+.SH OPTIONS
+.TP
+.BI \-o " dir"
+Write output files to
+.I dir
+instead of the input file's directory. The directory (and any subdirectories
+named by
+.BI @( file @>=
+targets) is created if necessary.
+.SH EXAMPLES
+Tangle a web to Go:
+.PP
+.RS
+.EX
+gtangle wc            # wc.w -> wc.go
+.EE
+.RE
+.PP
+Apply a change file:
+.PP
+.RS
+.EX
+gtangle wc wc.ch      # wc.w + wc.ch -> wc.go
+.EE
+.RE
+.SH "SEE ALSO"
+.BR gweave (1),
+.BR gofmt (1),
+.BR ctangle (1)
+.PP
+The GWEB manual and source: <https://github.com/sjnam/gweb>.
+.SH AUTHOR
+GWEB is maintained by sjnam <https://github.com/sjnam>.

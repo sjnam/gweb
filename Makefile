@@ -3,7 +3,7 @@
 GO  ?= go
 BIN ?= bin
 
-.PHONY: all build test install clean example tangle bootstrap selfdoc
+.PHONY: all build test install install-tools uninstall clean example tangle bootstrap selfdoc
 
 all: build
 
@@ -46,7 +46,18 @@ selfdoc: build
 test:
 	$(GO) test ./...
 
+# Full install: the commands, gwebmac.tex, and the man pages. Pass options
+# through, e.g.  make install ARGS=--prefix=$$HOME/.local . May need sudo for a
+# system prefix. See install.sh --help.
 install:
+	./install.sh $(ARGS)
+
+# Remove what `make install' put down (same ARGS for non-default locations).
+uninstall:
+	./install.sh --uninstall $(ARGS)
+
+# Just the two commands, the Go way (into $GOBIN); no macros or man pages.
+install-tools:
 	$(GO) install ./cmd/gtangle ./cmd/gweave
 
 # Tangle and weave the bundled examples (needs a TeX engine for the PDFs).

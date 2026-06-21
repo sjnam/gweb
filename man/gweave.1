@@ -1,0 +1,96 @@
+.TH GWEAVE 1 "2026-06-21" "GWEB" "GWEB Manual"
+.SH NAME
+gweave \- typeset a GWEB literate program as a TeX document
+.SH SYNOPSIS
+.B gweave
+.RB [ \-o
+.IR dir ]
+.IR file [ .w ]
+.RI [ change [ .ch ]]
+.SH DESCRIPTION
+.B gweave
+is the
+.I weave
+half of GWEB, a literate\-programming system for Go modeled on CWEB. It turns a
+GWEB source file
+.RI ( .w )
+into a plain\-TeX document with pretty\-printed Go code (bold reserved words,
+italic identifiers, typewriter strings), linked section references, and an
+automatically generated index, list of section names, and table of contents. It
+is the Go analogue of CWEB's
+.BR cweave (1).
+.PP
+The woven document is written to the input's base name with a
+.B .tex
+extension. It begins with
+.B \einput gwebmac
+\(em
+.B gweave
+supplies this line itself \(em so the
+.B .w
+file need not. Process the result with a TeX engine that can find
+.IR gwebmac.tex :
+.PP
+.RS
+.EX
+pdftex file.tex          # -> file.pdf, with hyperlinks and bookmarks
+.EE
+.RE
+.PP
+For the DVI route, request the dvipdfmx hyperlink back end with
+.BR \elet\epdf+ ,
+exactly as in CWEB:
+.PP
+.RS
+.EX
+tex "\elet\epdf+ \einput file.tex"
+dvipdfmx file.dvi        # -> file.pdf, with hyperlinks and bookmarks
+.EE
+.RE
+.PP
+A plain
+.B tex
+run with no
+.B \epdf
+produces a DVI without links. The
+.B .w
+extension may be omitted
+.RB ( gweave
+.B wc
+weaves
+.IR wc.w ),
+as may a change file's
+.B .ch
+extension. As it runs,
+.B gweave
+prints a brief progress report to standard error, one
+.BI * N
+per starred (chapter) section.
+.SH OPTIONS
+.TP
+.BI \-o " dir"
+Write the
+.B .tex
+file to
+.I dir
+instead of the input file's directory.
+.SH ENVIRONMENT
+.TP
+.B TEXINPUTS
+Point this at GWEB's
+.B tex
+directory (or copy
+.I gwebmac.tex
+next to your document) so the TeX engine can find the macro package. The
+installer places
+.I gwebmac.tex
+in your TeX tree so this is not normally needed.
+.SH "SEE ALSO"
+.BR gtangle (1),
+.BR pdftex (1),
+.BR dvipdfmx (1),
+.BR cweave (1)
+.PP
+The GWEB manual and source: <https://github.com/sjnam/gweb>.
+.SH AUTHOR
+GWEB is maintained by sjnam <https://github.com/sjnam>.

@@ -23,11 +23,36 @@ typeset document — exactly as CWEB does for C, with C replaced by Go:
 ```sh
 make build        # builds bin/gtangle and bin/gweave
 make test         # runs the test suite
-make install      # go install both commands
 ```
 
 Producing a PDF additionally requires a TeX engine (e.g. `pdftex`, from TeX
 Live or MacTeX).
+
+## Install
+
+Just the two commands, the Go way (into your `GOBIN`/`GOPATH/bin`):
+
+```sh
+go install github.com/sjnam/gweb/cmd/gtangle@latest
+go install github.com/sjnam/gweb/cmd/gweave@latest
+```
+
+That installs the binaries only; point `TEXINPUTS` at a copy of
+[tex/gwebmac.tex](tex/gwebmac.tex) so the TeX engine can find it.
+
+For a full install — the commands **plus** `gwebmac.tex` (placed in your TeX tree
+so `pdftex foo.tex` just works) **plus** the man pages — use the install script:
+
+```sh
+./install.sh                       # into ~ (TEXMFHOME) and /usr/local (may need sudo)
+./install.sh --prefix="$HOME/.local"   # a writable prefix, no sudo
+sudo ./install.sh                  # system-wide
+./install.sh --uninstall           # remove everything it installed
+```
+
+`make install` / `make uninstall` call the script (pass options with
+`ARGS=...`); run `./install.sh --help` for all options (`--bindir`, `--mandir`,
+`--texmf`). Then `man gtangle` / `man gweave` describe the commands.
 
 ## Usage
 
@@ -113,8 +138,10 @@ internal/tangle  the tangle engine
 internal/weave   the weave engine: Go lexer, pretty-printer, cross-references
 tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
 lit/             GWEB written in itself: the .w sources the Go tree is tangled from
+man/             gtangle.1 and gweave.1 man pages
 doc/             format reference and the gwebman.tex manual
-examples/        a worked example
+examples/        worked examples
+install.sh       installer for the commands, gwebmac.tex, and man pages
 ```
 
 ## Self-hosting
