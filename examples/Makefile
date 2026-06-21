@@ -24,7 +24,8 @@ $(NAME).go: $(NAME).w
 	$(GTANGLE) $(NAME).w
 
 pdf: $(NAME).pdf
-$(NAME).pdf: $(NAME).w
+# Depend on the macro package too, so editing gwebmac.tex rebuilds the PDF.
+$(NAME).pdf: $(NAME).w $(ROOT)/tex/gwebmac.tex
 	$(GWEAVE) $(NAME).w
 	$(TEXENGINE) $(NAME).tex
 

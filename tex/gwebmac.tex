@@ -69,6 +69,15 @@
 \def\Gtitleaux#1{\uppercase{\gdef\title{#1}}}
 \expandafter\Gtitleaux\expandafter{\title}
 \def\Gtitle{\title}
+% \GtitleUP is \Gtitle upper-cased, for the running header's small-caps style (as
+% in cweb). It fully expands the title to characters, then upper-cases them, so a
+% plain mixed-case \def\title{...} in limbo still yields an all-caps header while
+% the contents page keeps the title as written. (Titles meant for the header
+% should be plain text, not \. typewriter, which must not be expanded here.)
+\def\GtitleUP{\begingroup
+  \edef\GtitleX{\Gtitle}%
+  \uppercase\expandafter{\expandafter\def\expandafter\GtitleX\expandafter{\GtitleX}}%
+  \GtitleX\endgroup}
 \let\GgroupUP\Gtitle
 \def\Ggroup{\GgroupUP}
 % The mark carries the group title without expanding it (\noexpand\Ggroup), so a
@@ -91,11 +100,11 @@
   \ifx\Gtm\Gempty\expandafter\def\expandafter\Gtm\expandafter{\firstmark}\fi
   \ifx\Gtm\Gempty\def\Gtm{{}{\Gtitle}}\fi
   \ifodd\pageno
-    \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\eightrm\Gtitle}\hfil
+    \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\eightrm\GtitleUP}\hfil
       {\eightrm\Ggrouphead}\enspace\folio}%
   \else
     \hbox to\Gpagewidth{\mainfont\folio\enspace{\eightrm\Ggrouphead}\hfil
-      {\eightrm\Gtitle}\enspace\Gsechead}%
+      {\eightrm\GtitleUP}\enspace\Gsechead}%
   \fi}
 \headline={\iftitle\hfil\else\Grunhead\fi}
 \footline={\hfil}
