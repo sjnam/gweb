@@ -452,6 +452,11 @@ func renderToken(t token) string {
 	case tkComment:
 		// Comments are set in roman (\GCM); escape them for roman text mode (not
 		// the typewriter \charNN codes escTT emits), but let $...$ math through.
+		// Tighten the leading "//" marker with a small kern (\Gcommentkern), whose
+		// two slashes are otherwise set rather far apart in roman.
+		if rest, ok := strings.CutPrefix(t.text, "//"); ok {
+			return "\\GCM{/\\kern\\Gcommentkern/" + escComment(rest) + "}"
+		}
 		return "\\GCM{" + escComment(t.text) + "}"
 	case tkOp:
 		return renderOp(t.text)

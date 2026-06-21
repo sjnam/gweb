@@ -62,6 +62,14 @@ s := "a\tb"
 	}
 }
 
+func TestWeaveCommentSlashKern(t *testing.T) {
+	// The leading "//" of a comment is tightened with \Gcommentkern.
+	out := weaveString(t, "@ x\n@c\nx := 1 // hi\n")
+	if !strings.Contains(out, `\GCM{/\kern\Gcommentkern/ hi}`) {
+		t.Errorf("comment // not kerned:\n%s", out)
+	}
+}
+
 func TestWeaveUnderscoreIdent(t *testing.T) {
 	out := weaveString(t, `@ x
 @c
