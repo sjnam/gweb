@@ -28,7 +28,7 @@ package main
 import (
 	"fmt"
 	"log"
-
+@#
 	gbbasic "github.com/sjnam/go-sgb/gb-basic"
 	gbgraph "github.com/sjnam/go-sgb/gb-graph"
 )
@@ -43,15 +43,10 @@ type (
 const (
 	mm = 8 // board rows (should be even, so N is even)
 	nn = 9 // board columns
-	// reportEvery throttles the per-tour printout; only every reportEvery-th
-	// cycle (and would-be cycle) is echoed. The final totals are always shown.
-	reportEvery = 100000
 )
 
-@ The whole computation: build and fold the graph, get it ready for the search,
-make sure a search is possible, then enumerate paths from every pair of edges
-leaving the start vertex.
-@c
+@<Subroutines@>
+
 func main() {
 	@<Build the knight graph and reduce it by symmetry@>
 	@<Prepare the graph for backtracking and find a minimum-degree vertex@>
@@ -190,7 +185,7 @@ the path is {\it forced\/} to go there next, since it will soon be the only way
 in or out. If two neighbours become forced at once, this branch is hopeless and
 we restore and back up. The length field doubles as a tiny stack of flags
 (|+4| marks a forced move, |+2| an ordinary one) on top of the crossing bit.
-@<Define |findPaths|@>=
+@<Sub...@>=
 func findPaths(g *Graph, deg []int64, taken []bool, ark []*Arc,
 	x, z *Vertex, a *Arc, count, dcount *int) {
 	@<Set up the search state@>
@@ -315,19 +310,19 @@ for k := 0; k < tmax; k++ {
 }
 if s != 0 {
 	*count++
-	if *count%reportEvery == 0 {
+	if *count%100000 == 0 {
 		report(g, "", *count, x, ark, tmax)
 	}
 } else {
 	*dcount++
-	if *dcount%reportEvery == 0 {
+	if *dcount%100000 == 0 {
 		report(g, ">", *dcount, x, ark, tmax)
 	}
 }
 
 @ |report| echoes one tour: the start vertex, then each successive vertex,
 prefixed by \.{*} when the arc into it crosses to the mate side.
-@<Define |report|@>=
+@<Sub...@>=
 func report(g *Graph, prefix string, num int, x *Vertex, ark []*Arc, tmax int) {
 	fmt.Printf("%s%d: %s", prefix, num, x.Name)
 	for k := 0; k < tmax; k++ {
@@ -339,10 +334,5 @@ func report(g *Graph, prefix string, num int, x *Vertex, ark []*Arc, tmax int) {
 	}
 	fmt.Println()
 }
-
-@ Finally, the two helper functions defined above.
-@c
-@<Define |findPaths|@>
-@<Define |report|@>
 
 @*Index.
