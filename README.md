@@ -1,5 +1,7 @@
 # GWEB — Literate programming for Go
 
+[![CI](https://github.com/sjnam/gweb/actions/workflows/ci.yml/badge.svg)](https://github.com/sjnam/gweb/actions/workflows/ci.yml)
+
 GWEB is a [literate programming](https://en.wikipedia.org/wiki/Literate_programming)
 system for the Go language, modeled closely on Donald Knuth and Silvio Levy's
 **CWEB**. You write a single `.w` source file that interleaves TeX
