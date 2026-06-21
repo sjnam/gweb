@@ -78,11 +78,13 @@
   \edef\GtitleX{\Gtitle}%
   \uppercase\expandafter{\expandafter\def\expandafter\GtitleX\expandafter{\GtitleX}}%
   \GtitleX\endgroup}
-\let\GgroupUP\Gtitle
-\def\Ggroup{\GgroupUP}
-% The mark carries the group title without expanding it (\noexpand\Ggroup), so a
-% \. in the title survives into \topmark for typesetting in the header.
-\def\Gsetmark#1{\mark{{#1}{\noexpand\Ggroup}}}
+% The current group (chapter) title, upper-cased, is kept in a token register so
+% each \mark can capture a *snapshot* of it (via \the) rather than a reference to
+% a macro -- otherwise every page would show whatever group is current at shipout
+% time, i.e. the next chapter. \the inserts the tokens without expanding them, so
+% a \. in the title survives into \topmark for typesetting in the header.
+\newtoks\Ggrouptoks
+\def\Gsetmark#1{\mark{{#1}{\the\Ggrouptoks}}}
 \def\Gtakeone#1#2{#1}
 \def\Gtaketwo#1#2{#2}
 \def\Gempty{}
@@ -173,9 +175,9 @@
 % begin a new page; the first one does not, so it follows any limbo banner.
 \newif\ifGfirst \Gfirsttrue
 \def\GN#1#2#3{\par
-  % \gdef (not \xdef) so a \. in the title is stored unexpanded; \uppercase only
-  % upper-cases the letter tokens, leaving control sequences intact.
-  {\uppercase{\gdef\GgroupUP{#3}}}\global\let\Ggroup\GgroupUP
+  % Snapshot the upper-cased title into \Ggrouptoks; \uppercase only upper-cases
+  % the letter tokens, leaving control sequences (\.) intact for the header.
+  {\uppercase{\global\Ggrouptoks={#3}}}%
   \expandafter\gdef\csname Gtoctitle\number#2\endcsname{#3}%
   \Gsetmark{#2}% set the mark before any page break, so the new page's \topmark
   \ifGfirst \Gfirstfalse \vskip 6pt
