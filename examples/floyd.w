@@ -7,11 +7,11 @@ discussed it in his essay {\it Are Toy Problems Useful?} (reprinted in {\sl
 Selected Papers on Computer Science}, 1996):
 
 \smallskip
-\narrower\noindent
-``The numbers $\sqrt1,\sqrt2,\ldots,\sqrt{50}$ are to be partitioned into two
+{\narrower\narrower\noindent
+\llap{``}The numbers $\sqrt1,\sqrt2,\ldots,\sqrt{50}$ are to be partitioned into two
 parts whose sums are nearly equal; find the best such partition you can, using
 less than 10 seconds of computer time.''
-\smallskip
+\smallskip}
 
 \noindent Since
 $$\hbox{$(\sqrt1+\sqrt2+\cdots+\sqrt{50})/2 =
@@ -45,15 +45,10 @@ import (
 	"time"
 )
 
-// Target = (√1 + √2 + ... + √50) / 2, per Knuth
-const target = 119.51790030176039224702
+const target = 119.51790030176039224702 // Target = $(\sqrt1+\sqrt2+\ldots+\sqrt{50})/2$
 
-@ Here is the shape of the computation. We parse a verbose flag, set the seven
-perfect squares aside as a cheap integer ``knob,'' build a sorted table of all
-subset sums of one half of the remaining numbers, stream the subset sums of the
-other half past that table looking for the closest fit, and finally rebuild the
-two groups and double-check them in high precision.
-@c
+@<Subroutines@>
+
 func main() {
 	@<Parse the command-line flags@>
 	@<Set the perfect squares aside@>
@@ -76,9 +71,9 @@ flag.Parse()
 
 start := time.Now()
 
-@* Setting the squares aside.
-Among $1,\ldots,50$ exactly seven are perfect squares: $1,4,9,16,25,36,49$. Their
-roots $1,2,\ldots,7$ are {\it integers}, so moving a square between the two
+@* An Approach to Floyd's Problem.
+Among $1,\ldots,50$ exactly seven are perfect squares: 1, 4, 9, 16, 25, 36 and 49.
+Their roots $1,2,\ldots,7$ are {\it integers}, so moving a square between the two
 groups changes a group's sum by a whole number. Moreover every integer from
 $0$ to $28$ can be written as a sum of a subset of $\{1,2,\ldots,7\}$, so the
 squares give us a free adjustment knob $k\in[0,28]$ to be applied at the very
@@ -90,7 +85,6 @@ fractional\/} part, knowing that the squares can later fix the integer part up
 to~119. That leaves the 43 non-square numbers, whose roots are irrational, as
 the only ones that need real searching.
 @<Set the perfect squares aside@>=
-// 7 perfect squares ($\sqrt{k}\in Z$) reserved for integer-part adjustment
 squares := map[int]bool{1: true, 4: true, 9: true, 16: true, 25: true, 36: true, 49: true}
 var nonSquares []int
 for k := 1; k <= 50; k++ {
@@ -98,12 +92,10 @@ for k := 1; k <= 50; k++ {
 		nonSquares = append(nonSquares, k)
 	}
 }
-// split 43 non-squares into 21 + 22
 Aitems := nonSquares[:21]
 Bitems := nonSquares[21:]
 
-@* Meet in the middle.
-Even $2^{43}$ subsets of the non-squares is far too many to enumerate. The
+@ Even $2^{43}$ subsets of the non-squares is far too many to enumerate. The
 standard remedy is to {\it meet in the middle}: split the 43 numbers into two
 halves $A$ (the first 21) and $B$ (the last 22), and trade exponential time for
 exponential space on one side. We precompute and {\it sort\/} all $2^{21}\approx
@@ -150,15 +142,14 @@ if *verbose {
 targetFrac := target - math.Floor(target)
 nA := len(Aents)
 
-@* Keeping the floating point honest.
-We are about to add up millions of square roots, hunting for an answer that is
+@ We are about to add up millions of square roots, hunting for an answer that is
 correct in its {\it thirteenth\/} decimal place. Naive |float64| accumulation
 would drift well before then. The fix is {\it compensated summation}: alongside
 the running |sum| we carry a small correction term |c| that captures the
 low-order bits lost in each addition. This is the Neumaier (Kahan--Babu\v ska)
 refinement, which handles the case where the new value is larger in magnitude
 than the running total.
-@c
+@<Sub...@>=
 func kbn(sum, c, v float64) (float64, float64) {
 	t := sum + v
 	if math.Abs(sum) >= math.Abs(v) {
@@ -182,7 +173,7 @@ currently set in |mask|.
 entries, each sum maintained with the compensated |kbn| step so the Gray-code
 updates stay accurate to the last bit or two. Index~0 (the empty subset, sum~0)
 is left as the zero |entry|.
-@c
+@<Sub...@>=
 func genAll(items []int) []entry {
 	n := len(items)
 	size := uint32(1) << uint(n)
@@ -212,8 +203,7 @@ func genAll(items []int) []entry {
 	return out
 }
 
-@* Searching the other half.
-With the $A$ table built and sorted, we stream the subset sums of $B$ and, for
+@ With the $A$ table built and sorted, we stream the subset sums of $B$ and, for
 each, ask the table for the best companion. The search state records the best
 pair found so far: the smallest leftover error |bestDiff|, the two sums and
 masks that achieved it, and the integer knob |bestK|.
@@ -337,7 +327,7 @@ for i, k := range Bitems {
 		group = append(group, k)
 	}
 }
-// greedy decomposition of bestK into squares; {1..7} covers 0..28 exactly
+
 rem := bestK
 for i := 7; i >= 1; i-- {
 	if rem >= i {
@@ -358,8 +348,7 @@ for k := 1; k <= 50; k++ {
 	}
 }
 
-@* Verifying in high precision.
-The search ran entirely in |float64|, so its own report of the error cannot be
+@ The search ran entirely in |float64|, so its own report of the error cannot be
 trusted beyond a dozen digits. To state the result honestly we recompute both
 group sums from scratch with |math/big| at 200-bit precision (about 60 decimal
 digits) and print their difference. The plain-|float64| group sums are also
@@ -373,7 +362,6 @@ for _, k := range other {
 	sumO += math.Sqrt(float64(k))
 }
 
-// high-precision verification with math/big (200-bit ≈ 60 digits)
 bigSum := func(ks []int) *big.Float {
 	s := new(big.Float).SetPrec(200)
 	for _, k := range ks {
