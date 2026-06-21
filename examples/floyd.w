@@ -159,7 +159,6 @@ low-order bits lost in each addition. This is the Neumaier (Kahan--Babu\v ska)
 refinement, which handles the case where the new value is larger in magnitude
 than the running total.
 @c
-// Neumaier (Kahan-Babuška-Neumaier) compensated summation, one step.
 func kbn(sum, c, v float64) (float64, float64) {
 	t := sum + v
 	if math.Abs(sum) >= math.Abs(v) {
@@ -184,7 +183,6 @@ entries, each sum maintained with the compensated |kbn| step so the Gray-code
 updates stay accurate to the last bit or two. Index~0 (the empty subset, sum~0)
 is left as the zero |entry|.
 @c
-// genAll enumerates all subset sums of items via Gray-code traversal with Neumaier compensation.
 func genAll(items []int) []entry {
 	n := len(items)
 	size := uint32(1) << uint(n)

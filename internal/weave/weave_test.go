@@ -134,6 +134,38 @@ func f(ch chan int) {
 	}
 }
 
+func TestWeaveTypeNamesAreBold(t *testing.T) {
+	// A name declared with `type' is a user type and renders bold (\GKW)
+	// everywhere, like a predeclared type -- as cweave does.
+	out := weaveString(t, `@ x
+@c
+type entry struct {
+	frac float64
+}
+
+type (
+	Graph = int
+	Vertex = int
+)
+
+func use() {
+	var e entry
+	var g Graph
+	_ = e
+	_ = g
+}
+`)
+	for _, want := range []string{`\GKW{entry}`, `\GKW{Graph}`, `\GKW{Vertex}`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("want declared type bold %q in:\n%s", want, out)
+		}
+	}
+	// frac is a struct field, not a type, so it stays an italic identifier.
+	if strings.Contains(out, `\GKW{frac}`) {
+		t.Errorf("a struct field must not be bolded as a type:\n%s", out)
+	}
+}
+
 func TestWeaveShiftOperators(t *testing.T) {
 	// << and >> render as the tight double-angle symbols \ll and \gg (as cweb),
 	// not two separate less-than/greater-than signs.

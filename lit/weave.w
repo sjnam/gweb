@@ -70,7 +70,111 @@ func New(w *web.Web) *Weaver {
 	for _, s := range w.Sections {
 		apply(s.Formats)
 	}
+	wv.detectTypes()
 	return wv
+}
+
+@ A name declared with |type| is a {\it type}, and cweave sets types in bold like
+the predeclared ones. |detectTypes| scans the code for type declarations --- both
+|type NAME ...| and the block form |type (...)| --- and records each declared
+name as bold (unless an |@@f|/|@@s| directive already classified it), exactly as
+if the user had written |@@f NAME int|. This is a heuristic scan, not a full Go
+parse, but it covers the forms that occur in practice.
+@(internal/weave/weave.go@>=
+func (wv *Weaver) detectTypes() {
+	add := func(name string) {
+		if name == "" || name == "_" {
+			return
+		}
+		if _, ok := wv.format[name]; !ok {
+			wv.format[name] = tkBuiltin // bold, like a predeclared type
+		}
+	}
+	for _, s := range wv.w.Sections {
+		if !s.HasCode {
+			continue
+		}
+		var st lexState
+		for _, a := range web.ScanCode(s.Code) {
+			if a.Kind == web.AText {
+				scanTypeDecls(lexGo(a.Text, &st), add)
+			}
+		}
+	}
+}
+
+@ |scanTypeDecls| walks a token list and, at each |type| keyword, records the
+declared name. A |type| followed by |(| opens a parenthesized group of
+declarations, each naming a type on its own line; |scanTypeGroup| collects those
+until the matching |)|, tracking brace and bracket nesting so that struct fields
+inside a declaration are not mistaken for type names. (A |type| inside a type
+switch, |x.(type)|, is followed by |)| and so names nothing.)
+@(internal/weave/weave.go@>=
+func scanTypeDecls(toks []token, add func(string)) {
+	for i := 0; i < len(toks); i++ {
+		if toks[i].kind != tkKeyword || toks[i].text != "type" {
+			continue
+		}
+		j := nextSignificant(toks, i+1)
+		if j < 0 {
+			return
+		}
+		if toks[j].kind == tkOp && toks[j].text == "(" {
+			i = scanTypeGroup(toks, j+1, add)
+		} else if toks[j].kind == tkIdent {
+			add(toks[j].text)
+		}
+	}
+}
+
+// nextSignificant returns the index of the first token at or after i that is not
+// whitespace or a newline, or -1 if there is none.
+func nextSignificant(toks []token, i int) int {
+	for ; i < len(toks); i++ {
+		if toks[i].kind != tkSpace && toks[i].kind != tkNewline {
+			return i
+		}
+	}
+	return -1
+}
+
+// scanTypeGroup collects the type names in a parenthesized type group beginning
+// at index i, returning the index of the closing ")". The first identifier on
+// each line at nesting depth 0 is a declared type name.
+func scanTypeGroup(toks []token, i int, add func(string)) int {
+	depth := 0
+	atStart := true
+	for ; i < len(toks); i++ {
+		switch t := toks[i]; t.kind {
+		case tkNewline:
+			if depth == 0 {
+				atStart = true
+			}
+		case tkSpace:
+			// keep atStart
+		case tkOp:
+			switch t.text {
+			case "(", "{", "[":
+				depth++
+			case ")":
+				if depth == 0 {
+					return i
+				}
+				depth--
+			case "}", "]":
+				if depth > 0 {
+					depth--
+				}
+			}
+			atStart = false
+		default:
+			if atStart && depth == 0 && t.kind == tkIdent {
+				add(t.text)
+			}
+			atStart = false
+		}
+	}
+	return i
 }
 
 @ |effKind| returns the token class to typeset a token in, honoring \.{@@f}/\.{@@s}
