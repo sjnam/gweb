@@ -193,6 +193,13 @@ make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program
 The result is GWEB documenting itself — the same pretty-printed code, index, and
 cross-references it produces for any other program.
 
+The user manual, `doc/gwebman.tex` — a guide for readers who already know CWEB,
+typeset in the small-book format of Knuth and Levy's `cwebman` — builds with:
+
+```sh
+make manual       # -> build/gwebman.pdf
+```
+
 ## Design notes and limitations
 
 * **Lexing for free.** Tangle relies on `gofmt` (`go/format`) to canonicalize

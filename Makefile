@@ -3,7 +3,7 @@
 GO  ?= go
 BIN ?= bin
 
-.PHONY: all build test install install-tools uninstall clean example tangle bootstrap selfdoc
+.PHONY: all build test install install-tools uninstall clean example tangle bootstrap selfdoc manual
 
 all: build
 
@@ -42,6 +42,14 @@ selfdoc: build
 	$(BIN)/gweave -o build lit/gweb.w
 	cd build && TEXINPUTS="$(CURDIR)/tex:" pdftex -interaction=nonstopmode gweb.tex
 	@echo "selfdoc: wrote build/gweb.pdf"
+
+# The GWEB manual: a plain-TeX document that \input's gwebmac, formatted in the
+# manner of Knuth and Levy's cwebman.tex. Needs a TeX engine that can find
+# tex/gwebmac.tex.
+manual:
+	@mkdir -p build
+	cd build && TEXINPUTS="$(CURDIR)/tex:" pdftex -interaction=nonstopmode "$(CURDIR)/doc/gwebman.tex"
+	@echo "manual: wrote build/gwebman.pdf"
 
 test:
 	$(GO) test ./...
