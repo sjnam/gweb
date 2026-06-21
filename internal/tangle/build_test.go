@@ -1,14 +1,41 @@
 package tangle
 
 import (
+	"go/parser"
+	"go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/sjnam/gweb/internal/web"
 )
+
+// importsThirdParty reports whether the tangled Go source imports a package
+// outside the standard library (an import path whose first segment contains a
+// dot, e.g. github.com/...). Such examples can't be `go build`-ed here without
+// network and module access, so the build test only checks that they tangle.
+func importsThirdParty(content []byte) bool {
+	f, err := parser.ParseFile(token.NewFileSet(), "", content, parser.ImportsOnly)
+	if err != nil {
+		return false
+	}
+	for _, imp := range f.Imports {
+		p, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
+		}
+		if i := strings.IndexByte(p, '/'); i >= 0 {
+			p = p[:i]
+		}
+		if strings.Contains(p, ".") {
+			return true
+		}
+	}
+	return false
+}
 
 // TestExamplesBuild tangles every bundled example and runs `go build` on the
 // result, proving end to end that the tools emit real, compilable Go. It is
@@ -48,6 +75,11 @@ func buildExample(t *testing.T, path string) {
 	outs, err := New(w).Tangle(base + ".go")
 	if err != nil {
 		t.Fatalf("tangle: %v", err)
+	}
+	for _, o := range outs {
+		if strings.HasSuffix(o.File, ".go") && importsThirdParty(o.Content) {
+			t.Skipf("%s imports a third-party module; tangled OK, skipping go build", filepath.Base(path))
+		}
 	}
 
 	dir := t.TempDir()

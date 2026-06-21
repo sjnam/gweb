@@ -66,6 +66,7 @@ example: build
 	$(MAKE) -C examples NAME=pmap
 	$(MAKE) -C examples NAME=seq
 	$(MAKE) -C examples NAME=floyd
+	$(MAKE) -C examples NAME=sham
 
 clean:
 	rm -rf $(BIN) build

@@ -97,6 +97,13 @@ make -C examples NAME=pmap   # just one example
   `Filter`, `Take` over infinite Fibonacci numbers), showing off the Go features
   C has no answer to: first-class functions and closures, anonymous functions,
   generics, and Go 1.23 range-over-func iterators.
+* [examples/sham.w](examples/sham.w) — a GWEB port of Knuth's Stanford GraphBase
+  demo `sham`: count the symmetric Hamiltonian cycles of the knight's graph on an
+  8×9 board, by folding the graph in half and backtracking with `goto` labels. It
+  builds on [go-sgb](https://github.com/sjnam/go-sgb), a Go port of the SGB, so
+  running it needs that module (`go get github.com/sjnam/go-sgb`); the commentary
+  is newly written. Shows GWEB handling an external dependency and a real Knuth
+  program.
 * [examples/floyd.w](examples/floyd.w) — Floyd's partition problem, the classic
   "toy problem" Knuth discusses in *Are Toy Problems Useful?*: partition
   √1…√50 into two nearly-equal halves. A worked literate solution
