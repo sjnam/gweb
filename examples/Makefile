@@ -20,12 +20,13 @@ export TEXINPUTS := $(ROOT)/tex:$(TEXINPUTS)
 all: go pdf
 
 go: $(NAME).go
-$(NAME).go: $(NAME).w
+# Depend on gtangle too, so rebuilding the tool re-tangles the example.
+$(NAME).go: $(NAME).w $(GTANGLE)
 	$(GTANGLE) $(NAME).w
 
 pdf: $(NAME).pdf
-# Depend on the macro package too, so editing gwebmac.tex rebuilds the PDF.
-$(NAME).pdf: $(NAME).w $(ROOT)/tex/gwebmac.tex
+# Depend on gweave and the macro package too, so changing either rebuilds the PDF.
+$(NAME).pdf: $(NAME).w $(GWEAVE) $(ROOT)/tex/gwebmac.tex
 	$(GWEAVE) $(NAME).w
 	$(TEXENGINE) $(NAME).tex
 

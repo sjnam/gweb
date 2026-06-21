@@ -66,7 +66,7 @@ func main() {
 	@<Verify in high precision and report@>
 }
 
-@ The |-v|/|-verbose| flag turns on timing lines and the |math/big|
+@ The \.{-v}/\.{-verbose} flag turns on timing lines and the |math/big|
 verification; without it the program prints just the two groups. We start the
 clock right away so the reported time covers the whole search.
 @<Parse the command-line flags@>=
@@ -90,7 +90,7 @@ fractional\/} part, knowing that the squares can later fix the integer part up
 to~119. That leaves the 43 non-square numbers, whose roots are irrational, as
 the only ones that need real searching.
 @<Set the perfect squares aside@>=
-// 7 perfect squares (√k ∈ ℤ) reserved for integer-part adjustment
+// 7 perfect squares ($\sqrt{k}\in Z$) reserved for integer-part adjustment
 squares := map[int]bool{1: true, 4: true, 9: true, 16: true, 25: true, 36: true, 49: true}
 var nonSquares []int
 for k := 1; k <= 50; k++ {

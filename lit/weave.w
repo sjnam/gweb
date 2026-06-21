@@ -188,14 +188,14 @@ and lets long lines wrap at |\GS|.
 @(internal/weave/weave.go@>=
 // renderCode formats a code part into a sequence of \GL code lines. Spacing
 // mirrors the source: a run of tokens with no source whitespace between them
-// becomes one tight math "chunk" ($...$), and a gap in the source becomes a
+// becomes one tight math "chunk" (one TeX math group), and a gap becomes a
 // breakable \GS space between chunks. Because gofmt-formatted Go already encodes
 // the grammar in its spacing, this reproduces it exactly (pointer *T vs a * b,
 // slice []T vs index a[i], and so on) and lets long lines wrap at \GS.
 func (wv *Weaver) renderCode(secNum int, code string) string {
 	var out strings.Builder
 	var line strings.Builder // the current source line: chunks joined by \GS
-	var run strings.Builder  // the current tight chunk (inside one $...$)
+	var run strings.Builder  // the current tight chunk (one TeX math group)
 	var st lexState
 	indent := 0
 	atLineStart := true
@@ -339,9 +339,9 @@ func renderToken(t token) string {
 	case tkString:
 		return "\\GST{" + escTT(t.text) + "}"
 	case tkComment:
-		// Comments are set in roman (\GCM), so escape them for roman text mode,
-		// not the typewriter \charNN codes that escTT emits.
-		return "\\GCM{" + escProse(t.text) + "}"
+		// Comments are set in roman (\GCM); escape them for roman text mode (not
+		// the typewriter \charNN codes escTT emits), but let $...$ math through.
+		return "\\GCM{" + escComment(t.text) + "}"
 	case tkOp:
 		return renderOp(t.text)
 	}
@@ -1017,6 +1017,29 @@ func escProse(s string) string {
 		default:
 			b.WriteByte(c)
 		}
+	}
+	return b.String()
+}
+
+@ |escComment| is like |escProse| but lets a |$...$| span pass through verbatim,
+so TeX math works inside a comment (as in cweb); everything outside the math is
+still escaped for roman text mode.
+@(internal/weave/tex.go@>=
+// escComment escapes a comment for roman text mode, but passes a $...$ span
+// through unescaped so TeX math works inside comments (as in cweb).
+func escComment(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		if s[i] == '$' {
+			if k := strings.IndexByte(s[i+1:], '$'); k >= 0 {
+				j := i + 1 + k
+				b.WriteString(s[i : j+1]) // the $...$ math span, verbatim
+				i = j + 1
+				continue
+			}
+		}
+		b.WriteString(escProse(s[i : i+1]))
+		i++
 	}
 	return b.String()
 }

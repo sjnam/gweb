@@ -146,3 +146,22 @@ func escProse(s string) string {
 	}
 	return b.String()
 }
+
+// escComment escapes a comment for roman text mode, but passes a $...$ span
+// through unescaped so TeX math works inside comments (as in cweb).
+func escComment(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		if s[i] == '$' {
+			if k := strings.IndexByte(s[i+1:], '$'); k >= 0 {
+				j := i + 1 + k
+				b.WriteString(s[i : j+1]) // the $...$ math span, verbatim
+				i = j + 1
+				continue
+			}
+		}
+		b.WriteString(escProse(s[i : i+1]))
+		i++
+	}
+	return b.String()
+}
