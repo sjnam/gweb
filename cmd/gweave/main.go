@@ -22,12 +22,18 @@ import (
 
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = usage
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("gweave (GWEB) %s\n", web.Version)
+		return
+	}
 	if flag.NArg() < 1 || flag.NArg() > 2 {
 		usage()
 		os.Exit(2)
 	}
+	fmt.Fprintf(os.Stderr, "This is GWEAVE, Version %s.\n", web.Version)
 	if err := run(flag.Arg(0), flag.Arg(1), *outDir); err != nil {
 		fmt.Fprintln(os.Stderr, "gweave:", err)
 		os.Exit(1)

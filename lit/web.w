@@ -20,6 +20,10 @@ import (
 	"strings"
 )
 
+// Version is the GWEB release, shared by gtangle and gweave for their startup
+// banner and their --version output.
+const Version = "0.1.0"
+
 // Format records an "@@f a b" (or "@@s a b") directive: typeset identifier
 // Original the way identifier/keyword Like is typeset. NoIndex is true for @@s.
 type Format struct {

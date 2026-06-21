@@ -27,16 +27,24 @@ import (
 	"github.com/sjnam/gweb/internal/web"
 )
 
-@ The entry point parses the flags and arguments and dispatches to |run|.
+@ The entry point parses the flags and arguments and dispatches to |run|. With
+\.{-version} it just prints the version; otherwise it prints a one-line banner
+to the standard error, in the style of cweb, before processing.
 @(cmd/gweave/main.go@>=
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = usage
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("gweave (GWEB) %s\n", web.Version)
+		return
+	}
 	if flag.NArg() < 1 || flag.NArg() > 2 {
 		usage()
 		os.Exit(2)
 	}
+	fmt.Fprintf(os.Stderr, "This is GWEAVE, Version %s.\n", web.Version)
 	if err := run(flag.Arg(0), flag.Arg(1), *outDir); err != nil {
 		fmt.Fprintln(os.Stderr, "gweave:", err)
 		os.Exit(1)
