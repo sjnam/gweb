@@ -33,7 +33,7 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
-	fmt.Fprintf(os.Stderr, "This is GWEAVE, Version %s.\n", web.Version)
+	fmt.Fprintf(os.Stderr, "This is GWEAVE, Version %s\n", web.Version)
 	if err := run(flag.Arg(0), flag.Arg(1), *outDir); err != nil {
 		fmt.Fprintln(os.Stderr, "gweave:", err)
 		os.Exit(1)

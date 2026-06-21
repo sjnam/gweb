@@ -47,7 +47,7 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
-	fmt.Fprintf(os.Stderr, "This is GTANGLE, Version %s.\n", web.Version)
+	fmt.Fprintf(os.Stderr, "This is GTANGLE, Version %s\n", web.Version)
 	if err := run(flag.Arg(0), flag.Arg(1), *outDir, *lineDirs); err != nil {
 		fmt.Fprintln(os.Stderr, "gtangle:", err)
 		os.Exit(1)
