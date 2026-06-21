@@ -24,17 +24,18 @@ type Format struct {
 
 // Section is one numbered section of the web.
 type Section struct {
-	Number  int    // 1-based section number
-	Line    int    // 1-based source line where the section begins
-	Starred bool   // true for @* sections
-	Depth   int    // group depth for starred sections (0 == top level)
-	Title   string // starred-section title (text up to the first period)
-	Tex     string // commentary, raw TeX with in-text @-codes still embedded
-	Formats []Format
-	HasCode bool   // true if the section contributes code
-	Name    string // named-section name, or "" for an unnamed @c section
-	IsFile  bool   // true if the name is an output file (@(file@>=)
-	Code    string // raw code text with in-code @-codes still embedded
+	Number   int    // 1-based section number
+	Line     int    // 1-based source line where the section begins
+	Starred  bool   // true for @* sections
+	Depth    int    // group depth for starred sections (0 == top level)
+	Title    string // starred-section title (text up to the first period)
+	Tex      string // commentary, raw TeX with in-text @-codes still embedded
+	Formats  []Format
+	HasCode  bool   // true if the section contributes code
+	Name     string // named-section name, or "" for an unnamed @c section
+	IsFile   bool   // true if the name is an output file (@(file@>=)
+	Code     string // raw code text with in-code @-codes still embedded
+	CodeLine int    // 1-based combined-source line where Code begins (0 if none)
 }
 
 // Web is a fully parsed GWEB document.
@@ -108,6 +109,15 @@ func (w *Web) at(line int) string {
 		return fmt.Sprintf("%s:%d", w.file, line)
 	}
 	return fmt.Sprintf("line %d", line)
+}
+
+// Origin maps a 1-based combined-source line back to the original file and line.
+// When no origin map is available it falls back to the web's own filename.
+func (w *Web) Origin(line int) (file string, ln int) {
+	if i := line - 1; i >= 0 && i < len(w.locs) {
+		return w.locs[i].file, w.locs[i].line
+	}
+	return w.file, line
 }
 
 // DefaultExt returns name with ext appended when name has no extension of its

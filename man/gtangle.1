@@ -5,6 +5,7 @@ gtangle \- extract compilable Go source from a GWEB literate program
 .B gtangle
 .RB [ \-o
 .IR dir ]
+.RB [ \-line ]
 .IR file [ .w ]
 .RI [ change [ .ch ]]
 .SH DESCRIPTION
@@ -54,6 +55,19 @@ instead of the input file's directory. The directory (and any subdirectories
 named by
 .BI @( file @>=
 targets) is created if necessary.
+.TP
+.B \-line
+Emit
+.B //line
+directives in the tangled Go so that the Go compiler,
+.BR "go vet" ,
+and panic traces report errors at
+.B .w
+source positions instead of
+.B .go
+positions \(em the Go counterpart of CWEB's
+.BR #line .
+Off by default, so ordinary output (and the self\-hosting fixpoint) is unchanged.
 .TP
 .B \-version
 Print the version and exit.

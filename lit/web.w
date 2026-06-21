@@ -49,6 +49,7 @@ type Section struct {
 	Name    string // named-section name, or "" for an unnamed @@c section
 	IsFile  bool   // true if the name is an output file (@@(file@@>=)
 	Code    string // raw code text with in-code @@-codes still embedded
+	CodeLine int   // 1-based combined-source line where Code begins (0 if none)
 }
 
 @ A |Web| is a fully parsed GWEB document: the limbo text, the global format
@@ -132,6 +133,20 @@ func (w *Web) at(line int) string {
 		return fmt.Sprintf("%s:%d", w.file, line)
 	}
 	return fmt.Sprintf("line %d", line)
+}
+
+@ |Origin| maps a combined-source line back to the file and line the user wrote,
+returning the two parts separately (|at| formats the same information as a
+string). |gtangle| uses it to emit \.{//line} directives so the Go compiler
+reports errors at \.{.w} positions.
+@(internal/web/web.go@>=
+// Origin maps a 1-based combined-source line back to the original file and line.
+// When no origin map is available it falls back to the web's own filename.
+func (w *Web) Origin(line int) (file string, ln int) {
+	if i := line - 1; i >= 0 && i < len(w.locs) {
+		return w.locs[i].file, w.locs[i].line
+	}
+	return w.file, line
 }
 
 @ |DefaultExt| supplies a default extension when the user omits one, so the
@@ -576,6 +591,7 @@ func parse(src string) *Web {
 		switch ct.kind {
 		case cCode:
 			sec.HasCode = true
+			sec.CodeLine = lineAt(src, ct.end)
 			nx := findNextSection(src, ct.end)
 			sec.Code = src[ct.end:nx.pos]
 			i = nx.pos
@@ -583,6 +599,7 @@ func parse(src string) *Web {
 			sec.HasCode = true
 			sec.Name = ct.name
 			sec.IsFile = ct.isFile
+			sec.CodeLine = lineAt(src, ct.end)
 			nx := findNextSection(src, ct.end)
 			sec.Code = src[ct.end:nx.pos]
 			i = nx.pos

@@ -221,13 +221,18 @@ header);
 
 \chapter{Running the programs}
 \begincode
-gtangle [-o dir] file[.w] [change[.ch]]
+gtangle [-o dir] [-line] file[.w] [change[.ch]]
 gweave  [-o dir] file[.w] [change[.ch]]
 |endcode
 The \cw{.w} extension --- and a change file's \cw{.ch} --- may be omitted.
 \cw{-o} chooses the output directory. \cw{-version} prints the version and exits.
 As each tool runs it prints a one-line banner and then a \cw{*}{\it n\/} progress
 marker for every starred section, as CWEB's tools do.
+
+\cw{gtangle -line} is the Go counterpart of CWEB's \cw{\#line}: it emits
+\cw{//line} directives in the tangled Go so the compiler, \cw{go vet}, and panic
+traces report errors at \cw{.w} positions rather than \cw{.go} ones. It is off by
+default, leaving ordinary output (and the self-hosting fixpoint) unchanged.
 
 To make a PDF, either go straight through \cw{pdftex}, or through DVI and
 \cw{dvipdfmx} for the same hyperlinks:

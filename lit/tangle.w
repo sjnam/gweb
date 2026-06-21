@@ -29,46 +29,66 @@ type Output struct {
 	Warning string
 }
 
-@ A |Tangler| holds the resolved named-section definitions for a web: the
-refinements (|defs|), the \.{@@(file@@>=} outputs, and the concatenated unnamed
-program text.
+@ A |Tangler| holds the resolved code of a web, classified by destination: the
+refinements (|defs|), the \.{@@(file@@>=} outputs, and the unnamed program text
+(|main|). Each destination keeps a list of |codePiece|s rather than one joined
+string, so every piece remembers the \.{.w} line it began on -- the anchor for
+the \.{//line} directives emitted when |lineDirs| is set.
 @(internal/tangle/tangle.go@>=
-// Tangler holds the resolved named-section definitions for a web.
+// Tangler holds the resolved code of a web, classified by destination.
 type Tangler struct {
-	w     *web.Web
-	defs  map[string]string // canonical named-section -> concatenated code
-	files map[string]string // @@(file@@>= name -> concatenated code
-	main  string            // concatenation of all unnamed @@c sections
+	w        *web.Web
+	defs     map[string][]codePiece // canonical named-section -> code pieces
+	files    map[string][]codePiece // @@(file@@>= name -> code pieces
+	main     []codePiece            // unnamed @@c sections, in order
+	lineDirs bool                   // emit //line directives mapping to .w source
+}
+
+// codePiece is one section's raw code together with the 1-based combined-source
+// line it begins on, so tangled output can be mapped back to the .w file.
+type codePiece struct {
+	code string
+	line int
 }
 
 @ |New| classifies every code section into the unnamed program, an output file,
-or a named refinement, concatenating sections that share a target.
+or a named refinement, appending each section's code -- with the source line it
+began on -- to the pieces for that destination.
 @(internal/tangle/tangle.go@>=
 // New builds a Tangler from a parsed web.
 func New(w *web.Web) *Tangler {
 	t := &Tangler{
 		w:     w,
-		defs:  map[string]string{},
-		files: map[string]string{},
+		defs:  map[string][]codePiece{},
+		files: map[string][]codePiece{},
 	}
-	var mainParts []string
 	for _, s := range w.Sections {
 		if !s.HasCode {
 			continue
 		}
+		p := codePiece{s.Code, s.CodeLine}
 		switch {
 		case s.Name == "":
-			mainParts = append(mainParts, s.Code)
+			t.main = append(t.main, p)
 		case s.IsFile:
-			t.files[s.Name] += s.Code
+			t.files[s.Name] = append(t.files[s.Name], p)
 		default:
 			name := w.Resolve(s.Name)
-			t.defs[name] += s.Code
+			t.defs[name] = append(t.defs[name], p)
 		}
 	}
-	t.main = strings.Join(mainParts, "")
 	return t
 }
+
+@ |WithLineDirectives| turns on \.{//line} directives in the tangled output, so
+the Go compiler (and \.{go vet}, and panic traces) report errors at \.{.w}
+positions instead of \.{.go} positions. It returns the receiver for chaining and
+is off by default, leaving ordinary output -- and the self-hosting fixpoint --
+unchanged.
+@(internal/tangle/tangle.go@>=
+// WithLineDirectives turns on //line directives that map tangled lines back to
+// their .w source. It returns t for chaining; the default is off.
+func (t *Tangler) WithLineDirectives(on bool) *Tangler { t.lineDirs = on; return t }
 
 @ |Tangle| produces all output files: first the unnamed program (written to
 |defaultFile|), then each \.{@@(file@@>=} target in sorted order.
@@ -78,7 +98,7 @@ func New(w *web.Web) *Tangler {
 func (t *Tangler) Tangle(defaultFile string) ([]Output, error) {
 	var outs []Output
 
-	if strings.TrimSpace(t.main) != "" {
+	if nonEmpty(t.main) {
 		out, err := t.renderOutput(defaultFile, t.main)
 		if err != nil {
 			return nil, err
@@ -105,16 +125,30 @@ func (t *Tangler) Tangle(defaultFile string) ([]Output, error) {
 	return outs, nil
 }
 
-@ |renderOutput| expands one root code part and runs |gofmt| on the result. A
-genuine web error (an undefined or circular reference) is fatal; a |gofmt|
-failure is not -- the unformatted Go is kept and reported via |Output.Warning|.
+@ |nonEmpty| reports whether any piece carries non-blank code, so a destination
+made only of whitespace does not produce an empty output file.
 @(internal/tangle/tangle.go@>=
-// renderOutput expands a root code part and runs gofmt on the result. A
-// genuine web error (undefined or circular reference) is fatal; a gofmt failure
-// is non-fatal: the unformatted Go is kept and reported via Output.Warning.
-func (t *Tangler) renderOutput(file, code string) (Output, error) {
-	var o buffer
-	if err := t.expand(code, &o, nil); err != nil {
+// nonEmpty reports whether any piece carries non-blank code.
+func nonEmpty(pieces []codePiece) bool {
+	for _, p := range pieces {
+		if strings.TrimSpace(p.code) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+@ |renderOutput| expands one destination's pieces and runs |gofmt| on the
+result. A genuine web error (an undefined or circular reference) is fatal; a
+|gofmt| failure is not -- the unformatted Go is kept and reported via
+|Output.Warning|.
+@(internal/tangle/tangle.go@>=
+// renderOutput expands a destination's code pieces and runs gofmt. A genuine web
+// error (undefined or circular reference) is fatal; a gofmt failure is not: the
+// unformatted Go is kept and reported via Output.Warning.
+func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) {
+	o := &buffer{t: t, atLineStart: true}
+	if err := t.expandPieces(pieces, o, nil); err != nil {
 		return Output{}, err
 	}
 	raw := o.bytes()
@@ -126,20 +160,32 @@ func (t *Tangler) renderOutput(file, code string) (Output, error) {
 	}
 }
 
-@ |expand| writes the expansion of a code part into the buffer, following
-\.{@@<...@@>} references recursively and guarding against cycles.
+@ |expandPieces| expands a list of code pieces in order. |expand| expands one
+piece, threading the combined-source line through the text so \.{//line}
+directives stay accurate, and following \.{@@<...@@>} references recursively
+(guarding against cycles).
 @(internal/tangle/tangle.go@>=
-// expand writes the expansion of code into o, following @@<...@@> references.
-func (t *Tangler) expand(code string, o *buffer, stack []string) error {
+// expandPieces expands a list of code pieces in order.
+func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) error {
+	for _, p := range pieces {
+		if err := t.expand(p.code, p.line, o, stack); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// expand writes the expansion of one code piece into o, starting at the given
+// combined-source line and following @@<...@@> references.
+func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error {
 	for _, a := range web.ScanCode(code) {
 		switch a.Kind {
-		case web.AText:
-			o.writeMaybeTrimLeft(a.Text)
-		case web.AVerbatim:
-			o.writeMaybeTrimLeft(a.Text)
+		case web.AText, web.AVerbatim:
+			line = o.writeText(a.Text, line)
 		case web.APaste:
 			o.trimRight()
 			o.pasteNext = true
+			o.atLineStart = false
 		case web.ARef:
 			name := t.w.Resolve(a.Text)
 			def, ok := t.defs[name]
@@ -151,11 +197,11 @@ func (t *Tangler) expand(code string, o *buffer, stack []string) error {
 			}
 			// Surround an expanded reference with newlines so adjacent
 			// statements stay on separate lines; gofmt collapses the rest.
-			o.WriteString("\n")
-			if err := t.expand(def, o, append(stack, name)); err != nil {
+			o.newline()
+			if err := t.expandPieces(def, o, append(stack, name)); err != nil {
 				return err
 			}
-			o.WriteString("\n")
+			o.newline()
 		case web.ATeX, web.AIndex, web.ALayout, web.AIndexDef:
 			// woven-output only; ignored by tangle
 		}
@@ -163,23 +209,56 @@ func (t *Tangler) expand(code string, o *buffer, stack []string) error {
 	return nil
 }
 
-@ The output |buffer| accumulates bytes and supports the \.{@@\&} paste operation,
-which deletes the whitespace surrounding it.
+@ The output |buffer| accumulates bytes. It tracks whether it is at the start of
+a line so it can prefix each line with a \.{//line} directive (in line-directive
+mode), and it supports the \.{@@\&} paste operation, which deletes the whitespace
+surrounding it.
 @(internal/tangle/tangle.go@>=
-// buffer accumulates output and supports the @@& paste operation.
+// buffer accumulates output, tracks line starts for //line directives, and
+// supports the @@& paste operation.
 type buffer struct {
-	b         []byte
-	pasteNext bool
+	t           *Tangler
+	b           []byte
+	pasteNext   bool
+	atLineStart bool
 }
 
-func (o *buffer) WriteString(s string) { o.b = append(o.b, s...) }
-
-func (o *buffer) writeMaybeTrimLeft(s string) {
+// writeText appends s, advancing the source line across newlines. In
+// line-directive mode it prefixes each output line with a //line comment mapping
+// it back to its .w origin. It returns the updated source line.
+func (o *buffer) writeText(s string, line int) int {
 	if o.pasteNext {
 		s = strings.TrimLeft(s, " \t\n\r")
 		o.pasteNext = false
 	}
-	o.b = append(o.b, s...)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if o.atLineStart && c != '\n' {
+			o.lineMark(line)
+			o.atLineStart = false
+		}
+		o.b = append(o.b, c)
+		if c == '\n' {
+			line++
+			o.atLineStart = true
+		}
+	}
+	return line
+}
+
+// lineMark emits a //line directive for the given combined-source line.
+func (o *buffer) lineMark(line int) {
+	if !o.t.lineDirs {
+		return
+	}
+	file, ln := o.t.w.Origin(line)
+	o.b = append(o.b, fmt.Sprintf("//line %s:%d\n", file, ln)...)
+}
+
+// newline starts a fresh output line (used around an expanded reference).
+func (o *buffer) newline() {
+	o.b = append(o.b, '\n')
+	o.atLineStart = true
 }
 
 func (o *buffer) trimRight() {

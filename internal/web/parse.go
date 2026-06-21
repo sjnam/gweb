@@ -201,6 +201,7 @@ func parse(src string) *Web {
 		switch ct.kind {
 		case cCode:
 			sec.HasCode = true
+			sec.CodeLine = lineAt(src, ct.end)
 			nx := findNextSection(src, ct.end)
 			sec.Code = src[ct.end:nx.pos]
 			i = nx.pos
@@ -208,6 +209,7 @@ func parse(src string) *Web {
 			sec.HasCode = true
 			sec.Name = ct.name
 			sec.IsFile = ct.isFile
+			sec.CodeLine = lineAt(src, ct.end)
 			nx := findNextSection(src, ct.end)
 			sec.Code = src[ct.end:nx.pos]
 			i = nx.pos

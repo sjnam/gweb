@@ -12,6 +12,10 @@ GTANGLE   ?= $(ROOT)/bin/gtangle
 GWEAVE    ?= $(ROOT)/bin/gweave
 TEXENGINE ?= pdftex
 
+# Extra gtangle flags. Use GTFLAGS=-line to map compile errors back to the .w
+# source, e.g.  make go GTFLAGS=-line && go build .
+GTFLAGS   ?=
+
 # Let the TeX engine find gwebmac.tex.
 export TEXINPUTS := $(ROOT)/tex:$(TEXINPUTS)
 
@@ -22,7 +26,7 @@ all: go pdf
 go: $(NAME).go
 # Depend on gtangle too, so rebuilding the tool re-tangles the example.
 $(NAME).go: $(NAME).w $(GTANGLE)
-	$(GTANGLE) $(NAME).w
+	$(GTANGLE) $(GTFLAGS) $(NAME).w
 
 pdf: $(NAME).pdf
 # Depend on gweave and the macro package too, so changing either rebuilds the PDF.

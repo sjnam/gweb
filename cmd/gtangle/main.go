@@ -2,11 +2,13 @@
 //
 // Usage:
 //
-//	gtangle [-o dir] file[.w] [change[.ch]]
+//	gtangle [-o dir] [-line] file[.w] [change[.ch]]
 //
 // The .w (and .ch) extension may be omitted. The unnamed @c sections are
 // written to <basename>.go (in -o dir, default the input's directory);
-// @(file@>= sections are written to their named files.
+// @(file@>= sections are written to their named files. With -line, the Go
+// output carries //line directives so the compiler reports errors at .w
+// positions.
 package main
 
 import (
@@ -22,6 +24,7 @@ import (
 
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
+	lineDirs := flag.Bool("line", false, "emit //line directives mapping Go back to .w source")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = usage
 	flag.Parse()
@@ -34,14 +37,14 @@ func main() {
 		os.Exit(2)
 	}
 	fmt.Fprintf(os.Stderr, "This is GTANGLE, Version %s.\n", web.Version)
-	if err := run(flag.Arg(0), flag.Arg(1), *outDir); err != nil {
+	if err := run(flag.Arg(0), flag.Arg(1), *outDir, *lineDirs); err != nil {
 		fmt.Fprintln(os.Stderr, "gtangle:", err)
 		os.Exit(1)
 	}
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file[.w] [change[.ch]]")
+	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] [-line] file[.w] [change[.ch]]")
 	flag.PrintDefaults()
 }
 
@@ -54,7 +57,7 @@ func reportProgress(w *web.Web) {
 	fmt.Fprintln(os.Stderr)
 }
 
-func run(input, changeFile, outDir string) error {
+func run(input, changeFile, outDir string, lineDirs bool) error {
 	input = web.DefaultExt(input, ".w")
 	changeFile = web.DefaultExt(changeFile, ".ch")
 	w, err := web.ParseWithChange(input, changeFile)
@@ -73,7 +76,7 @@ func run(input, changeFile, outDir string) error {
 	base = strings.TrimSuffix(base, filepath.Ext(base))
 	defaultFile := base + ".go"
 
-	outs, err := tangle.New(w).Tangle(defaultFile)
+	outs, err := tangle.New(w).WithLineDirectives(lineDirs).Tangle(defaultFile)
 	if err != nil {
 		return err
 	}
