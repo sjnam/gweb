@@ -45,7 +45,7 @@ import (
 	"time"
 )
 
-const target = 119.51790030176039224702 // Target = $(\sqrt1+\sqrt2+\ldots+\sqrt{50})/2$
+const target = 119.51790030176039224702 // $(\sqrt1+\sqrt2+\ldots+\sqrt{50})/2$
 
 @<Subroutines@>
 
@@ -61,12 +61,11 @@ func main() {
 	@<Verify in high precision and report@>
 }
 
-@ The \.{-v}/\.{-verbose} flag turns on timing lines and the |math/big|
+@ The \.{-v} flag turns on timing lines and the |math/big|
 verification; without it the program prints just the two groups. We start the
 clock right away so the reported time covers the whole search.
 @<Parse the command-line flags@>=
 verbose := flag.Bool("v", false, "verbose output")
-flag.BoolVar(verbose, "verbose", false, "verbose output")
 flag.Parse()
 
 start := time.Now()
