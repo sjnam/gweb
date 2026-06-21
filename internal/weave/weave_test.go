@@ -166,6 +166,17 @@ func use() {
 	}
 }
 
+func TestWeaveThinSpaceBeforeParen(t *testing.T) {
+	// As in cweave, a "(" directly after a word (a function name or a keyword
+	// like func) gets a thin space, so it does not jam against it.
+	out := weaveString(t, "@ x\n@c\nvar _ = f(a)\nvar g = func(n int) {}\n")
+	for _, want := range []string{`\GID{f}\,\mathord{(}`, `\GKW{func}\,\mathord{(}`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("want %q in:\n%s", want, out)
+		}
+	}
+}
+
 func TestWeaveShiftOperators(t *testing.T) {
 	// << and >> render as the tight double-angle symbols \ll and \gg (as cweb),
 	// not two separate less-than/greater-than signs.

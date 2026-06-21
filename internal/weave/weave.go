@@ -342,6 +342,13 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 							}
 						}
 					}
+					// A thin space before a "(" that directly follows a word (a
+					// function name, or a keyword like func), as cweave does, so the
+					// paren does not jam against it: f\,(x), func\,(...).
+					if t.kind == tkOp && t.text == "(" && !pendingSpace && !atLineStart &&
+						(prevSigKind == tkIdent || prevSigKind == tkKeyword || prevSigKind == tkBuiltin) {
+						emit("\\,")
+					}
 					emit(renderToken(token{kind: wv.effKind(t), text: t.text}))
 					prevSigKind, prevSigText = t.kind, t.text
 				}
