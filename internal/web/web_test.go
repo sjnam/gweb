@@ -84,6 +84,20 @@ func TestResolveAbbrev(t *testing.T) {
 	}
 }
 
+func TestCodePragmaP(t *testing.T) {
+	// @p is a synonym for @c (CWEB compatibility).
+	w := ParseString("@ x\n@p\npackage main\n")
+	if len(w.Sections) != 1 || !w.Sections[0].HasCode {
+		t.Fatalf("@p should begin a code section, got %+v", w.Sections)
+	}
+	if w.Sections[0].Name != "" {
+		t.Errorf("@p section should be unnamed, got name %q", w.Sections[0].Name)
+	}
+	if !contains(w.Sections[0].Code, "package main") {
+		t.Errorf("@p code missing: %q", w.Sections[0].Code)
+	}
+}
+
 func TestDefaultExt(t *testing.T) {
 	cases := []struct{ name, ext, want string }{
 		{"wc", ".w", "wc.w"},         // bare name gets the extension

@@ -6,7 +6,8 @@ before the first section is **limbo** (TeX preamble for `gweave`, ignored by
 
 1. **TeX part** — commentary/documentation (plain TeX, copied to the woven output).
 2. **Definition part** — `@d` / `@f` / `@s` directives (formatting hints).
-3. **Code part** — the Go code of the section, introduced by `@c` or `@<name@>=`.
+3. **Code part** — the Go code of the section, introduced by `@c` (or `@p`) or
+   `@<name@>=`.
 
 All control codes begin with `@`. Use `@@` for a literal `@`.
 
@@ -17,7 +18,7 @@ All control codes begin with `@`. Use `@@` for a literal `@`.
 | `@ ` `@\t` `@\n`| begin a normal (unstarred) section                               |
 | `@*`            | begin a starred section (group/chapter), title runs to first `.` |
 | `@*N`           | begin a starred section at depth `N` (`@*0` == `@*`)             |
-| `@c`            | begin the code part of an *unnamed* section (the program text)   |
+| `@c`, `@p`      | begin the code part of an *unnamed* section (the program text)   |
 | `@<name@>=`     | begin the code part of a *named* section (a "refinement")        |
 | `@(file@>=`     | begin code that `gtangle` writes to the file `file`              |
 | `@i file`       | include another `.w` file at this point                          |

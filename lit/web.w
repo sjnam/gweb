@@ -370,7 +370,7 @@ type ctrlKind int
 const (
 	cEOF ctrlKind = iota
 	cSection
-	cCode  // @@c
+	cCode  // @@c (or its synonym @@p)
 	cNamed // @@<name@@>= or @@(file@@>=
 	cDefn  // @@d
 	cFormat
