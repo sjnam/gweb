@@ -7,9 +7,9 @@
 *.go.tmp
 examples/*.go
 examples/*.tex
-examples/*.pdf
 examples/*.dvi
 examples/*.log
+examples/*.toc
 examples/wc
 
 # but keep sources
