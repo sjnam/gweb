@@ -145,13 +145,13 @@ with `@`; write `@@` for a literal `@`. The most important codes:
 | `@i file`     | include another `.w` file                                  |
 | `@d`,`@f`,`@s`| definition / formatting directives                         |
 | `@^ @. @:`    | index entries (roman / typewriter / custom)                |
-| <code>&#124;Go code&#124;</code> | inline Go code inside prose                 |
+| `\|Go code\|` | inline Go code inside prose                                |
 
 The full list is in [doc/format.md](doc/format.md).
 
 ## How it is organized
 
-```
+```text
 cmd/gtangle      gtangle command
 cmd/gweave       gweave command
 internal/web     shared front end: parses .w into sections (CWEB's common.w)

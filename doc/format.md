@@ -85,7 +85,7 @@ gweave  foo.w foo.ch
 
 A change file is a sequence of changes, each of the form
 
-```
+```text
 @x
 <lines to find in the master source>
 @y
