@@ -8,9 +8,10 @@
 examples/*.go
 examples/*.tex
 examples/*.dvi
+examples/*.pdf
+examples/*.ps
 examples/*.log
 examples/*.toc
-examples/wc
 
 # but keep sources
 !examples/*.w
