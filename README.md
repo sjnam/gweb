@@ -3,7 +3,7 @@
 [![CI](https://github.com/sjnam/gweb/actions/workflows/ci.yml/badge.svg)](https://github.com/sjnam/gweb/actions/workflows/ci.yml)
 
 GWEB is a [literate programming](https://en.wikipedia.org/wiki/Literate_programming)
-system for the Go language, modeled closely on Donald Knuth and Silvio Levy's
+system for the Go programming language, modeled closely on Donald Knuth and Silvio Levy's
 **CWEB**. You write a single `.w` source file that interleaves TeX
 documentation with Go code, and two tools turn it into either a program or a
 typeset document — exactly as CWEB does for C, with C replaced by Go:
@@ -97,7 +97,7 @@ gtangle -line foo.w && go build .   # an error now reads  foo.w:42: ...
 
 ```sh
 make example                 # tangle & weave every examples/*.w into .go and .pdf
-make -C examples NAME=pmap   # just one example
+make -C examples NAME=wc     # just one example
 ```
 
 * [examples/wc.w](examples/wc.w) — a literate word-count program; its tangled
