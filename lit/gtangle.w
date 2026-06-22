@@ -9,13 +9,13 @@ cweb). The unnamed \.{@@c} sections are written to the input's base name with a
 //
 // Usage:
 //
-//	gtangle [-o dir] [-line] file[.w] [change[.ch]]
+//	gtangle [-o dir] [-line=false] file[.w] [change[.ch]]
 //
 // The .w (and .ch) extension may be omitted. The unnamed @@c sections are
 // written to <basename>.go (in -o dir, default the input's directory);
-// @@(file@@>= sections are written to their named files. With -line, the Go
+// @@(file@@>= sections are written to their named files. By default the Go
 // output carries //line directives so the compiler reports errors at .w
-// positions.
+// positions; pass -line=false to omit them.
 package main
 
 import (
@@ -35,7 +35,7 @@ to the standard error, in the style of cweb, before processing.
 @(cmd/gtangle/main.go@>=
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
-	lineDirs := flag.Bool("line", false, "emit //line directives mapping Go back to .w source")
+	lineDirs := flag.Bool("line", true, "emit //line directives so Go errors point at .w source (-line=false to disable)")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Usage = usage
 	flag.Parse()
@@ -57,7 +57,7 @@ func main() {
 @ Usage.
 @(cmd/gtangle/main.go@>=
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] [-line] file[.w] [change[.ch]]")
+	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] [-line=false] file[.w] [change[.ch]]")
 	flag.PrintDefaults()
 }
 

@@ -84,14 +84,17 @@ master source without editing it (CWEB's `.ch` mechanism; see
 lives in [tex/](tex/); point `TEXINPUTS` at that directory, or copy the file
 next to your document.
 
-`gtangle -line` makes the tangled Go carry `//line` directives, so the Go
-compiler, `go vet`, and panic traces report errors at **`.w`** positions instead
-of `.go` ones — the Go counterpart of CWEB's `#line` (it is off by default, so
-ordinary output and the self-hosting fixpoint are unchanged):
+By default the tangled Go carries `//line` directives, so the Go compiler,
+`go vet`, and panic traces report errors at **`.w`** positions instead of `.go`
+ones — the Go counterpart of CWEB's `#line`. Pass `-line=false` to omit them:
 
 ```sh
-gtangle -line foo.w && go build .   # an error now reads  foo.w:42: ...
+gtangle foo.w && go build .       # an error reads  foo.w:42: ...
+gtangle -line=false foo.w         # plain .go; errors read foo.go:NN
 ```
+
+(GWEB tangles its own sources with `-line=false`, keeping the committed Go and
+the byte-for-byte fixpoint clean.)
 
 ## Try the examples
 

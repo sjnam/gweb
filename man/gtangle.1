@@ -5,7 +5,7 @@ gtangle \- extract compilable Go source from a GWEB literate program
 .B gtangle
 .RB [ \-o
 .IR dir ]
-.RB [ \-line ]
+.RB [ \-line=false ]
 .IR file [ .w ]
 .RI [ change [ .ch ]]
 .SH DESCRIPTION
@@ -67,7 +67,10 @@ source positions instead of
 .B .go
 positions \(em the Go counterpart of CWEB's
 .BR #line .
-Off by default, so ordinary output (and the self\-hosting fixpoint) is unchanged.
+On by default; pass
+.B \-line=false
+to omit the directives (as GWEB does when tangling its own sources, to keep the
+committed Go and the self\-hosting fixpoint clean).
 .TP
 .B \-version
 Print the version and exit.
