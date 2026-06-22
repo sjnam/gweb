@@ -21,11 +21,11 @@ extensions directory and reload:
 
 ```sh
 # macOS / Linux
-cp -r editors/vscode ~/.vscode/extensions/gweb-0.1.0
+cp -r editors/vscode ~/.vscode/extensions/gweb-0.1.5
 # then: Command Palette -> "Developer: Reload Window"
 ```
 
-(On Windows use `%USERPROFILE%\.vscode\extensions\gweb-0.1.0`.)
+(On Windows use `%USERPROFILE%\.vscode\extensions\gweb-0.1.5`.)
 
 Open any `.w` file; the language indicator at the bottom right should read
 **GWEB**. If a file is not recognized, pick it manually with
@@ -36,6 +36,6 @@ Open any `.w` file; the language indicator at the bottom right should read
 With [`vsce`](https://github.com/microsoft/vscode-vsce):
 
 ```sh
-cd editors/vscode && vsce package      # -> gweb-0.1.0.vsix
-code --install-extension gweb-0.1.0.vsix
+cd editors/vscode && vsce package      # -> gweb-0.1.5.vsix
+code --install-extension gweb-0.1.5.vsix
 ```

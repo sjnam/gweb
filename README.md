@@ -180,7 +180,7 @@ spans; VS Code and Vim also highlight the TeX commentary. The quickest install,
 VS Code:
 
 ```sh
-cp -r editors/vscode ~/.vscode/extensions/gweb-0.1.0   # then reload the window
+cp -r editors/vscode ~/.vscode/extensions/gweb-0.1.5   # then reload the window
 ```
 
 See each folder's README for Vim, Emacs, and packaging details.

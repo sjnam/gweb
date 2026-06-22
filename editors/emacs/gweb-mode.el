@@ -2,7 +2,7 @@
 
 ;; Author: GWEB -- https://github.com/sjnam/gweb
 ;; Keywords: languages, literate programming
-;; Version: 0.1.0
+;; Version: 0.1.5
 
 ;;; Commentary:
 
