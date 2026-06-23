@@ -18,6 +18,7 @@ const (
 	tkOp                     // operator or punctuation run
 	tkSpace                  // a run of spaces/tabs
 	tkNewline                // a single '\n'
+	tkMacro                  // a const name (set in typewriter, like a CWEB  macro)
 )
 
 type token struct {

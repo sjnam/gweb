@@ -147,11 +147,16 @@ The tangled output is passed through \cw{gofmt}, so a correct web always yields
 canonically formatted Go. If the assembled text is not valid Go, \cw{gtangle}
 keeps the unformatted output and prints a warning instead of failing.
 
-\section{User types are set bold automatically}
-\cw{gweave} scans for \cw{type} declarations --- both \cw{type Name ...} and the
-\cw{type (\thinspace...\thinspace)} block form --- and sets each declared type
-bold wherever it appears, the way \cw{cweave} treats names introduced by a
-\cw{typedef}. You can still classify a name yourself with \cw{@f}/\cw{@s}.
+\section{Types and constants are classified automatically}
+\cw{gweave} scans for \cw{type} and \cw{const} declarations --- both the single
+form (\cw{type Name ...}, \cw{const Name ...}) and the parenthesized block form
+--- and gives each declared name a CWEB-style class wherever it appears: a
+\cw{type} is set {\bf bold}, like a predeclared type, and a \cw{const} is set in
+typewriter, the way \cw{cweave} sets a name defined by \cw{@d}. (GWEB has no
+\cw{@d}; a Go \cw{const} is its closest analogue, so it inherits the typewriter
+look.) You can always override a name's class yourself with \cw{@f}/\cw{@s} ---
+e.g.\ \cw{@f Name int} forces \cw{Name} bold, or \cw{@f Name x} (any ordinary
+identifier) leaves it in plain italic.
 
 \section{GWEB is written in itself}
 Like CWEB, GWEB is a literate program: its tools are tangled from the webs in

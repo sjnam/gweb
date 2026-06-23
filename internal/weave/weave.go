@@ -57,17 +57,21 @@ func New(w *web.Web) *Weaver {
 	for _, s := range w.Sections {
 		apply(s.Formats)
 	}
-	wv.detectTypes()
+	// Two CWEB-style automatic classifications: a name declared with |type| is
+	// set bold like a predeclared type, and a name declared with |const| is set
+	// in typewriter like a CWEB |@d| macro. An explicit |@f|/|@s| above wins.
+	wv.detectDecls("type", tkBuiltin)
+	wv.detectDecls("const", tkMacro)
 	return wv
 }
 
-func (wv *Weaver) detectTypes() {
+func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
 	add := func(name string) {
 		if name == "" || name == "_" {
 			return
 		}
 		if _, ok := wv.format[name]; !ok {
-			wv.format[name] = tkBuiltin // bold, like a predeclared type
+			wv.format[name] = kind
 		}
 	}
 	for _, s := range wv.w.Sections {
@@ -77,15 +81,15 @@ func (wv *Weaver) detectTypes() {
 		var st lexState
 		for _, a := range web.ScanCode(s.Code) {
 			if a.Kind == web.AText {
-				scanTypeDecls(lexGo(a.Text, &st), add)
+				scanDecls(lexGo(a.Text, &st), keyword, add)
 			}
 		}
 	}
 }
 
-func scanTypeDecls(toks []token, add func(string)) {
+func scanDecls(toks []token, keyword string, add func(string)) {
 	for i := 0; i < len(toks); i++ {
-		if toks[i].kind != tkKeyword || toks[i].text != "type" {
+		if toks[i].kind != tkKeyword || toks[i].text != keyword {
 			continue
 		}
 		j := nextSignificant(toks, i+1)
@@ -93,7 +97,7 @@ func scanTypeDecls(toks []token, add func(string)) {
 			return
 		}
 		if toks[j].kind == tkOp && toks[j].text == "(" {
-			i = scanTypeGroup(toks, j+1, add)
+			i = scanDeclGroup(toks, j+1, add)
 		} else if toks[j].kind == tkIdent {
 			add(toks[j].text)
 		}
@@ -111,10 +115,10 @@ func nextSignificant(toks []token, i int) int {
 	return -1
 }
 
-// scanTypeGroup collects the type names in a parenthesized type group beginning
-// at index i, returning the index of the closing ")". The first identifier on
-// each line at nesting depth 0 is a declared type name.
-func scanTypeGroup(toks []token, i int, add func(string)) int {
+// scanDeclGroup collects the declared names in a parenthesized type or const
+// group beginning at index i, returning the index of the closing ")". The first
+// identifier on each line at nesting depth 0 is a declared name.
+func scanDeclGroup(toks []token, i int, add func(string)) int {
 	depth := 0
 	atStart := true
 	for ; i < len(toks); i++ {
@@ -394,6 +398,10 @@ func renderToken(t token) string {
 		return "\\GKW{" + escIdent(t.text) + "}"
 	case tkIdent:
 		return "\\GID{" + escIdent(t.text) + "}"
+	case tkMacro:
+		// A const, set in typewriter like a CWEB  macro. \GMAC wraps \tentex in
+		// an \hbox so it works in the math mode that code is typeset in.
+		return "\\GMAC{" + escTT(t.text) + "}"
 	case tkNumber:
 		return "\\GNU{" + escTT(t.text) + "}"
 	case tkString:

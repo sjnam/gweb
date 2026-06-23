@@ -105,10 +105,17 @@ or matches its first line but not the rest.
 * Go has no preprocessor, so `@d` (macro definition) has no analogue: it is
   accepted for compatibility but its body is ignored by both tools. Use Go
   `const`/`func` instead.
+* `gweave` classifies declared names automatically: a `type` name is set **bold**
+  (like a predeclared type) and a `const` name is set in typewriter — the
+  treatment `cweave` gives names defined by `@d`, since a Go `const` is the
+  closest analogue. Both the single and parenthesized-block declaration forms are
+  recognized.
 * `@f a b` makes `gweave` typeset identifier `a` in the class of `b` — most
-  usefully `@f MyType int` to set a user type in bold like a predeclared type.
-  `@s` does the same but also omits `a` from the index. These directives apply
-  globally and may appear in limbo or in a section's definition part.
+  usefully `@f MyType int` to set a user type in bold like a predeclared type, or
+  `@f Name x` (any ordinary identifier) to override the automatic classification
+  back to plain italic. `@s` does the same but also omits `a` from the index.
+  These directives apply globally and may appear in limbo or in a section's
+  definition part.
 * The default tangled output file is `<basename>.go`; additional files are
   produced with `@(file@>=`.
 * `gtangle` runs `gofmt` on its output, so the emitted Go is canonically

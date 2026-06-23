@@ -70,24 +70,30 @@ func New(w *web.Web) *Weaver {
 	for _, s := range w.Sections {
 		apply(s.Formats)
 	}
-	wv.detectTypes()
+	// Two CWEB-style automatic classifications: a name declared with |type| is
+	// set bold like a predeclared type, and a name declared with |const| is set
+	// in typewriter like a CWEB |@@d| macro. An explicit |@@f|/|@@s| above wins.
+	wv.detectDecls("type", tkBuiltin)
+	wv.detectDecls("const", tkMacro)
 	return wv
 }
 
-@ A name declared with |type| is a {\it type}, and cweave sets types in bold like
-the predeclared ones. |detectTypes| scans the code for type declarations --- both
-|type NAME ...| and the block form |type (...)| --- and records each declared
-name as bold (unless an |@@f|/|@@s| directive already classified it), exactly as
-if the user had written |@@f NAME int|. This is a heuristic scan, not a full Go
-parse, but it covers the forms that occur in practice.
+@ cweave sets names declared with |type| in bold (like the predeclared types) and
+names defined by |@@d| in typewriter (like C macros). GWEB has no |@@d|, so it
+gives Go |const| names that typewriter treatment instead. |detectDecls| scans the
+code for declarations introduced by |keyword| --- both |keyword NAME ...| and the
+block form |keyword (...)| --- and records each declared name with |kind| (unless
+an |@@f|/|@@s| directive already classified it). This is a heuristic scan, not a
+full Go parse, but it covers the forms that occur in practice; a |const| you want
+left in italic can be reset with |@@f NAME int|.
 @(internal/weave/weave.go@>=
-func (wv *Weaver) detectTypes() {
+func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
 	add := func(name string) {
 		if name == "" || name == "_" {
 			return
 		}
 		if _, ok := wv.format[name]; !ok {
-			wv.format[name] = tkBuiltin // bold, like a predeclared type
+			wv.format[name] = kind
 		}
 	}
 	for _, s := range wv.w.Sections {
@@ -97,22 +103,23 @@ func (wv *Weaver) detectTypes() {
 		var st lexState
 		for _, a := range web.ScanCode(s.Code) {
 			if a.Kind == web.AText {
-				scanTypeDecls(lexGo(a.Text, &st), add)
+				scanDecls(lexGo(a.Text, &st), keyword, add)
 			}
 		}
 	}
 }
 
-@ |scanTypeDecls| walks a token list and, at each |type| keyword, records the
-declared name. A |type| followed by |(| opens a parenthesized group of
-declarations, each naming a type on its own line; |scanTypeGroup| collects those
-until the matching |)|, tracking brace and bracket nesting so that struct fields
-inside a declaration are not mistaken for type names. (A |type| inside a type
-switch, |x.(type)|, is followed by |)| and so names nothing.)
+@ |scanDecls| walks a token list and, at each |keyword| (|type| or |const|),
+records the declared name. The keyword followed by |(| opens a parenthesized
+group of declarations, each naming an entry on its own line; |scanDeclGroup|
+collects those until the matching |)|, tracking brace and bracket nesting so that
+struct fields (or the right-hand sides of |const| assignments) are not mistaken
+for names. (A |type| inside a type switch, |x.(type)|, is followed by |)| and so
+names nothing.)
 @(internal/weave/weave.go@>=
-func scanTypeDecls(toks []token, add func(string)) {
+func scanDecls(toks []token, keyword string, add func(string)) {
 	for i := 0; i < len(toks); i++ {
-		if toks[i].kind != tkKeyword || toks[i].text != "type" {
+		if toks[i].kind != tkKeyword || toks[i].text != keyword {
 			continue
 		}
 		j := nextSignificant(toks, i+1)
@@ -120,7 +127,7 @@ func scanTypeDecls(toks []token, add func(string)) {
 			return
 		}
 		if toks[j].kind == tkOp && toks[j].text == "(" {
-			i = scanTypeGroup(toks, j+1, add)
+			i = scanDeclGroup(toks, j+1, add)
 		} else if toks[j].kind == tkIdent {
 			add(toks[j].text)
 		}
@@ -138,10 +145,10 @@ func nextSignificant(toks []token, i int) int {
 	return -1
 }
 
-// scanTypeGroup collects the type names in a parenthesized type group beginning
-// at index i, returning the index of the closing ")". The first identifier on
-// each line at nesting depth 0 is a declared type name.
-func scanTypeGroup(toks []token, i int, add func(string)) int {
+// scanDeclGroup collects the declared names in a parenthesized type or const
+// group beginning at index i, returning the index of the closing ")". The first
+// identifier on each line at nesting depth 0 is a declared name.
+func scanDeclGroup(toks []token, i int, add func(string)) int {
 	depth := 0
 	atStart := true
 	for ; i < len(toks); i++ {
@@ -445,6 +452,10 @@ func renderToken(t token) string {
 		return "\\GKW{" + escIdent(t.text) + "}"
 	case tkIdent:
 		return "\\GID{" + escIdent(t.text) + "}"
+	case tkMacro:
+		// A const, set in typewriter like a CWEB @d macro. \GMAC wraps \tentex in
+		// an \hbox so it works in the math mode that code is typeset in.
+		return "\\GMAC{" + escTT(t.text) + "}"
 	case tkNumber:
 		return "\\GNU{" + escTT(t.text) + "}"
 	case tkString:
@@ -706,6 +717,7 @@ const (
 	tkOp                     // operator or punctuation run
 	tkSpace                  // a run of spaces/tabs
 	tkNewline                // a single '\n'
+	tkMacro                  // a const name (set in typewriter, like a CWEB @d macro)
 )
 
 @ A |token| pairs a kind with its text; |lexState| carries the cross-fragment
@@ -1379,14 +1391,22 @@ func (wv *Weaver) writeIndex(bw *bufio.Writer) {
 		return it
 	}
 
+	// An identifier's index head follows its display class: a const is set in
+	// typewriter (like its uses in the text), everything else in italic.
+	head := func(name string) string {
+		if wv.format[name] == tkMacro {
+			return "\\GMAC{" + escTT(name) + "}"
+		}
+		return "\\GID{" + escIdent(name) + "}"
+	}
 	for name, secs := range wv.xref.identUse {
-		it := get("\\GID{"+escIdent(name)+"}", strings.ToLower(name))
+		it := get(head(name), strings.ToLower(name))
 		for s := range secs {
 			it.secs[s] = true
 		}
 	}
 	for name, secs := range wv.xref.identDef {
-		it := get("\\GID{"+escIdent(name)+"}", strings.ToLower(name))
+		it := get(head(name), strings.ToLower(name))
 		for s := range secs {
 			it.secs[s] = true
 			it.defs[s] = true
