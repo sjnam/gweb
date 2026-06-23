@@ -126,7 +126,7 @@ make -C examples NAME=wc     # just one example
   (meet-in-the-middle search, Gray-code enumeration, compensated summation, and
   a `math/big` verification) based on
   [github.com/sjnam/floyd-partition](https://github.com/sjnam/floyd-partition).
-* [examples/fastCancel.w](examples/factCancel.w) — It shows a complementary pattern
+* [examples/fastCancel.w](examples/fastCancel.w) — It shows a complementary pattern
   useful in any concurrent Go program: how to propagate a first-error signal to all
   sibling goroutines cleanly.
 
