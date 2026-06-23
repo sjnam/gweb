@@ -178,7 +178,7 @@ func TestWeaveThinSpaceBeforeParen(t *testing.T) {
 	// As in cweave, a "(" directly after a word (a function name or a keyword
 	// like func) gets a thin space, so it does not jam against it.
 	out := weaveString(t, "@ x\n@c\nvar _ = f(a)\nvar g = func(n int) {}\n")
-	for _, want := range []string{`\GID{f}\,\mathord{(}`, `\GKW{func}\,\mathord{(}`} {
+	for _, want := range []string{`\GID{f}\Gthin \mathord{(}`, `\GKW{func}\Gthin \mathord{(}`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("want %q in:\n%s", want, out)
 		}
@@ -233,11 +233,11 @@ func f(p *int, m map[string]int) {
 }
 `)
 	checks := map[string]string{
-		`\mathord{*}\GKW{int}`:                    "pointer *int should be tight (one chunk)",
-		`\GID{a}\mathord{*}\GID{b}`:               "multiplication a*b should be tight, matching gofmt",
-		`\GID{xs}\,\mathord{[}\GID{i}\mathord{]}`: "index xs[i] gets a thin space before [, like a call",
-		`\GKW{map}\mathord{[}`:                    "map[K]V stays tight (no thin space after the map keyword)",
-		`\GS `:                                    "spaced operands should be separated by a breakable \\GS",
+		`\mathord{*}\GKW{int}`:                         "pointer *int should be tight (one chunk)",
+		`\GID{a}\mathord{*}\GID{b}`:                    "multiplication a*b should be tight, matching gofmt",
+		`\GID{xs}\Gthin \mathord{[}\GID{i}\mathord{]}`: "index xs[i] gets a thin space before [, like a call",
+		`\GKW{map}\mathord{[}`:                         "map[K]V stays tight (no thin space after the map keyword)",
+		`\GS `:                                         "spaced operands should be separated by a breakable \\GS",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
