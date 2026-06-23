@@ -521,9 +521,9 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	return b.String()
 }
 
-// renderName typesets a section name (or starred-section title) for TeX text
-// mode. A |...| span is set as inline code (as in CWEB section names); the rest
-// is roman prose. A literal bar is written \|.
+// renderName typesets a section name for TeX text mode. A |...| span is set as
+// inline code (as in CWEB section names); the rest passes through as TeX, so
+// control sequences and math work. A literal bar is written backslash-bar.
 func (wv *Weaver) renderName(name string) string {
 	var b strings.Builder
 	n := len(name)
@@ -557,7 +557,9 @@ func (wv *Weaver) renderName(name string) string {
 		for i < n && name[i] != '|' && !(name[i] == '\\' && i+1 < n && name[i+1] == '|') {
 			i++
 		}
-		b.WriteString(escProse(name[start:i]))
+		// The non-code text of a name is TeX, passed through as in CWEB so that
+		// control sequences and math typeset; the user escapes any specials.
+		b.WriteString(name[start:i])
 	}
 	return b.String()
 }
