@@ -14,28 +14,42 @@ It highlights:
   Code's built-in Go grammar);
 * the **TeX** commentary (control sequences, `%` comments, `$…$` math, groups).
 
-## Install (development copy)
+## Install (recommended: from a VSIX)
 
-No marketplace publish is needed — just drop the folder into your VS Code
-extensions directory and reload:
+Installing the packaged `.vsix` registers the extension **globally**, so every
+window and project gets `.w` highlighting. Grab `gweb-<version>.vsix` from the
+[releases page](https://github.com/sjnam/gweb/releases) (or build one — see
+below), then either:
 
-```sh
-# macOS / Linux
-cp -r editors/vscode ~/.vscode/extensions/gweb-0.1.5
-# then: Command Palette -> "Developer: Reload Window"
-```
+* **GUI** — Extensions view (`Cmd/Ctrl+Shift+X`) → the `⋯` menu →
+  *Install from VSIX…* → pick the file; or
+* **CLI** — `code --install-extension gweb-<version>.vsix`.
 
-(On Windows use `%USERPROFILE%\.vscode\extensions\gweb-0.1.5`.)
+Then **fully quit and relaunch** VS Code (`Cmd/Ctrl+Q`, not just close the
+window) so all windows pick it up.
 
 Open any `.w` file; the language indicator at the bottom right should read
-**GWEB**. If a file is not recognized, pick it manually with
-"Change Language Mode → GWEB".
+**GWEB**. If not, click it and choose *Change Language Mode → GWEB*.
 
-## Packaging (optional)
+## Build the VSIX
 
 With [`vsce`](https://github.com/microsoft/vscode-vsce):
 
 ```sh
-cd editors/vscode && vsce package      # -> gweb-0.1.5.vsix
-code --install-extension gweb-0.1.5.vsix
+cd editors/vscode && npx @vscode/vsce package   # -> gweb-<version>.vsix
 ```
+
+## Install by copying (fallback)
+
+You can instead drop the folder into your extensions directory, but a manual
+copy is only picked up after a **full restart** of VS Code, and is easy to leave
+stale — prefer the VSIX above.
+
+```sh
+cp -r editors/vscode ~/.vscode/extensions/gweb-0.1.5   # macOS / Linux
+# Windows: %USERPROFILE%\.vscode\extensions\gweb-0.1.5
+```
+
+If highlighting works in one project but not another, you most likely have a
+stale manual copy: uninstall **GWEB** from the Extensions view (or delete the
+`~/.vscode/extensions/gweb-*` folder), install the VSIX, and relaunch.

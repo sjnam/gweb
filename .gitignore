@@ -22,3 +22,6 @@ examples/*.toc
 # stray TeX scratch logs
 texput.log
 *.toc
+
+# VS Code extension package
+*.vsix

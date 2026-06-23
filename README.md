@@ -176,14 +176,11 @@ folder under [editors/](editors/):
 * **Emacs** — [editors/emacs/](editors/emacs/)
 
 All three mark the control codes and embed **Go** in code parts and `|…|` inline
-spans; VS Code and Vim also highlight the TeX commentary. The quickest install,
-VS Code:
+spans; VS Code and Vim also highlight the TeX commentary. For VS Code, install
+the `.vsix` from the [releases page](https://github.com/sjnam/gweb/releases)
+(Extensions view → *Install from VSIX…*), then fully relaunch.
 
-```sh
-cp -r editors/vscode ~/.vscode/extensions/gweb-0.1.5   # then reload the window
-```
-
-See each folder's README for Vim, Emacs, and packaging details.
+See each folder's README for Vim, Emacs, and build details.
 
 ## Self-hosting
 
