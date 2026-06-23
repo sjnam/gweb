@@ -126,9 +126,14 @@ make -C examples NAME=wc     # just one example
   (meet-in-the-middle search, Gray-code enumeration, compensated summation, and
   a `math/big` verification) based on
   [github.com/sjnam/floyd-partition](https://github.com/sjnam/floyd-partition).
-* [examples/fastCancel.w](examples/fastCancel.w) — It shows a complementary pattern
+* [examples/fast_cancel.w](examples/fast_cancel.w) — It shows a complementary pattern
   useful in any concurrent Go program: how to propagate a first-error signal to all
   sibling goroutines cleanly.
+* [examples/prjeuler152.w](examples/prjeuler152.w) — Project Euler Problem 152,
+  The key challenge—and the appeal—is that you cannot compare the sums using
+  floating-point arithmetic. When adding the $1/n^2$ terms, precise rational
+  number operations are required, and a brute-force approach that simply cycles
+  through all $2^79$ subsets is impossible.
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.
