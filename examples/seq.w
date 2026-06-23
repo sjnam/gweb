@@ -1,5 +1,7 @@
 \def\title{Lazy Sequences in Go}
 
+@s Seq int
+
 @* Introduction.
 This example builds a tiny library of {\it lazy sequences\/} and uses it to print
 the first few even Fibonacci numbers. In barely fifty lines it exercises the Go
@@ -7,14 +9,14 @@ features that have no counterpart in C, and that a literate document most enjoys
 showing off:
 
 \smallskip
-\item{$\bullet$} {\it first-class functions and closures\/} --- functions are
+\item{$\bullet$} first-class functions and closures --- functions are
 values that can capture and carry local state, be passed as arguments, and be
 returned from other functions;
-\item{$\bullet$} {\it anonymous functions\/} --- the |func(...) {...}| literals
+\item{$\bullet$} anonymous functions --- the |func(...) {...}| literals
 that make the closures above;
-\item{$\bullet$} {\it generics\/} --- type parameters like |[A, B any]|, so one
+\item{$\bullet$} generics --- type parameters like |[A, B any]|, so one
 |Map| works for every element type;
-\item{$\bullet$} {\it range-over-func iterators\/} (Go~1.23) --- a function can
+\item{$\bullet$} range-over-func iterators (Go~1.23) --- a function can
 {\it be\/} a sequence, driven directly by |for v := range seq|.
 \smallskip
 
