@@ -180,14 +180,22 @@ func (wv *Weaver) writeIndex(bw *bufio.Writer) {
 		return it
 	}
 
+	// An identifier's index head follows its display class: a const is set in
+	// typewriter (like its uses in the text), everything else in italic.
+	head := func(name string) string {
+		if wv.format[name] == tkMacro {
+			return "\\GMAC{" + escTT(name) + "}"
+		}
+		return "\\GID{" + escIdent(name) + "}"
+	}
 	for name, secs := range wv.xref.identUse {
-		it := get("\\GID{"+escIdent(name)+"}", strings.ToLower(name))
+		it := get(head(name), strings.ToLower(name))
 		for s := range secs {
 			it.secs[s] = true
 		}
 	}
 	for name, secs := range wv.xref.identDef {
-		it := get("\\GID{"+escIdent(name)+"}", strings.ToLower(name))
+		it := get(head(name), strings.ToLower(name))
 		for s := range secs {
 			it.secs[s] = true
 			it.defs[s] = true
