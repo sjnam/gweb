@@ -350,11 +350,15 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 							}
 						}
 					}
-					// A thin space before a "(" that directly follows a word (a
-					// function name, or a keyword like func), as cweave does, so the
-					// paren does not jam against it: f\,(x), func\,(...).
-					if t.kind == tkOp && t.text == "(" && !pendingSpace && !atLineStart &&
-						(prevSigKind == tkIdent || prevSigKind == tkKeyword || prevSigKind == tkBuiltin) {
+					// A thin space before a "(" or "[" that directly follows a word,
+					// as cweave does, so the bracket does not jam against it:
+					// f\,(x), func\,(...), a\,[i], Foo\,[T]. A "(" also takes a
+					// keyword before it (func\,(...)); a "[" does not, so the type
+					// constructor map[K]V stays tight.
+					word := prevSigKind == tkIdent || prevSigKind == tkBuiltin
+					call := t.text == "(" && (word || prevSigKind == tkKeyword)
+					index := t.text == "[" && word
+					if t.kind == tkOp && (call || index) && !pendingSpace && !atLineStart {
 						emit("\\,")
 					}
 					emit(renderToken(token{kind: wv.effKind(t), text: t.text}))

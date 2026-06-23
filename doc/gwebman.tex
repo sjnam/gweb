@@ -180,9 +180,10 @@ boundary unless it is itself taller than a page.
 Reserved words and user-defined types are bold, other identifiers italic, string
 and rune literals typewriter (in \cw{cmtex10}, as in CWEB), numbers and comments
 roman. A few Go-specific touches: the shift operators \cw{<<} and \cw{>>} are set
-as the tight symbols $\ll$ and $\gg$; a thin space follows a function name or a
-keyword before \cw{(}, so \cw{f (x)} does not jam together; and a comment's
-\cw{//} is kerned a little tighter. \TeX\ mathematics written between dollar
+as the tight symbols $\ll$ and $\gg$; a thin space follows a name before \cw{(}
+or \cw{[}, so \cw{f (x)} and the index \cw{a [i]} do not jam together (while the
+type constructor \cw{map[K]V} stays tight); and a comment's \cw{//} is kerned a
+little tighter. \TeX\ mathematics written between dollar
 signs inside a comment is typeset as mathematics.
 
 \section{Index and formatting codes}
