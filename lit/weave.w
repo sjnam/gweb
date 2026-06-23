@@ -60,7 +60,11 @@ func New(w *web.Web) *Weaver {
 	// class of identifier a (@@f a b) is the class b would be typeset in.
 	apply := func(fs []web.Format) {
 		for _, f := range fs {
-			wv.format[f.Original] = classifyWord(f.Like)
+			if f.Macro {
+				wv.format[f.Original] = tkMacro // @d: typewriter, like a CWEB macro
+			} else {
+				wv.format[f.Original] = classifyWord(f.Like)
+			}
 			if f.NoIndex {
 				wv.noIndex[f.Original] = true
 			}

@@ -121,10 +121,12 @@ for you, and removes a stray copy if you include one.
 The differences all follow from typesetting Go instead of C.
 
 \section{No preprocessor}
-Go has no macros, so \cw{@d} has no analogue. It is accepted for portability but
-ignored by both tools; use Go \cw{const} and \cw{func} instead. The formatting
-directives \cw{@f} and \cw{@s} remain useful --- for example \cw{@f Stack int}
-sets the user type \cw{Stack} in bold, the way predeclared types are set.
+Go has no preprocessor, so \cw{@d} never generates code: \cw{gtangle} ignores it
+(use Go \cw{const} and \cw{func} for real definitions). It is not useless,
+though --- \cw{gweave} reads \cw{@d Name} as a request to set \cw{Name} in
+typewriter, like a CWEB macro (see below). The formatting directives \cw{@f} and
+\cw{@s} also remain --- for example \cw{@f Stack int} sets the user type
+\cw{Stack} in bold, the way predeclared types are set.
 
 \section{Pretty-printing mirrors gofmt, not a grammar}
 This is the central design choice, and the largest departure from \cw{cweave}.
@@ -152,11 +154,13 @@ keeps the unformatted output and prints a warning instead of failing.
 form (\cw{type Name ...}, \cw{const Name ...}) and the parenthesized block form
 --- and gives each declared name a CWEB-style class wherever it appears: a
 \cw{type} is set {\bf bold}, like a predeclared type, and a \cw{const} is set in
-typewriter, the way \cw{cweave} sets a name defined by \cw{@d}. (GWEB has no
-\cw{@d}; a Go \cw{const} is its closest analogue, so it inherits the typewriter
-look.) You can always override a name's class yourself with \cw{@f}/\cw{@s} ---
-e.g.\ \cw{@f Name int} forces \cw{Name} bold, or \cw{@f Name x} (any ordinary
-identifier) leaves it in plain italic.
+typewriter, the way \cw{cweave} sets a name defined by \cw{@d} (a Go \cw{const}
+is the closest analogue). For names you do {\it not\/} declare in this web ---
+another package's constants, say --- mark them yourself with \cw{@d}: \cw{@d
+http.StatusOK} sets \cw{StatusOK} in typewriter everywhere it appears. You can
+override any automatic class with \cw{@f}/\cw{@s} --- e.g.\ \cw{@f Name int}
+forces \cw{Name} bold, or \cw{@f Name x} (any ordinary identifier) restores plain
+italic.
 
 \section{GWEB is written in itself}
 Like CWEB, GWEB is a literate program: its tools are tangled from the webs in

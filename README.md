@@ -18,8 +18,9 @@ typeset document — exactly as CWEB does for C, with C replaced by Go:
 * **`gweave`** produces a TeX file in which reserved words are bold, identifiers
   are italic, strings are typewriter, named sections are linked by number, and a
   cross-referenced **index** and **list of refinements** are generated
-  automatically. Declared `type` names are set bold and `const` names typewriter
-  (the latter standing in for CWEB's `@d` macros); `@f`/`@s` override either.
+  automatically. Declared `type` names are set bold and `const` names typewriter;
+  mark other names typewriter too (e.g. another package's `@d http.StatusOK`), and
+  override any of it with `@f`/`@s`.
 
 ## Build
 

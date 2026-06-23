@@ -188,13 +188,16 @@ func parse(src string) *Web {
 		for ct.kind == cDefn || ct.kind == cFormat {
 			nx := scanStruct(src, ct.end)
 			seg := src[ct.end:nx.pos]
-			if ct.kind == cFormat {
-				if f, ok := parseFormat(seg, ct.noIndex); ok {
+			// @d has no Go analogue (Go has no preprocessor), so it never tangles
+			// to code; gweave uses it only to set the named identifier in
+			// typewriter, as cweave sets a macro. @f/@s format like another word.
+			if ct.kind == cDefn {
+				if f, ok := parseMacro(seg); ok {
 					sec.Formats = append(sec.Formats, f)
 				}
+			} else if f, ok := parseFormat(seg, ct.noIndex); ok {
+				sec.Formats = append(sec.Formats, f)
 			}
-			// @d (a C-preprocessor macro in CWEB) has no Go analogue, so its
-			// body is simply discarded by both gtangle and gweave.
 			ct = nx
 		}
 
@@ -305,9 +308,28 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 	return Format{Original: fields[0], Like: fields[1], NoIndex: noIndex}, true
 }
 
-// extractLimboFormats pulls @f/@s directives out of the limbo text (consuming
-// each to end of line) and returns the cleaned text together with the formats.
-// Other control codes and argument-terminated groups are copied through.
+// parseMacro parses an @d directive: its first word names a constant to set in
+// typewriter; any value after it is ignored (Go has no preprocessor). A
+// qualified name keeps its final component, so "@d http.StatusOK" and
+// "@d StatusOK" both register StatusOK.
+func parseMacro(seg string) (Format, bool) {
+	fields := strings.Fields(seg)
+	if len(fields) == 0 {
+		return Format{}, false
+	}
+	name := fields[0]
+	if k := strings.LastIndex(name, "."); k >= 0 {
+		name = name[k+1:]
+	}
+	if name == "" {
+		return Format{}, false
+	}
+	return Format{Original: name, Macro: true}, true
+}
+
+// extractLimboFormats pulls @d/@f/@s directives out of the limbo text
+// (consuming each to end of line) and returns the cleaned text together with the
+// formats. Other control codes and argument-terminated groups are copied through.
 func extractLimboFormats(src string) (string, []Format) {
 	var b strings.Builder
 	var formats []Format
@@ -323,12 +345,19 @@ func extractLimboFormats(src string) (string, []Format) {
 		case '@':
 			b.WriteString("@@")
 			i += 2
-		case 'f', 's':
+		case 'd', 'f', 's':
 			j := i + 2
 			for j < n && src[j] != '\n' {
 				j++
 			}
-			if f, ok := parseFormat(src[i+2:j], c == 's'); ok {
+			var f Format
+			var ok bool
+			if c == 'd' {
+				f, ok = parseMacro(src[i+2 : j])
+			} else {
+				f, ok = parseFormat(src[i+2:j], c == 's')
+			}
+			if ok {
 				formats = append(formats, f)
 			}
 			if j < n {

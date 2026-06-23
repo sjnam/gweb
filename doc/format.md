@@ -102,12 +102,15 @@ or matches its first line but not the rest.
 
 ## Notes specific to Go
 
-* Go has no preprocessor, so `@d` (macro definition) has no analogue: it is
-  accepted for compatibility but its body is ignored by both tools. Use Go
-  `const`/`func` instead.
-* `gweave` classifies declared names automatically: a `type` name is set **bold**
-  (like a predeclared type) and a `const` name is set in typewriter — the
-  treatment `cweave` gives names defined by `@d`, since a Go `const` is the
+* Go has no preprocessor, so `@d` never tangles to code (`gtangle` ignores it;
+  use Go `const`/`func` for real definitions). `gweave`, however, reads `@d Name`
+  as a request to set `Name` in typewriter, like a CWEB macro — useful for
+  constants you do not declare in this web, e.g. `@d http.StatusOK` (the final
+  component, `StatusOK`, is the name registered). Any value after the name is
+  ignored.
+* `gweave` also classifies declared names automatically: a `type` name is set
+  **bold** (like a predeclared type) and a `const` name is set in typewriter —
+  the treatment `cweave` gives names defined by `@d`, since a Go `const` is the
   closest analogue. Both the single and parenthesized-block declaration forms are
   recognized.
 * `@f a b` makes `gweave` typeset identifier `a` in the class of `b` — most

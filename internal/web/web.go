@@ -20,6 +20,7 @@ type Format struct {
 	Original string
 	Like     string
 	NoIndex  bool
+	Macro    bool // : typeset Original in typewriter (a CWEB-style macro)
 }
 
 // Section is one numbered section of the web.
