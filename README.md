@@ -133,7 +133,7 @@ make -C examples NAME=wc     # just one example
   The key challenge—and the appeal—is that you cannot compare the sums using
   floating-point arithmetic. When adding the $1/n^2$ terms, precise rational
   number operations are required, and a brute-force approach that simply cycles
-  through all $2^79$ subsets is impossible.
+  through all $2^{79}$ subsets is impossible.
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.
