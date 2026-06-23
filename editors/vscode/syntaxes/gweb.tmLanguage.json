@@ -4,8 +4,8 @@
   "scopeName": "source.gweb",
   "patterns": [
     { "include": "#change-control" },
-    { "include": "#section-opener" },
     { "include": "#code-section" },
+    { "include": "#section-opener" },
     { "include": "#directives" },
     { "include": "#include-line" },
     { "include": "#control-text" },
@@ -17,35 +17,39 @@
   ],
   "repository": {
     "change-control": {
-      "comment": "@x / @y / @z lines of a change file, in column 1",
-      "match": "^@[xyz]\\s*$",
+      "comment": "@x / @y / @z lines of a change file (leading whitespace allowed)",
+      "match": "^[ \\t]*@[xyz][ \\t]*$",
       "name": "keyword.control.change.gweb"
     },
     "section-opener": {
       "patterns": [
         {
           "comment": "@* , @** , @*N : starred (chapter) section",
-          "match": "^@\\*+[0-9]*",
-          "name": "keyword.control.section.star.gweb"
+          "match": "^[ \\t]*(@\\*+[0-9]*)",
+          "captures": { "1": { "name": "keyword.control.section.star.gweb" } }
         },
         {
           "comment": "@<space>, @<tab>, @ at end of line : ordinary section",
-          "match": "^@(?=[ \\t]|$)",
-          "name": "keyword.control.section.gweb"
+          "match": "^[ \\t]*(@)(?=[ \\t]|$)",
+          "captures": { "1": { "name": "keyword.control.section.gweb" } }
         }
       ]
     },
     "code-section": {
-      "comment": "A code part: @c / @p, or @<name@>= , or @(file@>= . Embeds Go until the next section opener.",
-      "begin": "^(@[cp])(?=[ \\t]|$)|^(@<(?:[^@]|@@)*?@>)[ \\t]*(=)|^(@\\((?:[^@]|@@)*?@>)[ \\t]*(=)",
+      "comment": "A code part: @c / @p, or @<name@>= , or @(file@>= , optionally after an inline section opener (@ @<name@>=). Leading whitespace is allowed, mirroring the tangler. Embeds Go until the next section opener.",
+      "begin": "^[ \\t]*(@[cp])(?=[ \\t]|$)|^[ \\t]*(@<(?:[^@]|@@)*?@>)[ \\t]*(=)|^[ \\t]*(@\\((?:[^@]|@@)*?@>)[ \\t]*(=)|^[ \\t]*@[ \\t]+(@<(?:[^@]|@@)*?@>)[ \\t]*(=)|^[ \\t]*@[ \\t]+(@\\((?:[^@]|@@)*?@>)[ \\t]*(=)",
       "beginCaptures": {
         "1": { "name": "keyword.control.codestart.gweb" },
         "2": { "name": "entity.name.section.gweb" },
         "3": { "name": "keyword.operator.gweb" },
         "4": { "name": "entity.name.section.file.gweb" },
-        "5": { "name": "keyword.operator.gweb" }
+        "5": { "name": "keyword.operator.gweb" },
+        "6": { "name": "entity.name.section.gweb" },
+        "7": { "name": "keyword.operator.gweb" },
+        "8": { "name": "entity.name.section.file.gweb" },
+        "9": { "name": "keyword.operator.gweb" }
       },
-      "end": "(?=^@\\*)|(?=^@(?:[ \\t]|$))",
+      "end": "(?=^[ \\t]*@\\*)|(?=^[ \\t]*@(?:[ \\t]|$))",
       "contentName": "meta.embedded.block.go",
       "patterns": [
         { "include": "#in-code-codes" },
@@ -54,12 +58,12 @@
     },
     "directives": {
       "comment": "@d / @f / @s formatting directives",
-      "match": "^(@[dfs])(?=[ \\t])",
+      "match": "^[ \\t]*(@[dfs])(?=[ \\t])",
       "captures": { "1": { "name": "keyword.control.directive.gweb" } }
     },
     "include-line": {
       "comment": "@i include",
-      "match": "^(@i)([ \\t]+)(.*)$",
+      "match": "^[ \\t]*(@i)([ \\t]+)(.*)$",
       "captures": {
         "1": { "name": "keyword.control.import.gweb" },
         "3": { "name": "string.unquoted.include.gweb" }
