@@ -138,6 +138,10 @@ make -C examples NAME=wc     # just one example
   by A. Pepperdine's backward search (run the game in reverse from its ending
   state). An essay-style port of Knuth's CWEB `topswops.w`, based on
   [github.com/sjnam/topswops](https://github.com/sjnam/topswops).
+* [examples/topswops_fwd.w](examples/topswops_fwd.w) — the same game solved
+  *forwards*: a branch-and-bound search with placeholder cards and an `f(m)`
+  pruning bound, written as a `goto` state machine. A port of Knuth's CWEB
+  `topswops-fwd.w`.
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.
