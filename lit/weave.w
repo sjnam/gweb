@@ -760,17 +760,21 @@ var goBuiltins = map[string]bool{
 	"float32": true, "float64": true, "int": true, "int8": true, "int16": true,
 	"int32": true, "int64": true, "rune": true, "string": true, "uint": true,
 	"uint8": true, "uint16": true, "uint32": true, "uint64": true, "uintptr": true,
-	"true": true, "false": true, "iota": true, "nil": true, "any": true,
+	"true": true, "false": true, "iota": true, "any": true,
 	"comparable": true,
 }
 
 @ |classifyWord| maps a word to its class; the character-class predicates follow
-the Go spec closely enough for typesetting.
+the Go spec closely enough for typesetting. |nil| is the one predeclared
+identifier set in typewriter rather than bold: it is a constant value, not a type,
+so it reads like the other constants.
 @(internal/weave/gotok.go@>=
 func classifyWord(w string) tokKind {
 	switch {
 	case goKeywords[w]:
 		return tkKeyword
+	case w == "nil":
+		return tkMacro // a predeclared constant: typewriter, like a const
 	case goBuiltins[w]:
 		return tkBuiltin
 	default:
