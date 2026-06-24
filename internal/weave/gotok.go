@@ -45,12 +45,12 @@ var goBuiltins = map[string]bool{
 	"float32": true, "float64": true, "int": true, "int8": true, "int16": true,
 	"int32": true, "int64": true, "rune": true, "string": true, "uint": true,
 	"uint8": true, "uint16": true, "uint32": true, "uint64": true, "uintptr": true,
-	"iota": true, "any": true, "comparable": true,
+	"any": true, "comparable": true,
 }
 
 // The predeclared constant values are set in typewriter (like a const), not bold
 // like the predeclared types; they denote values, not types.
-var goConstants = map[string]bool{"nil": true, "true": true, "false": true}
+var goConstants = map[string]bool{"nil": true, "true": true, "false": true, "iota": true}
 
 func classifyWord(w string) tokKind {
 	switch {
