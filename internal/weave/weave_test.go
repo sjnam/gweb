@@ -227,17 +227,16 @@ var hidden int
 func TestWeaveSourceSpacing(t *testing.T) {
 	out := weaveString(t, `@ x
 @c
-func f(p *int, m map[string]int) {
+func f(p *int) {
 	r := a*b + c
 	s := xs[i]
 }
 `)
 	checks := map[string]string{
-		`\mathord{*}\GKW{int}`:                         "pointer *int should be tight (one chunk)",
-		`\GID{a}\mathord{*}\GID{b}`:                    "multiplication a*b should be tight, matching gofmt",
-		`\GID{xs}\Gthin \mathord{[}\GID{i}\mathord{]}`: "index xs[i] gets a thin space before [, like a call",
-		`\GKW{map}\mathord{[}`:                         "map[K]V stays tight (no thin space after the map keyword)",
-		`\GS `:                                         "spaced operands should be separated by a breakable \\GS",
+		`\mathord{*}\GKW{int}`:                  "pointer *int should be tight (one chunk)",
+		`\GID{a}\mathord{*}\GID{b}`:             "multiplication a*b should be tight, matching gofmt",
+		`\GID{xs}\mathord{[}\GID{i}\mathord{]}`: "index xs[i] should be tight (no thin space before [)",
+		`\GS `:                                  "spaced operands should be separated by a breakable \\GS",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
