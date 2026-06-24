@@ -142,6 +142,11 @@ make -C examples NAME=wc     # just one example
   *forwards*: a branch-and-bound search with placeholder cards and an `f(m)`
   pruning bound, written as a `goto` state machine. A port of Knuth's CWEB
   `topswops-fwd.w`.
+* [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
+  channel networks (sum, product, composition, reciprocal, functional inverse,
+  and differential equations like `exp`), after McIlroy's *Squinting at Power
+  Series*. A concurrent-Go showpiece, based on
+  [github.com/sjnam/squint](https://github.com/sjnam/squint).
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.

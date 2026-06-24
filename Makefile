@@ -81,6 +81,7 @@ example: build
 	$(MAKE) -C examples NAME=prjeuler152
 	$(MAKE) -C examples NAME=topswops
 	$(MAKE) -C examples NAME=topswops_fwd
+	$(MAKE) -C examples NAME=squint
 
 clean:
 	rm -rf $(BIN) build
