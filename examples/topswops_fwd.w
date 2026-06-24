@@ -17,53 +17,7 @@ decision is a branch in a search tree, and --- crucially --- a sharp upper bound
 lets us abandon most branches early. This is what lets the forward search reach
 much larger~$n$ than the backward one; the original runs at $n=16$.
 
-@ {\bf A deck of placeholders.}\enspace
-The deck |a| holds $n$ slots. A slot is either a {\it settled\/} card, a positive
-value in $1\ldots n$, or an {\it unknown}, a negative {\it placeholder\/} $-i$
-standing for ``the $i$th card we have not yet committed to.'' We start with
-everything unknown:
-$$a = (-1,\,-2,\,\ldots,\,-(n-1),\,0).$$
-Now play forward. To flip the top $v$ cards we need to know $v$, the top card's
-value; as long as the top is settled we keep flipping and counting steps. The
-moment an {\it unknown\/} card reaches the top, the game cannot proceed until we
-say what that card is --- so we stop and {\it branch}, trying each still-available
-value in turn. Committing a value may settle several cards at once (the flip that
-follows shuffles them into place), and the game runs on until the next unknown
-surfaces, or until a~$1$ appears and the game ends.
-
-A node of the search tree is thus a partially-decided deck together with the
-number of steps the game has taken so far; its children are the legal values for
-the unknown now on top. A leaf is a fully-decided deck --- a genuine starting
-permutation --- whose step count is a candidate for the record.
-
-@ {\bf The bound that makes it practical.}\enspace
-Here is the key observation. At any node, the cards still unknown form, among
-themselves, a {\it smaller topswops puzzle}: whatever else happens, the flips still
-to come can number at most $f(m)$, where $m$ is how many cards remain unknown. So
-if |c| steps have been taken and the best deal found so far has score~$r$, then
-this node is worth pursuing only when
-$$c + f(m)\ \ge\ r.$$
-Otherwise no descendant can beat the record, and we prune the whole subtree.
-
-The bound feeds on itself: the smaller answers $f(0),f(1),\ldots$ are exactly the
-table |score[0]|, |score[1]|, $\ldots$ that we know in advance. We seed |score|
-with the published values and keep |score[n]| as the running record~$r$, raising it
-each time a better leaf turns up. Tighter records prune harder, so good deals found early pay
-for themselves many times over.
-
-@ {\bf Enumerating the choices.}\enspace
-When an unknown surfaces we must try every value not yet placed, each exactly once.
-The program does this with an inversion-table scheme of the kind Knuth uses for
-{\it genlex\/} permutation generation: the array |p| keeps the values chosen so far
-in $p[0\ldots l-1]$ and the still-available ones after them, the array |v| records,
-for each level, which candidate was taken, and moving from one candidate to the
-next costs a single swap. We never build a permutation from scratch; we edit the
-previous one. The details are terse --- this is faithful to Knuth's original --- but
-the effect is simple: at level |l| the loop sweeps an index |j| down through the
-remaining candidates, the feasibility-and-bound test filters them, and |v| and |p|
-let us undo a choice to reach the next.
-
-@ {\bf The shape of the search.}\enspace
+@ %* The shape of the search.
 The recursion is written, as in the original, not with a recursive function but as
 an explicit state machine with five labels: \.{advance} steps down to the next
 candidate slot; \.{tryit} picks a candidate and tests feasibility and the bound;
@@ -75,7 +29,6 @@ because its arrays are values: saving and restoring a deck is just |s[l] = a| an
 |a = s[l]|, where C needed an explicit copy. The array |profile| tallies how many
 nodes are visited at each depth, a useful gauge of how well the bound is working.
 
-@* The program.
 The whole search lives in |main|. After setting up the placeholder deck it threads
 through the five labelled states until it backs all the way out, then prints the
 node profile.
@@ -88,7 +41,7 @@ import "fmt"
 @<The global search state@>@;
 
 func main() {
-	@<Local scratch variables@>@;
+	var j, k, l, t, c int
 	@<Set up the placeholder deck and the first level@>@;
 
 advance:
@@ -107,14 +60,28 @@ nextv:
 	@<Step to the next candidate, or back up; at the root, finish@>@;
 }
 
+@* The bound that makes it practical.
+Here is the key observation. At any node, the cards still unknown form, among
+themselves, a {\it smaller topswops puzzle}: whatever else happens, the flips still
+to come can number at most $f(m)$, where $m$ is how many cards remain unknown. So
+if |c| steps have been taken and the best deal found so far has score~$r$, then
+this node is worth pursuing only when
+$$c + f(m)\ \ge\ r.$$
+Otherwise no descendant can beat the record, and we prune the whole subtree.
+
+The bound feeds on itself: the smaller answers $f(0),f(1),\ldots$ are exactly the
+table |score[0]|, |score[1]|, $\ldots$ that we know in advance. We seed |score|
+with the published values and keep |score[n]| as the running record~$r$, raising it
+each time a better leaf turns up. Tighter records prune harder, so good deals found early pay
+for themselves many times over.
+
 @ The deck size~|n| is at most~$16$. The original uses $16$, whose search space is
 so vast the program effectively never finishes; lower |n| to watch it complete and
 to check the answers against the table below. |score| holds the known records
 $f(0),\ldots,f(16)$ (sequence \.{A000375}); $score[n]$ doubles as the current
 target, and $score[m]$ for $m<n$ is the pruning bound.
 @<The known records, and the deck size@>=
-const n = 16
-
+var n int = 16
 var score = []int{0, 0, 1, 2, 4, 7, 10, 16, 22, 30, 38, 51, 65, 80, 101, 113, 114}
 
 @ The state machine carries its working storage in package-level arrays, so that a
@@ -130,8 +97,24 @@ var (
 	d, profile     [16]int
 )
 
-@ @<Local scratch variables@>=
-var j, k, l, t, c int
+@* A deck of placeholders.
+The deck |a| holds $n$ slots. A slot is either a {\it settled\/} card, a positive
+value in $1\ldots n$, or an {\it unknown}, a negative {\it placeholder\/} $-i$
+standing for ``the $i$th card we have not yet committed to.'' We start with
+everything unknown:
+$$a = (-1,\,-2,\,\ldots,\,-(n-1),\,0).$$
+Now play forward. To flip the top $v$ cards we need to know $v$, the top card's
+value; as long as the top is settled we keep flipping and counting steps. The
+moment an {\it unknown\/} card reaches the top, the game cannot proceed until we
+say what that card is --- so we stop and {\it branch}, trying each still-available
+value in turn. Committing a value may settle several cards at once (the flip that
+follows shuffles them into place), and the game runs on until the next unknown
+surfaces, or until a~$1$ appears and the game ends.
+
+A node of the search tree is thus a partially-decided deck together with the
+number of steps the game has taken so far; its children are the legal values for
+the unknown now on top. A leaf is a fully-decided deck --- a genuine starting
+permutation --- whose step count is a candidate for the record.
 
 @ Initially every card is an unknown placeholder, the candidate pool |p| lists the
 values $2,3,\ldots,n,1$, and we are about to choose the top card of level~$1$.
@@ -147,6 +130,18 @@ profile[0] = 1
 l = 1
 s[l] = a
 j = n - 1
+
+@* Enumerating the choices.
+When an unknown surfaces we must try every value not yet placed, each exactly once.
+The program does this with an inversion-table scheme of the kind Knuth uses for
+{\it genlex\/} permutation generation: the array |p| keeps the values chosen so far
+in $p[0\ldots l-1]$ and the still-available ones after them, the array |v| records,
+for each level, which candidate was taken, and moving from one candidate to the
+next costs a single swap. We never build a permutation from scratch; we edit the
+previous one. The details are terse --- this is faithful to Knuth's original --- but
+the effect is simple: at level |l| the loop sweeps an index |j| down through the
+remaining candidates, the feasibility-and-bound test filters them, and |v| and |p|
+let us undo a choice to reach the next.
 
 @ At |tryit| we take the next candidate value |k| from the pool. Two cheap tests
 can reject it without any work. First, a card may not be assigned the value of the
