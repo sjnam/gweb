@@ -37,18 +37,23 @@ import (
 	"math/big"
 )
 
+@<Type definition@>
+@<Private subroutines@>
+@<Public subroutines@>
+
 @ A |PS| value is a handle on a running series: the two channels of its demand
 protocol, plus the context whose cancellation ends it. Coefficients (|dat|) are
 |*big.Rat|; a request (|req|) carries no data, so it is an empty struct. |mkPS|
 makes the channels; the goroutine that fills them is started by whichever
 generator or operator created the series.
-@c
+@<Type definition@>=
 type PS struct {
 	ctx context.Context
 	req chan struct{}
 	dat chan *big.Rat
 }
 
+@ @<Private subroutines@>=
 func mkPS(ctx context.Context) PS {
 	return PS{ctx: ctx, req: make(chan struct{}), dat: make(chan *big.Rat)}
 }
@@ -58,7 +63,7 @@ Four little methods are the entire vocabulary of the network; every operator bel
 is built from them. A consumer drives a series with |get|: it places a demand and
 then waits for the coefficient. Each half of the exchange races against the
 context, so a cancelled network never blocks --- |get| simply reports |ok| false.
-@c
+@<Private subroutines@>=
 func (F PS) get() (v *big.Rat, ok bool) {
 	select {
 	case F.req <- struct{}{}:
@@ -78,7 +83,7 @@ hands over one coefficient to a demand already received; and |put| does both in
 order --- wait, then deliver. The single most important fact about |put| is that a
 process can {\it produce a term before demanding any input}, which is what lets the
 self-referential definitions later on get started instead of deadlocking.
-@c
+@<Private subroutines@>=
 func (F PS) awaitReq() bool {
 	select {
 	case <-F.req:
@@ -104,14 +109,12 @@ func (F PS) put(v *big.Rat) bool {
 @ Two public accessors let a caller read a series. |Get| demands one coefficient
 (|nil| once the context is cancelled); |Take| collects the first |n|, stopping
 early if the network is shut down mid-stream.
-@c
-// Get returns the next coefficient of F, or nil if F's context is cancelled.
+@<Public subroutines@>=
 func (F PS) Get() *big.Rat {
 	v, _ := F.get()
 	return v
 }
 
-// Take returns the first n coefficients of F (fewer if cancelled meanwhile).
 func (F PS) Take(n int) []*big.Rat {
 	cs := make([]*big.Rat, 0, n)
 	for i := 0; i < n; i++ {
@@ -127,7 +130,7 @@ func (F PS) Take(n int) []*big.Rat {
 @ A handful of one-line wrappers keep the rational arithmetic readable: |rat| builds
 $a/b$, and |radd|, |rmul|, |rneg|, |rinv| are the non-mutating arithmetic we need.
 Each returns a fresh |*big.Rat| so that shared coefficients are never clobbered.
-@c
+@<Private subroutines@>=
 func rat(a, b int64) *big.Rat     { return big.NewRat(a, b) }
 func radd(x, y *big.Rat) *big.Rat { return new(big.Rat).Add(x, y) }
 func rmul(x, y *big.Rat) *big.Rat { return new(big.Rat).Mul(x, y) }
@@ -139,7 +142,7 @@ The simplest series come from nothing but a context. |Series| streams the given
 coefficients and then zeros forever, so any polynomial is a |Series|. Notice the
 shape that recurs in every producer below: a goroutine that loops on |put|,
 returning the moment |put| reports the network has been cancelled.
-@c
+@<Public subroutines@>=
 func Series(ctx context.Context, cs ...*big.Rat) PS {
 	S := mkPS(ctx)
 	go func() {
@@ -156,7 +159,7 @@ func Series(ctx context.Context, cs ...*big.Rat) PS {
 
 @ |Ones| is $1+x+x^2+\cdots=1/(1-x)$, and |X| is the series $x$ itself. |X| is just
 a two-term |Series|, which shows how the generators compose.
-@c
+@<Public subroutines@>=
 func Ones(ctx context.Context) PS {
 	S := mkPS(ctx)
 	go func() {
@@ -171,7 +174,7 @@ func X(ctx context.Context) PS { return Series(ctx, rat(0, 1), rat(1, 1)) }
 @ |copyPS| forwards series |I| onto an output channel |S|, one term per demand. It
 is the glue that lets a process, after computing a few leading terms by hand, defer
 the rest of its output to some other series.
-@c
+@<Private subroutines@>=
 func copyPS(I, S PS) {
 	for {
 		if !S.awaitReq() {
@@ -190,7 +193,7 @@ func copyPS(I, S PS) {
 @* Term-by-term operations.
 Addition is the model operator: on each demand it pulls one term from each input
 and sends their sum. If either input ends (cancellation), so does the output.
-@c
+@<Public subroutines@>=
 func Add(F, G PS) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -216,7 +219,7 @@ func Add(F, G PS) PS {
 
 @ Scalar multiplication |Cmul| scales every term by a constant |c|. Subtraction is
 then free: $F-G=F+(-1)\,G$.
-@c
+@<Public subroutines@>=
 func Cmul(c *big.Rat, F PS) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -241,7 +244,7 @@ func Sub(F, G PS) PS { return Add(F, Cmul(rat(-1, 1), G)) }
 @ Multiplication by~$x$ shifts every coefficient up one place: it emits a~$0$ and
 then copies |F|. This one-term delay is how the ``$x\cdot{}$'' factors in the
 product and composition recursions are realized.
-@c
+@<Public subroutines@>=
 func Xmul(F PS) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -256,7 +259,7 @@ func Xmul(F PS) PS {
 @* Calculus.
 Differentiation maps $\sum F_i x^i$ to $\sum i\,F_i x^{i-1}$: drop the constant
 term, then multiply the $n$th surviving coefficient by~$n$.
-@c
+@<Public subroutines@>=
 func Deriv(F PS) PS {
 	D := mkPS(F.ctx)
 	go func() {
@@ -287,7 +290,7 @@ constant term~|c| (the constant of integration) and $n$th coefficient
 $F_{n-1}/n$. Crucially, |Integ| {\it emits |c| before demanding anything from
 |F|}; that one free term is what makes a feedback loop productive rather than
 deadlocked.
-@c
+@<Public subroutines@>=
 func Integ(c *big.Rat, F PS) PS {
 	I := mkPS(F.ctx)
 	go func() {
@@ -317,7 +320,7 @@ channel cannot be read twice, so |Split| turns one series into |n| independent
 streams, each delivering every coefficient of |F|. The branches may run at
 different speeds; coefficients already produced but not yet read by the slowest
 branch are held in a queue.
-@c
+@<Public subroutines@>=
 func Split(F PS, n int) []PS {
 	ctx := F.ctx
 	outs := make([]PS, n)
@@ -437,7 +440,7 @@ tails. We compute it by reading $F_0$ and $G_0$ (after which each input channel
 carries its own tail), splitting both tails, and assembling the three component
 series; the inner |Mul| is the recursion, and |Split| is what makes feeding the
 tails back in legal.
-@c
+@<Public subroutines@>=
 func Mul(F, G PS) PS {
 	P := mkPS(F.ctx)
 	go func() {
@@ -495,7 +498,7 @@ $$F(G)=F_0+x\,\bar G\,\bar F(G).$$
 Reading $F_0$ leaves |F| carrying $\bar F$, and discarding the (zero) head of |G|
 leaves it carrying $\bar G$; the tail of the result is then $\bar G$ times the
 recursive composition.
-@c
+@<Public subroutines@>=
 func Subst(F, G PS) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -522,7 +525,7 @@ func Subst(F, G PS) PS {
 coefficient is scaled by $c^i$, and $n-1$ zeros are inserted after each to spread
 the powers out. With $c=-1$, $n=2$ it turns $1/(1-x)$ into $1/(1+x^2)$, the seed of
 the $\arctan$ example.
-@c
+@<Public subroutines@>=
 func Msubst(F PS, c *big.Rat, n int) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -556,7 +559,7 @@ work the definition must be {\it productive\/} --- |f|'s network must deliver it
 first term before it demands one --- and beginning with |Integ|, which emits the
 constant of integration up front, guarantees exactly that. This is how a
 differential equation becomes a stream.
-@c
+@<Public subroutines@>=
 func Fix(ctx context.Context, f func(PS) PS) PS {
 	X := mkPS(ctx)
 	XX := Split(X, 2)
@@ -569,7 +572,7 @@ solution of $X'=X\,F'$, i.e. the fixed point
 $$X=1+\int X\,F'\,dx.$$
 Because |Integ| supplies the leading~$1$ before reading anything, the loop is
 productive and converges term by term --- Picard's iteration, run as dataflow.
-@c
+@<Public subroutines@>=
 func Exp(F PS) PS {
 	D := Deriv(F)
 	return Fix(F.ctx, func(X PS) PS {
@@ -583,7 +586,7 @@ $$R={1\over F_0}\,(1-x\,\bar F\,R),$$
 so |R| is split and one copy is multiplied back in. Reading $F_0$ leaves |F|
 carrying $\bar F$; the first term is $1/F_0$, and the rest is $-1/F_0$ times
 $\bar F\,R$ (the |Xmul| is hidden in the term offset of |copyPS|).
-@c
+@<Public subroutines@>=
 func Recip(F PS) PS {
 	R := mkPS(F.ctx)
 	RR := Split(R, 2)
@@ -610,7 +613,7 @@ $$\bar R={1\over F_1}\,\bigl(1-x\,\bar R^2\,\bar{\bar F}(R)\bigr).$$
 $R$ appears three times on the right (twice in $\bar R^2$, once inside the
 composition), so the network splits it four ways --- three for its own definition,
 one for the caller.
-@c
+@<Public subroutines@>=
 func Rev(F PS) PS {
 	R := mkPS(F.ctx)
 	RR := Split(R, 4)
@@ -657,7 +660,7 @@ for {
 
 @ Finally, |tail| drops the constant term of |F|, yielding $\bar F$ --- the
 operation McIlroy writes as an overbar, used above to form $\bar R$ from $R$.
-@c
+@<Private subroutines@>=
 func tail(F PS) PS {
 	T := mkPS(F.ctx)
 	go func() {
