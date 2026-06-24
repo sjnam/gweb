@@ -79,6 +79,7 @@ example: build
 	$(MAKE) -C examples NAME=sham
 	$(MAKE) -C examples NAME=fast_cancel
 	$(MAKE) -C examples NAME=prjeuler152
+	$(MAKE) -C examples NAME=topswops
 
 clean:
 	rm -rf $(BIN) build

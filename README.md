@@ -134,6 +134,10 @@ make -C examples NAME=wc     # just one example
   floating-point arithmetic. When adding the $1/n^2$ terms, precise rational
   number operations are required, and a brute-force approach that simply cycles
   through all $2^{79}$ subsets is impossible.
+* [examples/topswops.w](examples/topswops.w) — Conway's *topswops* game, solved
+  by A. Pepperdine's backward search (run the game in reverse from its ending
+  state). An essay-style port of Knuth's CWEB `topswops.w`, based on
+  [github.com/sjnam/topswops](https://github.com/sjnam/topswops).
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.
