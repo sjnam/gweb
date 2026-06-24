@@ -1,5 +1,8 @@
 \def\title{Squinting at Power Series}
 
+@s Rat int
+@s Context int
+
 @* Introduction.
 A power series
 $$F(x)=\sum_{i\ge0}F_i\,x^i=F_0+F_1x+F_2x^2+\cdots$$
@@ -27,10 +30,6 @@ rounding. Each running series is a network of goroutines whose lifetime is gover
 by a |context.Context|: generators take one, derived series inherit it, and
 cancelling it shuts the whole network down.
 @c
-// Package squint implements lazy power series as demand-driven streams of
-// rational coefficients, after M. D. McIlroy, "Squinting at Power Series".
-// Each series is a network of goroutines connected by channels; cancelling the
-// context that built it shuts the network down.
 package squint
 
 import (
@@ -141,7 +140,6 @@ coefficients and then zeros forever, so any polynomial is a |Series|. Notice the
 shape that recurs in every producer below: a goroutine that loops on |put|,
 returning the moment |put| reports the network has been cancelled.
 @c
-// Series is the power series with the given leading coefficients, then zeros.
 func Series(ctx context.Context, cs ...*big.Rat) PS {
 	S := mkPS(ctx)
 	go func() {
@@ -159,7 +157,6 @@ func Series(ctx context.Context, cs ...*big.Rat) PS {
 @ |Ones| is $1+x+x^2+\cdots=1/(1-x)$, and |X| is the series $x$ itself. |X| is just
 a two-term |Series|, which shows how the generators compose.
 @c
-// Ones is 1 + x + x^2 + ... = 1/(1-x).
 func Ones(ctx context.Context) PS {
 	S := mkPS(ctx)
 	go func() {
@@ -169,14 +166,12 @@ func Ones(ctx context.Context) PS {
 	return S
 }
 
-// X is the series x.
 func X(ctx context.Context) PS { return Series(ctx, rat(0, 1), rat(1, 1)) }
 
 @ |copyPS| forwards series |I| onto an output channel |S|, one term per demand. It
 is the glue that lets a process, after computing a few leading terms by hand, defer
 the rest of its output to some other series.
 @c
-// copyPS copies I onto S, one term per demand.
 func copyPS(I, S PS) {
 	for {
 		if !S.awaitReq() {
@@ -196,7 +191,6 @@ func copyPS(I, S PS) {
 Addition is the model operator: on each demand it pulls one term from each input
 and sends their sum. If either input ends (cancellation), so does the output.
 @c
-// Add returns F + G.
 func Add(F, G PS) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -223,7 +217,6 @@ func Add(F, G PS) PS {
 @ Scalar multiplication |Cmul| scales every term by a constant |c|. Subtraction is
 then free: $F-G=F+(-1)\,G$.
 @c
-// Cmul returns c*F.
 func Cmul(c *big.Rat, F PS) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -243,14 +236,12 @@ func Cmul(c *big.Rat, F PS) PS {
 	return S
 }
 
-// Sub returns F - G.
 func Sub(F, G PS) PS { return Add(F, Cmul(rat(-1, 1), G)) }
 
 @ Multiplication by~$x$ shifts every coefficient up one place: it emits a~$0$ and
 then copies |F|. This one-term delay is how the ``$x\cdot{}$'' factors in the
 product and composition recursions are realized.
 @c
-// Xmul returns x*F: a one-term delay.
 func Xmul(F PS) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -266,7 +257,6 @@ func Xmul(F PS) PS {
 Differentiation maps $\sum F_i x^i$ to $\sum i\,F_i x^{i-1}$: drop the constant
 term, then multiply the $n$th surviving coefficient by~$n$.
 @c
-// Deriv returns dF/dx.
 func Deriv(F PS) PS {
 	D := mkPS(F.ctx)
 	go func() {
@@ -298,7 +288,6 @@ $F_{n-1}/n$. Crucially, |Integ| {\it emits |c| before demanding anything from
 |F|}; that one free term is what makes a feedback loop productive rather than
 deadlocked.
 @c
-// Integ returns the integral of F with integration constant c.
 func Integ(c *big.Rat, F PS) PS {
 	I := mkPS(F.ctx)
 	go func() {
@@ -329,7 +318,6 @@ streams, each delivering every coefficient of |F|. The branches may run at
 different speeds; coefficients already produced but not yet read by the slowest
 branch are held in a queue.
 @c
-// Split returns n independent streams, each carrying every coefficient of F.
 func Split(F PS, n int) []PS {
 	ctx := F.ctx
 	outs := make([]PS, n)
@@ -450,7 +438,6 @@ carries its own tail), splitting both tails, and assembling the three component
 series; the inner |Mul| is the recursion, and |Split| is what makes feeding the
 tails back in legal.
 @c
-// Mul returns F*G, from F*G = F0*G0 + x*(F0*Gbar + G0*Fbar + x*Fbar*Gbar).
 func Mul(F, G PS) PS {
 	P := mkPS(F.ctx)
 	go func() {
@@ -509,7 +496,6 @@ Reading $F_0$ leaves |F| carrying $\bar F$, and discarding the (zero) head of |G
 leaves it carrying $\bar G$; the tail of the result is then $\bar G$ times the
 recursive composition.
 @c
-// Subst returns F(G), where G0 must be 0: F(G) = F0 + x*Gbar*Fbar(G).
 func Subst(F, G PS) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -537,7 +523,6 @@ coefficient is scaled by $c^i$, and $n-1$ zeros are inserted after each to sprea
 the powers out. With $c=-1$, $n=2$ it turns $1/(1-x)$ into $1/(1+x^2)$, the seed of
 the $\arctan$ example.
 @c
-// Msubst returns F(c*x^n): coefficient i scaled by c^i, then n-1 zeros.
 func Msubst(F PS, c *big.Rat, n int) PS {
 	S := mkPS(F.ctx)
 	go func() {
@@ -572,7 +557,6 @@ first term before it demands one --- and beginning with |Integ|, which emits the
 constant of integration up front, guarantees exactly that. This is how a
 differential equation becomes a stream.
 @c
-// Fix returns X satisfying X = f(X). f must be productive (emit before demanding).
 func Fix(ctx context.Context, f func(PS) PS) PS {
 	X := mkPS(ctx)
 	XX := Split(X, 2)
@@ -586,7 +570,6 @@ $$X=1+\int X\,F'\,dx.$$
 Because |Integ| supplies the leading~$1$ before reading anything, the loop is
 productive and converges term by term --- Picard's iteration, run as dataflow.
 @c
-// Exp returns e^F (F0 must be 0), as the fixed point X = integ(1, X*F').
 func Exp(F PS) PS {
 	D := Deriv(F)
 	return Fix(F.ctx, func(X PS) PS {
@@ -601,7 +584,6 @@ so |R| is split and one copy is multiplied back in. Reading $F_0$ leaves |F|
 carrying $\bar F$; the first term is $1/F_0$, and the rest is $-1/F_0$ times
 $\bar F\,R$ (the |Xmul| is hidden in the term offset of |copyPS|).
 @c
-// Recip returns 1/F (F0 nonzero): R = (1/F0)*(1 - x*Fbar*R).
 func Recip(F PS) PS {
 	R := mkPS(F.ctx)
 	RR := Split(R, 2)
@@ -629,8 +611,6 @@ $R$ appears three times on the right (twice in $\bar R^2$, once inside the
 composition), so the network splits it four ways --- three for its own definition,
 one for the caller.
 @c
-// Rev returns the functional inverse R of F (F0=0, F1 nonzero), F(R(x)) = x:
-// Rbar = (1/F1)*(1 - x*Rbar^2*Fbarbar(R)).
 func Rev(F PS) PS {
 	R := mkPS(F.ctx)
 	RR := Split(R, 4)
@@ -678,7 +658,6 @@ for {
 @ Finally, |tail| drops the constant term of |F|, yielding $\bar F$ --- the
 operation McIlroy writes as an overbar, used above to form $\bar R$ from $R$.
 @c
-// tail drops the constant term of F, yielding Fbar.
 func tail(F PS) PS {
 	T := mkPS(F.ctx)
 	go func() {
