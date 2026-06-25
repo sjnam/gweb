@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/sjnam/gweb/actions/workflows/ci.yml/badge.svg)](https://github.com/sjnam/gweb/actions/workflows/ci.yml)
 
-GWEB is a [literate programming](https://en.wikipedia.org/wiki/Literate_programming)
+GWEB is a [literate programming](https://www-cs-faculty.stanford.edu/~knuth/lp.html)
 system for the Go programming language, modeled closely on Donald Knuth and Silvio Levy's
 **CWEB**. You write a single `.w` source file that interleaves TeX
 documentation with Go code, and two tools turn it into either a program or a
