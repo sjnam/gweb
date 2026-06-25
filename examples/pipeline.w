@@ -1,5 +1,11 @@
 \def\title{A Hybrid Pipeline}
 
+@s Seq int
+@s Context int
+@s WaitGroup int
+@s Once int
+@s CancelFunc int
+
 @* Introduction.
 Go gives us two rather different ways to build a {\it pipeline}, and they each shine
 at a different job.
@@ -10,7 +16,7 @@ function can be ranged over with |for v := range s|, and a chain of |map| and
 goroutines, nothing computed until the consumer asks for it. It is wonderfully
 simple to reason about, but it runs on one thread.
 
-The second is the {\it concurrent\/} world of {\bf channels and goroutines}. Here we
+The second is the {\it concurrent\/} world of {\bf channels} and {\bf goroutines}. Here we
 can {\it fan out\/} a stage across several workers running at once, cancel the whole
 network the instant something goes wrong, and let the first error propagate out. It
 is powerful, but every stage now has to think about cancellation and shutdown.
