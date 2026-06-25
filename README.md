@@ -147,6 +147,10 @@ make -C examples NAME=wc     # just one example
   and differential equations like `exp`), after McIlroy's *Squinting at Power
   Series*. A concurrent-Go showpiece, based on
   [github.com/sjnam/squint](https://github.com/sjnam/squint).
+* [examples/pairsums.w](examples/pairsums.w) — HackerRank's *Pair Sums*: the
+  largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
+  and a prefix-sum twist turn it into the upper envelope of a family of lines,
+  solved with a **Li Chao tree** in O(n log n).
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.

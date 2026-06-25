@@ -82,6 +82,7 @@ example: build
 	$(MAKE) -C examples NAME=topswops
 	$(MAKE) -C examples NAME=topswops_fwd
 	$(MAKE) -C examples NAME=squint
+	$(MAKE) -C examples NAME=pairsums
 
 clean:
 	rm -rf $(BIN) build
