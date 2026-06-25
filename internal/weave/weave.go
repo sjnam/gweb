@@ -20,6 +20,7 @@ type Weaver struct {
 
 	format  map[string]tokKind // @f/@s: identifier -> the token class to use
 	noIndex map[string]bool    // @s: identifiers omitted from the index
+	isFile  map[string]bool    // @(file@>= outputs: names are literal file paths
 
 	xref *xref // identifier and section cross-references (built lazily)
 }
@@ -31,15 +32,20 @@ func New(w *web.Web) *Weaver {
 		defNum:  map[string]int{},
 		format:  map[string]tokKind{},
 		noIndex: map[string]bool{},
+		isFile:  map[string]bool{},
 	}
 	// Both refinements and @(file@>= outputs get a defining section number, so
 	// their headlines and links resolve; only @(file@>= names are never the
-	// target of a @<...@> reference.
+	// target of a @<...@> reference. A file name is a literal path, not TeX, so
+	// we remember which names are files and typeset them verbatim.
 	for _, s := range w.Sections {
 		if s.HasCode && s.Name != "" {
 			name := w.Resolve(s.Name)
 			if _, ok := wv.defNum[name]; !ok {
 				wv.defNum[name] = s.Number
+			}
+			if s.IsFile {
+				wv.isFile[name] = true
 			}
 		}
 	}
@@ -529,7 +535,11 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 // renderName typesets a section name for TeX text mode. A |...| span is set as
 // inline code (as in CWEB section names); the rest passes through as TeX, so
 // control sequences and math work. A literal bar is written backslash-bar.
+// An file= name is a literal path: typeset it in typewriter, escaped.
 func (wv *Weaver) renderName(name string) string {
+	if wv.isFile[name] {
+		return "\\.{" + escTT(name) + "}"
+	}
 	var b strings.Builder
 	n := len(name)
 	i := 0
