@@ -113,6 +113,17 @@ make -C examples NAME=wc     # just one example
   `Filter`, `Take` over infinite Fibonacci numbers), showing off the Go features
   C has no answer to: first-class functions and closures, anonymous functions,
   generics, and Go 1.23 range-over-func iterators.
+* [examples/pipeline.w](examples/pipeline.w) — a tutorial that bridges Go's two
+  pipeline worlds: lazy `iter.Seq` transforms and a fan-out of channel workers,
+  joined by two boundary adapters, with first-error cancellation flowing across
+  both. Uses range-over-func and a pocket `errgroup`.
+* [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
+  channel networks (sum, product, composition, reciprocal, functional inverse,
+  and differential equations like `exp`), after McIlroy's *Squinting at Power
+  Series*.
+* [examples/fast_cancel.w](examples/fast_cancel.w) — It shows a complementary pattern
+  useful in any concurrent Go program: how to propagate a first-error signal to all
+  sibling goroutines cleanly.
 * [examples/sham.w](examples/sham.w) — a GWEB port of Knuth's Stanford GraphBase
   demo `sham`: count the symmetric Hamiltonian cycles of the knight's graph on an
   8×9 board, by folding the graph in half and backtracking with `goto` labels. It
@@ -120,41 +131,27 @@ make -C examples NAME=wc     # just one example
   running it needs that module (`go get github.com/sjnam/go-sgb`); the commentary
   is newly written. Shows GWEB handling an external dependency and a real Knuth
   program.
+* [examples/topswops.w](examples/topswops.w) — Conway's *topswops* game, solved
+  by A. Pepperdine's backward search (run the game in reverse from its ending
+  state). An essay-style port of Knuth's CWEB `topswops.w`.
+* [examples/topswops_fwd.w](examples/topswops_fwd.w) — the same game solved
+  *forwards*: a branch-and-bound search with placeholder cards and an `f(m)`
+  pruning bound, written as a `goto` state machine. A port of Knuth's CWEB
+  `topswops-fwd.w`.
 * [examples/floyd.w](examples/floyd.w) — Floyd's partition problem, the classic
   "toy problem" Knuth discusses in *Are Toy Problems Useful?*: partition
   √1…√50 into two nearly-equal halves. A worked literate solution
   (meet-in-the-middle search, Gray-code enumeration, compensated summation, and
-  a `math/big` verification) based on
-  [github.com/sjnam/floyd-partition](https://github.com/sjnam/floyd-partition).
-* [examples/fast_cancel.w](examples/fast_cancel.w) — It shows a complementary pattern
-  useful in any concurrent Go program: how to propagate a first-error signal to all
-  sibling goroutines cleanly.
+  a `math/big` verification).
+* [examples/pairsums.w](examples/pairsums.w) — HackerRank's *Pair Sums*: the
+  largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
+  and a prefix-sum twist turn it into the upper envelope of a family of lines,
+  solved with a **Li Chao tree** in O(n log n).
 * [examples/prjeuler152.w](examples/prjeuler152.w) — Project Euler Problem 152,
   The key challenge—and the appeal—is that you cannot compare the sums using
   floating-point arithmetic. When adding the $1/n^2$ terms, precise rational
   number operations are required, and a brute-force approach that simply cycles
   through all $2^{79}$ subsets is impossible.
-* [examples/topswops.w](examples/topswops.w) — Conway's *topswops* game, solved
-  by A. Pepperdine's backward search (run the game in reverse from its ending
-  state). An essay-style port of Knuth's CWEB `topswops.w`, based on
-  [github.com/sjnam/topswops](https://github.com/sjnam/topswops).
-* [examples/topswops_fwd.w](examples/topswops_fwd.w) — the same game solved
-  *forwards*: a branch-and-bound search with placeholder cards and an `f(m)`
-  pruning bound, written as a `goto` state machine. A port of Knuth's CWEB
-  `topswops-fwd.w`.
-* [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
-  channel networks (sum, product, composition, reciprocal, functional inverse,
-  and differential equations like `exp`), after McIlroy's *Squinting at Power
-  Series*. A concurrent-Go showpiece, based on
-  [github.com/sjnam/squint](https://github.com/sjnam/squint).
-* [examples/pairsums.w](examples/pairsums.w) — HackerRank's *Pair Sums*: the
-  largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
-  and a prefix-sum twist turn it into the upper envelope of a family of lines,
-  solved with a **Li Chao tree** in O(n log n).
-* [examples/pipeline.w](examples/pipeline.w) — a tutorial that bridges Go's two
-  pipeline worlds: lazy `iter.Seq` transforms and a fan-out of channel workers,
-  joined by two boundary adapters, with first-error cancellation flowing across
-  both. Uses range-over-func and a pocket `errgroup`.
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.
