@@ -29,7 +29,26 @@ Coefficients are exact rationals (Go's |math/big.Rat|), so nothing is lost to
 rounding. Each running series is a network of goroutines whose lifetime is governed
 by a |context.Context|: generators take one, derived series inherit it, and
 cancelling it shuts the whole network down.
-@c
+
+@ A validation program is provided so that installers can tell if {\sc squint}
+is working properly. To make the test, simply run \.{squint\_test.go}.
+@(squint_test.go@>=
+package squint
+
+import (
+	"context"
+	"testing"
+)
+
+@<Test Helpers@>
+@<Test |Deriv| routine@>
+@<Test |Recip| routine@>
+
+@ The \GO/ code for {\sc squint} doesn't have a main routine; it's just a bunch
+of subroutines to be incorporated into programs at a higher level via the system
+loading routine. Here is the general outline of \.{squint.go}:
+
+@p
 package squint
 
 import (
@@ -283,6 +302,13 @@ func Deriv(F PS) PS {
 		}
 	}()
 	return D
+}
+
+@ @<Test |Deriv| routine@>=
+func TestDeriv(t *testing.T) {
+	// d/dx 1/(1-x) = 1/(1-x)^2 = 1 + 2x + 3x^2 + ...
+	checkTerms(t, "deriv(Ones)", Deriv(Ones(newCtx(t))),
+		[]string{"1", "2", "3", "4", "5", "6"})
 }
 
 @ Integration is the key to the self-referential definitions. $\int F\,dx$ has
@@ -607,6 +633,13 @@ func Recip(F PS) PS {
 	return RR[1]
 }
 
+@ @<Test |Recip| routine@>=
+func TestRecip(t *testing.T) {
+	// 1/(1/(1-x)) = 1 - x
+	checkTerms(t, "recip(Ones)", Recip(Ones(newCtx(t))),
+		[]string{"1", "-1", "0", "0", "0", "0"})
+}
+
 @ Reversion finds the functional inverse: given $F$ with $F_0=0$ and $F_1\ne0$,
 |Rev| returns the $R$ with $F(R(x))=x$. Writing $R=x\bar R$, equation~(8) gives
 $$\bar R={1\over F_1}\,\bigl(1-x\,\bar R^2\,\bar{\bar F}(R)\bigr).$$
@@ -680,6 +713,27 @@ func tail(F PS) PS {
 		copyPS(F, T)
 	}()
 	return T
+}
+
+@ @<Test Helpers@>=
+// newCtx returns a context cancelled at the end of the test, so each
+// test's process network is torn down.
+func newCtx(t *testing.T) context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	return ctx
+}
+
+// checkTerms compares the first coefficients of F with the expected
+// rationals, given as strings like "1", "-1/3".
+func checkTerms(t *testing.T, name string, F PS, want []string) {
+	t.Helper()
+	for i, w := range want {
+		got := F.Get().RatString()
+		if got != w {
+			t.Fatalf("%s: term %d = %s, want %s", name, i, got, w)
+		}
+	}
 }
 
 @* Index.

@@ -35,4 +35,4 @@ $(NAME).pdf: $(NAME).w $(GWEAVE) $(ROOT)/tex/gwebmac.tex
 	$(TEXENGINE) $(NAME).tex
 
 clean:
-	rm -f *.go *.tex *.log *.dvi *.toc *.pdf
+	rm -f *.go *.tex *.log *.dvi *.toc *.pdf *.idx *.scn
