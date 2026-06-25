@@ -12,6 +12,8 @@ examples/*.pdf
 examples/*.ps
 examples/*.log
 examples/*.toc
+examples/*.idx
+examples/*.scn
 
 # but keep sources
 !examples/*.w
@@ -19,9 +21,12 @@ examples/*.toc
 # rasterized previews
 *.png
 
-# stray TeX scratch logs
+# stray TeX scratch logs, and CWEB cweave aux files (.idx index, .scn section
+# names) -- gweave never writes these, but running cweave in-tree drops them
 texput.log
 *.toc
+*.idx
+*.scn
 
 # VS Code extension package
 *.vsix
