@@ -1,5 +1,8 @@
 \def\title{Pair Sums}
 
+@d os.Stdin
+@d math.MinInt64
+
 @* Introduction.
 Define the {\it value\/} of an array to be the sum, over every pair of positions
 $i<j$, of the products of their entries:
