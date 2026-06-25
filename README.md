@@ -151,6 +151,10 @@ make -C examples NAME=wc     # just one example
   largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
   and a prefix-sum twist turn it into the upper envelope of a family of lines,
   solved with a **Li Chao tree** in O(n log n).
+* [examples/pipeline.w](examples/pipeline.w) — a tutorial that bridges Go's two
+  pipeline worlds: lazy `iter.Seq` transforms and a fan-out of channel workers,
+  joined by two boundary adapters, with first-error cancellation flowing across
+  both. Uses range-over-func and a pocket `errgroup`.
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.
