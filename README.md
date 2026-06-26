@@ -88,14 +88,14 @@ The woven output can be written in Korean by processing it with **`luatex`**
 ```
 
 [tex/kotexgweb.tex](tex/kotexgweb.tex) loads [luatexko](https://ctan.org/pkg/luatexko)
-through [tex/ko-font.tex](tex/ko-font.tex) (which selects the Noto Serif/Sans CJK KR
-fonts — edit it to change typefaces), translates gweave's fixed wording into
-Korean, and supplies a LuaTeX PDF back end so that blue cross-reference links and
-the PDF outline (bookmark) pane work, with Korean bookmark titles. Then:
+and selects the Noto Serif/Sans CJK KR fonts (edit the `\sethangulfont` lines to
+change typefaces), translates gweave's fixed wording into Korean, and supplies a
+LuaTeX PDF back end so that blue cross-reference links and the PDF outline
+(bookmark) pane work, with Korean bookmark titles. Then:
 
 ```sh
 gweave foo.w           # -> foo.tex
-luatex foo.tex         # -> foo.pdf   (kotexgweb.tex, ko-font.tex on TEXINPUTS)
+luatex foo.tex         # -> foo.pdf   (kotexgweb.tex on TEXINPUTS)
 ```
 
 gweave needs no flag; all the human-readable text it emits goes through macros
@@ -213,8 +213,7 @@ internal/web     shared front end: parses .w into sections (CWEB's common.w)
 internal/tangle  the tangle engine
 internal/weave   the weave engine: Go lexer, pretty-printer, cross-references
 tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
-tex/kotexgweb.tex  Korean (luatexko) localization + LuaTeX PDF back end
-tex/ko-font.tex  Hangul font setup used by kotexgweb.tex
+tex/kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
 lit/             GWEB written in itself: the .w sources the Go tree is tangled from
 man/             gtangle.1 and gweave.1 man pages
 doc/             format reference and the gwebman.tex manual
