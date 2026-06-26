@@ -78,6 +78,30 @@ tex "\let\pdf+ \input foo.tex"   # -> foo.dvi  (with pdf: specials)
 dvipdfmx foo.dvi                 # -> foo.pdf  (links + bookmarks)
 ```
 
+### Korean (and other non-English) documentation
+
+The woven output can be written in Korean by processing it with **`luatex`**
+(not `pdftex`) and putting one line in the `.w` file's limbo:
+
+```tex
+\input kotexgweb.tex
+```
+
+[tex/kotexgweb.tex](tex/kotexgweb.tex) loads [luatexko](https://ctan.org/pkg/luatexko)
+through [tex/ko-font.tex](tex/ko-font.tex) (which selects the Noto Serif/Sans CJK KR
+fonts — edit it to change typefaces), translates gweave's fixed wording into
+Korean, and supplies a LuaTeX PDF back end so that blue cross-reference links and
+the PDF outline (bookmark) pane work, with Korean bookmark titles. Then:
+
+```sh
+gweave foo.w           # -> foo.tex
+luatex foo.tex         # -> foo.pdf   (kotexgweb.tex, ko-font.tex on TEXINPUTS)
+```
+
+gweave needs no flag; all the human-readable text it emits goes through macros
+(`\GU`, `\GNused`, `\Gsectionword`, …) that `kotexgweb.tex` overrides, so the same
+mechanism localizes to any language — write your own `\input` file modelled on it.
+
 Both commands accept `-o <dir>` to choose an output directory, and an optional
 **change file** as a second argument — `gtangle foo.w foo.ch` — which patches the
 master source without editing it (CWEB's `.ch` mechanism; see
@@ -186,6 +210,8 @@ internal/web     shared front end: parses .w into sections (CWEB's common.w)
 internal/tangle  the tangle engine
 internal/weave   the weave engine: Go lexer, pretty-printer, cross-references
 tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
+tex/kotexgweb.tex  Korean (luatexko) localization + LuaTeX PDF back end
+tex/ko-font.tex  Hangul font setup used by kotexgweb.tex
 lit/             GWEB written in itself: the .w sources the Go tree is tangled from
 man/             gtangle.1 and gweave.1 man pages
 doc/             format reference and the gwebman.tex manual

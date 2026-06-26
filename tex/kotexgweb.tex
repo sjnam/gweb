@@ -1,0 +1,79 @@
+% kotexgweb.tex -- Korean localization and a LuaTeX PDF back end for GWEB.
+%
+% Put  \input kotexgweb.tex  in the limbo of a .w file and process the woven
+% output with luatex (not pdftex):  luatex foo.tex.  gweave emits
+% "\input gwebmac" as the very first line, so this file is read afterwards and
+% overrides gwebmac wherever Korean text or the LuaTeX engine needs it.
+%
+% Requires luatexko (loaded through ko-font.tex) and the Noto Serif/Sans CJK KR
+% fonts.  Korean font choices live in the companion file ko-font.tex; edit that
+% file to change typefaces.
+
+% ---- Korean fonts -----------------------------------------------------------
+\input ko-font.tex      % loads luatexko, sets the hangul fonts, runs \tenpoint
+\fontdimen7\tentex=0pt  % restore cmtex10's "no extra space after sentence"
+                        % (ko-font.tex re-\font's \tentex, dropping gwebmac's setting)
+
+% ---- Korean wording (the GWEB analogue of cwebman's localization list) ------
+% Cross-reference notes printed beneath a code definition. Korean has no
+% singular/plural inflection, so the "section"/"sections" pair reads the same.
+\def\GU#1{\Gnote{이 코드는 #1절에서 쓰인다}}
+\def\GUs#1{\Gnote{이 코드는 #1절에서 쓰인다}}
+\def\GA#1{\Gnote{이 코드는 #1절에도 정의되어 있다}}
+\def\GAs#1{\Gnote{이 코드는 #1절에도 정의되어 있다}}
+% The usage note beside an entry in the section-name list.
+\def\GNused#1{#1절에서 쓰임}
+\def\GNuseds#1{#1절에서 쓰임}
+% The running head over the list of section names, and the contents columns.
+\def\Gnamesheading{절 이름 목록}
+\def\Gsectionword{절}
+\def\Gpageword{쪽}
+
+% ---- LuaTeX PDF back end: blue links and Korean (UTF-16BE) bookmarks --------
+% gwebmac's \Gdest/\Glink/\Gbookmark are written for pdfTeX primitives that
+% luatex does not provide; we restate them with luatex's \pdfextension forms.
+% A PDF outline title must be a UTF-16BE string, so Korean titles are converted
+% by a small Lua helper, gweb_pdfutf16(s), which prints s as the body of a PDF
+% literal string: the UTF-16BE byte-order mark followed by each code unit as a
+% pair of octal-escaped bytes (surrogate-paired above the BMP).
+%
+% The helper is built inline. Two cautions about Lua inside \directlua: (1) the
+% TeX-special characters % # _ & ^ ~ $ are made catcode 12 below (% is Lua's
+% modulo operator, not a TeX comment; # is its length operator), and the
+% backslash is produced as string.char(92) so none appears in the source; and
+% (2) \directlua turns the source's newlines into spaces, so a Lua "--" comment
+% would run to the end of the whole chunk -- hence there are none here.
+\begingroup
+\catcode`\%=12 \catcode`\#=12 \catcode`\_=12 \catcode`\&=12
+\catcode`\^=12 \catcode`\~=12 \catcode`\$=12
+\directlua{
+  local function oct(v)
+    local d1 = math.floor(v / 64); v = v % 64
+    local d2 = math.floor(v / 8); local d3 = v % 8
+    return tostring(d1) .. tostring(d2) .. tostring(d3)
+  end
+  function gweb_pdfutf16(s)
+    local bs = string.char(92)
+    local t = { bs .. oct(254) .. bs .. oct(255) }
+    for _, c in utf8.codes(s) do
+      if c >= 65536 then
+        c = c - 65536
+        local w1 = 55296 + math.floor(c / 1024)
+        local w2 = 56320 + (c % 1024)
+        t[#t + 1] = bs .. oct(math.floor(w1 / 256)) .. bs .. oct(w1 % 256)
+        t[#t + 1] = bs .. oct(math.floor(w2 / 256)) .. bs .. oct(w2 % 256)
+      else
+        t[#t + 1] = bs .. oct(math.floor(c / 256)) .. bs .. oct(c % 256)
+      end
+    end
+    tex.sprint(-2, table.concat(t))
+  end
+}
+\endgroup
+\def\Gdest#1{\pdfextension dest num #1 fith\relax}
+\def\Glink#1#2{\pdfextension startlink attr{/Border[0 0 0]}goto num #1\relax
+  \pdfextension literal{0 0 1 rg}#2\pdfextension literal{0 g}\pdfextension endlink}
+\def\Gbookmark#1#2#3#4{\pdfextension outline goto num #2 count #3
+  {\directlua{gweb_pdfutf16("\luaescapestring{#4}")}}}
+% Open the bookmark (outline) pane when the document is first shown.
+\pdfextension catalog{/PageMode /UseOutlines}

@@ -1494,20 +1494,23 @@ func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	}
 }
 
-@ |usedNote| renders the ``Used in section(s) \dots'' note, or |""| when the
-section is never used.
+@ |usedNote| renders the ``Used in section(s) \dots'' note for the section-names
+list, or |""| when the section is never used. The wording is deferred to the
+|\GNused|/|\GNuseds| macros (singular/plural) so a localization file can
+translate it, exactly as |\GU|/|\GUs| do for the under-definition notes.
 @(internal/weave/xref.go@>=
 // usedNote renders the "Used in section(s) ..." note for the section-names list,
-// or "" when the section is never used.
+// or "" when the section is never used. It emits a \GNused/\GNuseds macro so the
+// wording can be localized, like the \GU/\GUs notes under a definition.
 func usedNote(uses map[int]bool) string {
 	if len(uses) == 0 {
 		return ""
 	}
-	noun := "section"
+	macro := "\\GNused"
 	if len(uses) > 1 {
-		noun = "sections"
+		macro = "\\GNuseds"
 	}
-	return "Used in " + noun + " " + secList(uses, nil)
+	return macro + "{" + secList(uses, nil) + "}"
 }
 
 @ |crossRefNotes| returns the ``also defined in'' and ``used in'' notes printed

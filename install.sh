@@ -3,7 +3,8 @@
 #
 # Installs:
 #   gtangle, gweave        -> BINDIR        (default $PREFIX/bin)
-#   gwebmac.tex            -> TEXMFDIR/tex/plain/gweb  (default your TEXMFHOME)
+#   gwebmac.tex, kotexgweb.tex, ko-font.tex
+#                          -> TEXMFDIR/tex/plain/gweb  (default your TEXMFHOME)
 #   gtangle.1, gweave.1    -> MANDIR        (default $PREFIX/share/man/man1)
 #
 # Usage:
@@ -55,10 +56,10 @@ if [ "$uninstall" = 1 ]; then
 	echo "Uninstalling GWEB..."
 	rm -f "$BINDIR/gtangle" "$BINDIR/gweave"
 	rm -f "$MANDIR/gtangle.1" "$MANDIR/gweave.1"
-	rm -f "$GWEBMACDIR/gwebmac.tex"
+	rm -f "$GWEBMACDIR/gwebmac.tex" "$GWEBMACDIR/kotexgweb.tex" "$GWEBMACDIR/ko-font.tex"
 	rmdir "$GWEBMACDIR" 2>/dev/null || true
 	[ -f "$TEXMFDIR/ls-R" ] && command -v mktexlsr >/dev/null 2>&1 && mktexlsr "$TEXMFDIR" >/dev/null 2>&1 || true
-	echo "Removed gtangle, gweave, their man pages, and gwebmac.tex."
+	echo "Removed gtangle, gweave, their man pages, and the TeX macros."
 	exit 0
 fi
 
@@ -72,9 +73,13 @@ mkdir -p "$BINDIR"
 "$GO" build -o "$BINDIR/gtangle" ./cmd/gtangle
 "$GO" build -o "$BINDIR/gweave" ./cmd/gweave
 
-echo "Installing gwebmac.tex into $GWEBMACDIR ..."
+echo "Installing TeX macros into $GWEBMACDIR ..."
 mkdir -p "$GWEBMACDIR"
 cp tex/gwebmac.tex "$GWEBMACDIR/gwebmac.tex"
+# Korean (luatexko) support: kotexgweb.tex is loaded from a .w file's limbo and
+# pulls in ko-font.tex. Harmless to install even if you never write Korean webs.
+cp tex/kotexgweb.tex "$GWEBMACDIR/kotexgweb.tex"
+cp tex/ko-font.tex "$GWEBMACDIR/ko-font.tex"
 [ -f "$TEXMFDIR/ls-R" ] && command -v mktexlsr >/dev/null 2>&1 && mktexlsr "$TEXMFDIR" >/dev/null 2>&1 || true
 
 echo "Installing man pages into $MANDIR ..."
@@ -85,7 +90,7 @@ echo
 echo "Done. Installed:"
 echo "  $BINDIR/gtangle"
 echo "  $BINDIR/gweave"
-echo "  $GWEBMACDIR/gwebmac.tex"
+echo "  $GWEBMACDIR/gwebmac.tex, kotexgweb.tex, ko-font.tex"
 echo "  $MANDIR/gtangle.1, $MANDIR/gweave.1"
 echo
 case ":$PATH:" in

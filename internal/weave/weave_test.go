@@ -315,7 +315,7 @@ func g() { @<chunk@> }
 	if !strings.Contains(out, `\GUs{\Gs{2}, \Gs{3}}`) {
 		t.Errorf("uses in two sections should emit \\GUs:\n%s", out)
 	}
-	if !strings.Contains(out, `\GNS{chunk}{1}{Used in sections \Gs{2}, \Gs{3}}`) {
+	if !strings.Contains(out, `\GNS{chunk}{1}{\GNuseds{\Gs{2}, \Gs{3}}}`) {
 		t.Errorf("section-names entry malformed:\n%s", out)
 	}
 }

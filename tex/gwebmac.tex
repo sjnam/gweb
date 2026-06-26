@@ -242,6 +242,16 @@
 \def\GUs#1{\Gnote{This code is used in sections #1}}
 \def\GA#1{\Gnote{This code is also defined in section #1}}
 \def\GAs#1{\Gnote{This code is also defined in sections #1}}
+% Other human-language strings: the running head over the section-name list and
+% the two column headings on the contents page. Redefine these, and the four
+% notes just above, in a localization file (e.g. kotexgweb.tex for Korean) to
+% translate gweave's output; gweave itself needs no change.
+\def\Gnamesheading{NAMES OF THE SECTIONS}
+\def\Gsectionword{Section}
+\def\Gpageword{Page}
+% The usage note printed beside an entry in the section-name list.
+\def\GNused#1{Used in section #1}
+\def\GNuseds#1{Used in sections #1}
 
 % ---- index: title-less, set in two columns ----------------------------------
 % The index is set in two columns. \Ginx stashes the preceding material (the
@@ -287,7 +297,7 @@
   \global\hsize=\Gpagewidth \global\vsize=\Gpageheight
   \vfil\eject
   \global\def\Gsechead{}% no section number in the header here
-  \global\def\Ggrouphead{NAMES OF THE SECTIONS}%
+  \global\def\Ggrouphead{\Gnamesheading}%
   \begingroup
   \parindent=0pt \parskip=2pt plus 1pt \rightskip=0pt plus 2em \rm}
 \def\GNS#1#2#3{\noindent\hangindent2em \Gangle{#1}{#2}%
@@ -303,7 +313,7 @@
   \titletrue \pageno=\contentspagenumber
   \parindent=0pt
   \centerline{\titlefont\Gtitle}\vskip .7in \vfill
-  \line{\hfil{\eightrm Section}\hbox to 3em{\hss\eightrm Page}}%
+  \line{\hfil{\eightrm\Gsectionword}\hbox to 3em{\hss\eightrm\Gpageword}}%
   \begingroup \rm
     \input \jobname.toc
   \endgroup
