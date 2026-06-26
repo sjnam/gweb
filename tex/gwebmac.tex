@@ -98,6 +98,10 @@
 \def\contentspagenumber{0} % page number of the contents page; redefine in limbo
 \def\Gsechead{\S\thinspace\expandafter\Gtakeone\Gtm} % left/right end: section number
 \def\Ggrouphead{\expandafter\Gtaketwo\Gtm}   % middle: current group title
+% Font for the running-head title and group title (small roman, as in cweb).
+% A localization file may rebind it -- e.g. kotexgweb.tex pairs it with a sans
+% hangul font so Korean in the header matches the upper-cased Latin.
+\def\Gheadfont{\eightrm}
 % \Grunhead builds the header as one \Gpagewidth-wide box (used both by the
 % normal \headline and by the index's own output routine).
 \def\Grunhead{%
@@ -107,11 +111,11 @@
   \ifx\Gtm\Gempty\expandafter\def\expandafter\Gtm\expandafter{\firstmark}\fi
   \ifx\Gtm\Gempty\def\Gtm{{}{\Gtitle}}\fi
   \ifodd\pageno
-    \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\eightrm\GtitleUP}\hfil
-      {\eightrm\Ggrouphead}\enspace\folio}%
+    \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\Gheadfont\GtitleUP}\hfil
+      {\Gheadfont\Ggrouphead}\enspace\folio}%
   \else
-    \hbox to\Gpagewidth{\mainfont\folio\enspace{\eightrm\Ggrouphead}\hfil
-      {\eightrm\GtitleUP}\enspace\Gsechead}%
+    \hbox to\Gpagewidth{\mainfont\folio\enspace{\Gheadfont\Ggrouphead}\hfil
+      {\Gheadfont\GtitleUP}\enspace\Gsechead}%
   \fi}
 \headline={\iftitle\hfil\else\Grunhead\fi}
 \footline={\hfil}

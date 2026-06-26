@@ -285,6 +285,10 @@
 \def\Gnamesheading{절 이름 목록}
 \def\Gsectionword{절}
 \def\Gpageword{쪽}
+% Running-head font: pair the small roman (cmr8) with a sans hangul (\eightgt,
+% Noto Sans) so Korean in the header matches the upper-cased Latin instead of
+% clashing with it as the serif body font would.
+\def\Gheadfont{\eightrm\eightgt}
 
 % ---- LuaTeX PDF back end: blue links and Korean (UTF-16BE) bookmarks --------
 % gwebmac's \Gdest/\Glink/\Gbookmark are written for pdfTeX primitives that
