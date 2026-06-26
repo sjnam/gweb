@@ -141,6 +141,9 @@ make -C examples NAME=wc     # just one example
   pipeline worlds: lazy `iter.Seq` transforms and a fan-out of channel workers,
   joined by two boundary adapters, with first-error cancellation flowing across
   both. Uses range-over-func and a pocket `errgroup`.
+* [examples/hangul.w](examples/hangul.w) — a short Fibonacci program written in
+  Korean, demonstrating `\input kotexgweb.tex`. Typeset it with **luatex**:
+  `make -C examples NAME=hangul TEXENGINE=luatex` (or `make example`).
 * [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power

@@ -59,7 +59,7 @@ func ScanCode(code string) []Atom {
 				continue
 			}
 			flush()
-			atoms = append(atoms, Atom{Kind: ARef, Text: strings.TrimSpace(code[i+2 : end])})
+			atoms = append(atoms, Atom{Kind: ARef, Text: canonName(code[i+2 : end])})
 			i = end + 2
 		case '=':
 			end := indexFrom(code, "@>", i+2)

@@ -79,7 +79,7 @@ func scanStruct(src string, i int) ctrl {
 			}
 			if k < n && src[k] == '=' {
 				return ctrl{kind: cNamed, pos: i, end: k + 1,
-					name: strings.TrimSpace(src[i+2 : end]), isFile: c == '('}
+					name: canonName(src[i+2 : end]), isFile: c == '('}
 			}
 			i = after // a reference, not a definition
 		case c == '=' || c == 't' || c == '^' || c == '.' || c == ':' || c == 'q':

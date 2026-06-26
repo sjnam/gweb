@@ -340,9 +340,18 @@ func lineAt(src string, off int) int {
 	return 1 + strings.Count(src[:off], "\n")
 }
 
+// canonName canonicalizes a section name's whitespace: every run of spaces,
+// tabs, and newlines becomes a single space, and leading/trailing space is
+// dropped. As in CWEB, this lets a long name that is wrapped across lines in one
+// place still match the same name written on a single line elsewhere.
+func canonName(name string) string {
+	return strings.Join(strings.Fields(name), " ")
+}
+
 // Resolve maps a (possibly abbreviated) name to its canonical form. An
 // abbreviation "Prefix..." matches the unique full name starting with Prefix.
 func (w *Web) Resolve(name string) string {
+	name = canonName(name)
 	if !strings.HasSuffix(name, "...") {
 		return name
 	}
@@ -463,7 +472,7 @@ func scanStruct(src string, i int) ctrl {
 			}
 			if k < n && src[k] == '=' {
 				return ctrl{kind: cNamed, pos: i, end: k + 1,
-					name: strings.TrimSpace(src[i+2 : end]), isFile: c == '('}
+					name: canonName(src[i+2 : end]), isFile: c == '('}
 			}
 			i = after // a reference, not a definition
 		case c == '=' || c == 't' || c == '^' || c == '.' || c == ':' || c == 'q':
@@ -862,7 +871,7 @@ func ScanCode(code string) []Atom {
 				continue
 			}
 			flush()
-			atoms = append(atoms, Atom{Kind: ARef, Text: strings.TrimSpace(code[i+2 : end])})
+			atoms = append(atoms, Atom{Kind: ARef, Text: canonName(code[i+2 : end])})
 			i = end + 2
 		case '=':
 			end := indexFrom(code, "@@>", i+2)

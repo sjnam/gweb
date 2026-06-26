@@ -289,9 +289,18 @@ func lineAt(src string, off int) int {
 	return 1 + strings.Count(src[:off], "\n")
 }
 
+// canonName canonicalizes a section name's whitespace: every run of spaces,
+// tabs, and newlines becomes a single space, and leading/trailing space is
+// dropped. As in CWEB, this lets a long name that is wrapped across lines in one
+// place still match the same name written on a single line elsewhere.
+func canonName(name string) string {
+	return strings.Join(strings.Fields(name), " ")
+}
+
 // Resolve maps a (possibly abbreviated) name to its canonical form. An
 // abbreviation "Prefix..." matches the unique full name starting with Prefix.
 func (w *Web) Resolve(name string) string {
+	name = canonName(name)
 	if !strings.HasSuffix(name, "...") {
 		return name
 	}

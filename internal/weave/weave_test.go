@@ -320,6 +320,19 @@ func g() { @<chunk@> }
 	}
 }
 
+func TestWrappedSectionName(t *testing.T) {
+	// A section name wrapped across lines (a newline inside @<...@>) must match
+	// the same name written on one line, as in CWEB. Otherwise the reference
+	// resolves to section 0, which also crashes luatex's PDF backend.
+	out := weaveString(t, "@* Start.\n@c\nfunc main() { @<do the\nthing@> }\n@ @<do the thing@>=\nx := 1\n")
+	if strings.Contains(out, `\GX{0}`) {
+		t.Errorf("wrapped section name failed to resolve (got \\GX{0}):\n%s", out)
+	}
+	if !strings.Contains(out, `\GX{2}`) {
+		t.Errorf("wrapped reference should resolve to defining section 2:\n%s", out)
+	}
+}
+
 func TestWeaveEmptyBrackets(t *testing.T) {
 	// The empty brackets of a slice type get a thin space so they don't jam.
 	out := weaveString(t, "@ x\n@c\nvar s []byte\n")
