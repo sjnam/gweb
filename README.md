@@ -162,6 +162,10 @@ make -C examples NAME=wc     # just one example
 * [examples/convmod.w](examples/convmod.w) — Library Checker's *Convolution
   (mod 998244353)*: polynomial multiplication in O(n log n) via the **number
   theoretic transform** (NTT). Korean (typeset with **luatex**).
+* [examples/intersect.w](examples/intersect.w) — Codeforces 1093E *Intersection
+  of Permutations*: each value becomes a 2-D point, reducing the queries to
+  rectangle counting with point updates — a **Fenwick tree of Fenwick trees**
+  with offline coordinate compression. Korean (typeset with **luatex**).
 * [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power

@@ -91,6 +91,7 @@ example: build
 	$(MAKE) -C examples NAME=poison TEXENGINE=luatex
 	$(MAKE) -C examples NAME=runningmedian TEXENGINE=luatex
 	$(MAKE) -C examples NAME=convmod TEXENGINE=luatex
+	$(MAKE) -C examples NAME=intersect TEXENGINE=luatex
 
 clean:
 	rm -rf $(BIN) build
