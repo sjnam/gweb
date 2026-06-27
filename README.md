@@ -147,6 +147,9 @@ make -C examples NAME=wc     # just one example
 * [examples/slidingmax.w](examples/slidingmax.w) — LeetCode's *Sliding Window
   Maximum*, solved in O(n) with a **monotonic deque**. A Korean literate essay
   (typeset with **luatex**, like `hangul.w`).
+* [examples/waiter.w](examples/waiter.w) — HackerRank's *Waiter*: a stack
+  simulation that splits plates by successive primes. A Korean literate essay
+  (typeset with **luatex**).
 * [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power
