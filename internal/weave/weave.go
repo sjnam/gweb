@@ -244,6 +244,11 @@ func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 			if cont {
 				macro = "\\GDp" // continuation of an earlier definition
 			}
+			// A code-only section (no commentary) runs its definition header in on
+			// the section-number line, as cweave does; \GDr/\GDpr omit the break.
+			if !sec.Starred && strings.TrimSpace(sec.Tex) == "" {
+				macro += "r"
+			}
 			fmt.Fprintf(bw, "\n%s{%d}{%s}", macro, wv.defNum[name], wv.renderName(name))
 		}
 		bw.WriteString("\n\\GB%\n")

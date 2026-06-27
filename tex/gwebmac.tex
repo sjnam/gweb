@@ -239,6 +239,11 @@
 \def\GD#1#2{\par\vskip 3pt\noindent\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
 \def\GDp#1#2{\par\vskip 3pt\noindent
   \hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
+% Run-in variants \GDr/\GDpr: used when a section has no commentary, so the
+% definition's name and equivalence sign follow the section number on the same
+% line (no \par), as cweave does for a code-only section.
+\def\GDr#1#2{\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
+\def\GDpr#1#2{\hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
 
 % ---- cross-reference notes printed under a definition -----------------------
 \def\Gnote#1{\par\penalty-1\vskip 2pt\noindent{\eightrm #1.}\par}
