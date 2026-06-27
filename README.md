@@ -159,6 +159,9 @@ make -C examples NAME=wc     # just one example
 * [examples/runningmedian.w](examples/runningmedian.w) — HackerRank's *Find the
   Running Median*: the median of a growing stream, kept in O(log n) per value
   with two heaps (a max-heap and a min-heap). Korean (typeset with **luatex**).
+* [examples/convmod.w](examples/convmod.w) — Library Checker's *Convolution
+  (mod 998244353)*: polynomial multiplication in O(n log n) via the **number
+  theoretic transform** (NTT). Korean (typeset with **luatex**).
 * [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power
