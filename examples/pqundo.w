@@ -183,6 +183,7 @@ func (p *pqUndo) hdown(i int) {
 	}
 }
 
+@ @<우선순위 큐 undo@>=
 func (p *pqUndo) hpush(e hitem) { p.heap = append(p.heap, e); p.hup(len(p.heap) - 1) }
 
 func (p *pqUndo) hpop() hitem {
