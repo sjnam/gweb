@@ -236,6 +236,10 @@ func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 	}
 
 	if sec.HasCode {
+		// A code-only section (no commentary) runs in on the section-number line,
+		// as cweave does: a named section's header (\GDr/\GDpr) and an unnamed
+		// section's first code line (\GBr + \GLr) omit the usual break.
+		runin := !sec.Starred && strings.TrimSpace(sec.Tex) == ""
 		if sec.Name != "" {
 			name := wv.w.Resolve(sec.Name)
 			cont := wv.defNum[name] != sec.Number
@@ -244,15 +248,20 @@ func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 			if cont {
 				macro = "\\GDp" // continuation of an earlier definition
 			}
-			// A code-only section (no commentary) runs its definition header in on
-			// the section-number line, as cweave does; \GDr/\GDpr omit the break.
-			if !sec.Starred && strings.TrimSpace(sec.Tex) == "" {
+			if runin {
 				macro += "r"
 			}
 			fmt.Fprintf(bw, "\n%s{%d}{%s}", macro, wv.defNum[name], wv.renderName(name))
 		}
-		bw.WriteString("\n\\GB%\n")
-		bw.WriteString(wv.renderCode(sec.Number, sec.Code))
+		// With a named header the code always starts below it, so only an unnamed
+		// code-only section runs its first code line in beside the number.
+		runinCode := runin && sec.Name == ""
+		if runinCode {
+			bw.WriteString("\n\\GBr%\n")
+		} else {
+			bw.WriteString("\n\\GB%\n")
+		}
+		bw.WriteString(wv.renderCode(sec.Number, sec.Code, runinCode))
 		bw.WriteString("\\GE\n")
 		if sec.Name != "" {
 			bw.WriteString(wv.crossRefNotes(wv.w.Resolve(sec.Name), sec.Number))
@@ -266,7 +275,7 @@ func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
 // breakable \GS space between chunks. Because gofmt-formatted Go already encodes
 // the grammar in its spacing, this reproduces it exactly (pointer *T vs a * b,
 // slice []T vs index a[i], and so on) and lets long lines wrap at \GS.
-func (wv *Weaver) renderCode(secNum int, code string) string {
+func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	var out strings.Builder
 	var line strings.Builder // the current source line: chunks joined by \GS
 	var run strings.Builder  // the current tight chunk (one TeX math group)
@@ -310,7 +319,13 @@ func (wv *Weaver) renderCode(secNum int, code string) string {
 				out.WriteString("\\GBK\n")
 				blankPending = false
 			}
-			fmt.Fprintf(&out, "\\GL{%d}{%s}%%\n", indent, line.String())
+			// The first line of an unnamed code-only section runs in beside the
+			// section number (\GLr, no break); the rest are ordinary \GL lines.
+			macro := "GL"
+			if runin && !haveContent {
+				macro = "GLr"
+			}
+			fmt.Fprintf(&out, "\\%s{%d}{%s}%%\n", macro, indent, line.String())
 			haveContent = true
 		} else if haveContent {
 			blankPending = true

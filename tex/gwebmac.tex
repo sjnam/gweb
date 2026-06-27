@@ -209,6 +209,12 @@
 \def\GB{\par\penalty\Gcodepenalty\vskip 3pt\begingroup
   \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil
   \hfuzz=2pt \emergencystretch=3em \parindent=0pt}
+% \GBr: run-in code start for a code-only section with no commentary -- no \par,
+% so the first code line (set with \GLr) follows the section number; used by
+% cweave-style code-only sections that have no name and no commentary.
+\def\GBr{\penalty\Gcodepenalty\begingroup
+  \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil
+  \hfuzz=2pt \emergencystretch=3em \parindent=0pt}
 \def\GE{\par\endgroup\vskip 3pt}
 % One displayed code line: #1 indentation steps, #2 the body (math chunks $...$
 % joined by \GS). The whole display is offset by \Gcodeindent from the margin;
@@ -220,6 +226,9 @@
   \Gtmpcount=#1 \Gtmpdimen=\Gtmpcount\Gindentunit \advance\Gtmpdimen by\Gcodeindent
   \hangindent=\Gtmpdimen \advance\hangindent by\Gindentunit \hangafter=1
   \noindent\kern\Gtmpdimen \strut #2}
+% \GLr: the run-in first code line of a code-only section -- no \par and no
+% indent, so it continues on the section-number line; later lines use \GL.
+\def\GLr#1#2{\strut #2}
 \def\GS{\penalty0\hskip .5em plus .3em minus .15em\relax} % breakable code space
 \def\GSO{\penalty0\hskip 0pt\relax}                       % @| optional break
 \def\GBL{\par\penalty\Gcodepenalty\smallskip}             % @# blank line in code
