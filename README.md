@@ -153,6 +153,9 @@ make -C examples NAME=wc     # just one example
 * [examples/trucktour.w](examples/trucktour.w) — HackerRank's *Truck Tour* (the
   circular gas-station problem), solved in O(n) by a greedy single pass; the
   essay explains *why* one pass suffices. Korean (typeset with **luatex**).
+* [examples/poison.w](examples/poison.w) — HackerRank's *Poisonous Plants*:
+  how many days until no plant dies, in O(n) with an increasing stack that gives
+  each plant its day of death. Korean (typeset with **luatex**).
 * [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power

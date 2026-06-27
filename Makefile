@@ -88,6 +88,7 @@ example: build
 	$(MAKE) -C examples NAME=slidingmax TEXENGINE=luatex
 	$(MAKE) -C examples NAME=waiter TEXENGINE=luatex
 	$(MAKE) -C examples NAME=trucktour TEXENGINE=luatex
+	$(MAKE) -C examples NAME=poison TEXENGINE=luatex
 
 clean:
 	rm -rf $(BIN) build
