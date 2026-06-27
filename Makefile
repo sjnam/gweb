@@ -85,6 +85,7 @@ example: build
 	$(MAKE) -C examples NAME=pairsums
 	$(MAKE) -C examples NAME=pipeline
 	$(MAKE) -C examples NAME=hangul TEXENGINE=luatex
+	$(MAKE) -C examples NAME=slidingmax TEXENGINE=luatex
 
 clean:
 	rm -rf $(BIN) build

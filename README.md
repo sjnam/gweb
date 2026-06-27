@@ -144,6 +144,9 @@ make -C examples NAME=wc     # just one example
 * [examples/hangul.w](examples/hangul.w) — a short Fibonacci program written in
   Korean, demonstrating `\input kotexgweb.tex`. Typeset it with **luatex**:
   `make -C examples NAME=hangul TEXENGINE=luatex` (or `make example`).
+* [examples/slidingmax.w](examples/slidingmax.w) — LeetCode's *Sliding Window
+  Maximum*, solved in O(n) with a **monotonic deque**. A Korean literate essay
+  (typeset with **luatex**, like `hangul.w`).
 * [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power
