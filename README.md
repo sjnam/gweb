@@ -170,6 +170,10 @@ make -C examples NAME=wc     # just one example
   **suffix automaton** (after cp-algorithms): the online O(n) construction with
   suffix links and the clone/split step, applied to counting distinct
   substrings. Korean (typeset with **luatex**).
+* [examples/pqundo.w](examples/pqundo.w) — the **priority-queue undo trick**:
+  a rollback DSU extended to delete the max-priority element from the middle of
+  its update stack in amortized O(log²n), applied to Codeforces 603E. Korean
+  (typeset with **luatex**).
 * [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power
