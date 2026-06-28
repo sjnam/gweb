@@ -185,13 +185,13 @@
 % (the \vfil fills the page there, so a short page costs nothing): as in cweave,
 % TeX breaks between sections rather than inside one, so a whole section -- its
 % commentary and its code -- stays together on a page when it fits.
-\def\GM#1{\par\vfil\penalty-100\vfilneg\vskip\Gsecskip
+\def\GM#1{\par\Gemitdate\vfil\penalty-100\vfilneg\vskip\Gsecskip
   \Gsetmark{#1}\noindent\Gdest{#1}{\bf #1.\quad}\rightskip=0pt\ignorespaces}
 
 % \GN{depth}{n}{title} : a starred section. Major sections (depth < secpagedepth)
 % begin a new page; the first one does not, so it follows any limbo banner.
 \newif\ifGfirst \Gfirsttrue
-\def\GN#1#2#3{\par
+\def\GN#1#2#3{\par\Gemitdate
   % Snapshot the upper-cased title into \Ggrouptoks; \uppercase only upper-cases
   % the letter tokens, leaving control sequences (\.) intact for the header.
   {\uppercase{\global\Ggrouptoks={#3}}}%
@@ -203,6 +203,28 @@
   \fi
   \write\Gtoc{\string\GTline{#1}{#2}{\the\pageno}}%
   \noindent\Gdest{#2}{\bf #2.\quad #3.\quad}\rightskip=0pt\ignorespaces}
+
+% ---- \datethis: timestamp the listing just above section 1 ------------------
+% cweave's \datethis (said in limbo) prints the date and time, in \eightrm (its
+% \sc), on a left-flush line above the first section. \today and \Ghours compute
+% them; \Gdatefont and \Gdateat -- the font and the date/time separator -- are
+% overridable, so the Korean backend can localize the wording and the font size.
+\def\today{\ifcase\month\or
+  January\or February\or March\or April\or May\or June\or
+  July\or August\or September\or October\or November\or December\fi
+  \space\number\day, \number\year}
+\newcount\Gtwodigits
+\def\Ghours{\Gtwodigits=\time \divide\Gtwodigits by60 \Gprinttwo
+  \multiply\Gtwodigits by-60 \advance\Gtwodigits by\time :\Gprinttwo}
+\def\Ggobbleone1{}
+\def\Gprinttwo{\advance\Gtwodigits by100
+  \expandafter\Ggobbleone\number\Gtwodigits \advance\Gtwodigits by-100 }
+\def\Gdatefont{\eightrm}  % cweb sets this line in \sc, i.e. \eightrm (8pt)
+\def\Gdateat{\ at\ }      % between the date and the time
+\def\Gdateline{\leftline{\Gdatefont\today\Gdateat\Ghours}\bigskip}
+\let\Gdatehook\empty
+\def\datethis{\let\Gdatehook\Gdateline}
+\def\Gemitdate{\Gdatehook\global\let\Gdatehook\empty} % fires once, at section 1
 
 % ---- displayed Go code ------------------------------------------------------
 \newdimen\Gcodeindent \Gcodeindent=\Gindentunit % displayed code is indented this

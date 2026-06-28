@@ -291,6 +291,13 @@
 % running head's \Gheadfont stays sans, set earlier.)
 \def\Gsmallfont{\eightrm\eightmj}
 
+% \datethis: localize the timestamp. cweb sets this line in \eightrm (8pt); pair
+% the 8pt serif hangul (\eightmj) so the Korean date is the same 8pt as cweb's,
+% not the serif body size. \today reads "2026년 6월 29일"; \Gdateat is a space.
+\def\today{{\number\year}년 {\number\month}월 {\number\day}일}
+\def\Gdatefont{\eightrm\eightmj}
+\def\Gdateat{\ }
+
 % ---- Korean wording (the GWEB analogue of cwebman's localization list) ------
 % Cross-reference notes printed beneath a code definition. Korean has no
 % singular/plural inflection, so the "section"/"sections" pair reads the same.
