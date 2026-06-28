@@ -1258,6 +1258,10 @@ func renderOp(s string) string {
 		return "\\mathord{\\equiv}" // equality test, as cweb (an equivalence sign)
 	case "!":
 		return "\\mathord{\\lnot}" // logical not, as cweb (a negation sign)
+	case "&&":
+		return "\\mathord{\\land}" // logical and, as cweb (a wedge)
+	case "||":
+		return "\\mathord{\\lor}" // logical or, as cweb (a vee)
 	case "<-":
 		return "\\mathord{\\leftarrow}"
 	case "^":
