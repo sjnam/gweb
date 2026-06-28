@@ -273,6 +273,12 @@
 \fontdimen7\tentex=0pt  % restore cmtex10's "no extra space after sentence"
                         % (the \font\tentex above drops gwebmac's setting)
 
+% gwebmac sets strings (\GST) and @d names (\GMAC) in cmtex10, which has no
+% Hangul; pair it with the monospace hangul (\tentz) so Korean inside a Go
+% string or an @d name is also typewriter, not the serif fallback.
+\def\GST#1{\hbox{\tentex\tentz #1}}
+\def\GMAC#1{\hbox{\tentex\tentz #1}}
+
 % ---- Korean wording (the GWEB analogue of cwebman's localization list) ------
 % Cross-reference notes printed beneath a code definition. Korean has no
 % singular/plural inflection, so the "section"/"sections" pair reads the same.
