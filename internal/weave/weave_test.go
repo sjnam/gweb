@@ -346,6 +346,13 @@ func TestCommentInlineCode(t *testing.T) {
 	if strings.Contains(out, "|x|") {
 		t.Errorf("the bars should be consumed, not printed literally:\n%s", out)
 	}
+	// A \.{...} typewriter span in a comment passes through verbatim (cweb-style),
+	// rather than being escaped character by character.
+	out3 := weaveString(t, "@ x\n@c\nx := 1 // see \\.{foo.go}\n")
+	if !strings.Contains(out3, `\.{foo.go}`) {
+		t.Errorf("\\.{...} in a comment should pass through verbatim:\n%s", out3)
+	}
+
 	// An unmatched bar is left literal (no closing |), not swallowed to end: it
 	// is escaped as a roman bar (\vert), and the following word is not code.
 	out2 := weaveString(t, "@ x\n@c\nx := 1 // a | b\n")

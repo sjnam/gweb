@@ -603,8 +603,9 @@ func (wv *Weaver) renderComment(secNum int, text string) string {
 	return "\\GCM{" + prefix + wv.commentBody(secNum, body) + "}"
 }
 
-// commentBody escapes a comment for roman text mode but renders each |...| span
-// as inline Go code, as cweb does. \| is a literal bar.
+// commentBody escapes a comment for roman text mode but, as cweb does, renders a
+// |...| span as inline Go code and lets a \.{...} typewriter span through
+// verbatim (\. escapes its own argument). \| is a literal bar.
 func (wv *Weaver) commentBody(secNum int, s string) string {
 	var b, lit strings.Builder
 	flush := func() {
@@ -619,6 +620,23 @@ func (wv *Weaver) commentBody(secNum int, s string) string {
 			lit.WriteByte('|')
 			i += 2
 			continue
+		}
+		// \.{...}: a typewriter span, passed through verbatim. Find the matching
+		// close brace, skipping \-escaped characters (\\ \{ \} inside the span).
+		if s[i] == '\\' && i+2 < n && s[i+1] == '.' && s[i+2] == '{' {
+			j := i + 3
+			for j < n && s[j] != '}' {
+				if s[j] == '\\' && j+1 < n {
+					j++
+				}
+				j++
+			}
+			if j < n { // matched close brace
+				flush()
+				b.WriteString(s[i : j+1])
+				i = j + 1
+				continue
+			}
 		}
 		if s[i] == '|' {
 			j := i + 1
