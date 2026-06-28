@@ -490,7 +490,7 @@ func renderToken(t token) string {
 		// typeset in.
 		return "\\GMAC{" + escTT(t.text) + "}"
 	case tkNumber:
-		return "\\GNU{" + escTT(t.text) + "}"
+		return renderNumber(t.text)
 	case tkString:
 		return "\\GST{" + escTT(t.text) + "}"
 	case tkComment:
@@ -506,6 +506,49 @@ func renderToken(t token) string {
 		return renderOp(t.text)
 	}
 	return ""
+}
+
+@ |renderNumber| classifies a numeric literal the way cweave does. A hexadecimal
+literal (|0x|\dots) is set in typewriter with a superscript |#|; an octal literal
+(a classic |0|\dots, or |0o|\dots) gets a small raised circle and oldstyle italic
+digits; a binary literal (|0b|\dots) a superscript |b|; a decimal or floating
+literal stays roman. A |_| digit separator becomes a thin space.
+@(internal/weave/weave.go@>=
+func renderNumber(s string) string {
+	if len(s) >= 2 && s[0] == '0' {
+		switch s[1] {
+		case 'x', 'X':
+			return "\\Ghex{" + numDigits(s[2:]) + "}"
+		case 'o', 'O':
+			return "\\Goct{" + numDigits(s[2:]) + "}"
+		case 'b', 'B':
+			return "\\Gbin{" + numDigits(s[2:]) + "}"
+		}
+		if isOctalDigits(s[1:]) {
+			return "\\Goct{" + numDigits(s[1:]) + "}"
+		}
+	}
+	return "\\GNU{" + numDigits(s) + "}"
+}
+
+// isOctalDigits reports whether s is a nonempty run of octal digits (with
+// optional _ separators) -- the tail of a classic 0NNN octal literal.
+func isOctalDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; (c < '0' || c > '7') && c != '_' {
+			return false
+		}
+	}
+	return true
+}
+
+// numDigits renders the digits of a literal: a _ separator becomes a thin space;
+// digits and hex letters are safe as is (no TeX specials occur in a number).
+func numDigits(s string) string {
+	return strings.ReplaceAll(s, "_", "\\,")
 }
 
 @ |processTex| transforms commentary: |Go code| inline, \.{@@<refs@@>}, \.{@@@@} to
@@ -1195,6 +1238,8 @@ func renderOp(s string) string {
 		return "\\mathord{\\neq}"
 	case "<-":
 		return "\\mathord{\\leftarrow}"
+	case "^":
+		return "\\mathord{\\oplus}" // bitwise xor, as cweb (a circled plus)
 	case "<<":
 		return "\\mathord{\\ll}" // left shift, as cweb (a tight double angle)
 	case ">>":

@@ -82,6 +82,8 @@ func renderOp(s string) string {
 		return "\\mathord{\\neq}"
 	case "<-":
 		return "\\mathord{\\leftarrow}"
+	case "^":
+		return "\\mathord{\\oplus}" // bitwise xor, as cweb (a circled plus)
 	case "<<":
 		return "\\mathord{\\ll}" // left shift, as cweb (a tight double angle)
 	case ">>":

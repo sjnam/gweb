@@ -244,7 +244,12 @@
 \def\GST#1{\hbox{\tentex #1}}    % string, rune, or verbatim text (cweb's \tentex)
 \def\GMAC#1{\hbox{\tentex #1}}   % const name, set typewriter like cweb's @d macro
 \def\GCM#1{\hbox{\cmntfont #1}}  % comment
-\def\GNU#1{\hbox{\rm #1}}        % numeric literal
+\def\GNU#1{\hbox{\rm #1}}        % decimal/floating numeric literal
+% Non-decimal literals, as in cweb: octal with a raised circle and oldstyle
+% italic digits, hex with a superscript "#" in typewriter, binary with a "b".
+\def\Goct#1{\hbox{$^\circ$\kern-.1em{\it #1\/}}}
+\def\Ghex#1{\hbox{$^{\scriptscriptstyle\#}$\tt #1}}
+\def\Gbin#1{\hbox{$^{\scriptscriptstyle b}$\tt #1}}
 
 % ---- named-section references and headlines ---------------------------------
 \def\Gangle#1#2{$\langle\,$#1\hbox{\eightrm\kern.4em\Gs{#2}}$\,\rangle$}

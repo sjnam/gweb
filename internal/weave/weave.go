@@ -438,7 +438,7 @@ func renderToken(t token) string {
 		// typeset in.
 		return "\\GMAC{" + escTT(t.text) + "}"
 	case tkNumber:
-		return "\\GNU{" + escTT(t.text) + "}"
+		return renderNumber(t.text)
 	case tkString:
 		return "\\GST{" + escTT(t.text) + "}"
 	case tkComment:
@@ -454,6 +454,43 @@ func renderToken(t token) string {
 		return renderOp(t.text)
 	}
 	return ""
+}
+
+func renderNumber(s string) string {
+	if len(s) >= 2 && s[0] == '0' {
+		switch s[1] {
+		case 'x', 'X':
+			return "\\Ghex{" + numDigits(s[2:]) + "}"
+		case 'o', 'O':
+			return "\\Goct{" + numDigits(s[2:]) + "}"
+		case 'b', 'B':
+			return "\\Gbin{" + numDigits(s[2:]) + "}"
+		}
+		if isOctalDigits(s[1:]) {
+			return "\\Goct{" + numDigits(s[1:]) + "}"
+		}
+	}
+	return "\\GNU{" + numDigits(s) + "}"
+}
+
+// isOctalDigits reports whether s is a nonempty run of octal digits (with
+// optional _ separators) -- the tail of a classic 0NNN octal literal.
+func isOctalDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; (c < '0' || c > '7') && c != '_' {
+			return false
+		}
+	}
+	return true
+}
+
+// numDigits renders the digits of a literal: a _ separator becomes a thin space;
+// digits and hex letters are safe as is (no TeX specials occur in a number).
+func numDigits(s string) string {
+	return strings.ReplaceAll(s, "_", "\\,")
 }
 
 // processTex transforms commentary: |Go code| inline, @<refs@>, @@->@, and
