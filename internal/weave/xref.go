@@ -180,8 +180,8 @@ func (wv *Weaver) writeIndex(bw *bufio.Writer) {
 		return it
 	}
 
-	// An identifier's index head follows its display class: a const is set in
-	// typewriter (like its uses in the text), everything else in italic.
+	// An identifier's index head follows its display class: a typewriter name
+	// ( or a predeclared constant) is set in typewriter, everything else italic.
 	head := func(name string) string {
 		if wv.format[name] == tkMacro {
 			return "\\GMAC{" + escTT(name) + "}"

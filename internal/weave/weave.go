@@ -67,11 +67,10 @@ func New(w *web.Web) *Weaver {
 	for _, s := range w.Sections {
 		apply(s.Formats)
 	}
-	// Two CWEB-style automatic classifications: a name declared with |type| is
-	// set bold like a predeclared type, and a name declared with |const| is set
-	// in typewriter like a CWEB |@d| macro. An explicit |@f|/|@s| above wins.
+	// As in cweave, a name declared with |type| is set bold, like the predeclared
+	// types. (Typewriter treatment is applied only on request, with |@d|.) An
+	// explicit |@f|/|@s| above still wins.
 	wv.detectDecls("type", tkBuiltin)
-	wv.detectDecls("const", tkMacro)
 	return wv
 }
 
@@ -430,8 +429,9 @@ func renderToken(t token) string {
 	case tkIdent:
 		return "\\GID{" + escIdent(t.text) + "}"
 	case tkMacro:
-		// A const, set in typewriter like a CWEB  macro. \GMAC wraps \tentex in
-		// an \hbox so it works in the math mode that code is typeset in.
+		// Typewriter, like a CWEB  macro (an  name or a predeclared constant).
+		// \GMAC wraps \tentex in an \hbox so it works in the math mode that code is
+		// typeset in.
 		return "\\GMAC{" + escTT(t.text) + "}"
 	case tkNumber:
 		return "\\GNU{" + escTT(t.text) + "}"

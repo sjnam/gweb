@@ -80,22 +80,20 @@ func New(w *web.Web) *Weaver {
 	for _, s := range w.Sections {
 		apply(s.Formats)
 	}
-	// Two CWEB-style automatic classifications: a name declared with |type| is
-	// set bold like a predeclared type, and a name declared with |const| is set
-	// in typewriter like a CWEB |@@d| macro. An explicit |@@f|/|@@s| above wins.
+	// As in cweave, a name declared with |type| is set bold, like the predeclared
+	// types. (Typewriter treatment is applied only on request, with |@@d|.) An
+	// explicit |@@f|/|@@s| above still wins.
 	wv.detectDecls("type", tkBuiltin)
-	wv.detectDecls("const", tkMacro)
 	return wv
 }
 
-@ cweave sets names declared with |type| in bold (like the predeclared types) and
-names defined by |@@d| in typewriter (like C macros). GWEB has no |@@d|, so it
-gives Go |const| names that typewriter treatment instead. |detectDecls| scans the
-code for declarations introduced by |keyword| --- both |keyword NAME ...| and the
-block form |keyword (...)| --- and records each declared name with |kind| (unless
-an |@@f|/|@@s| directive already classified it). This is a heuristic scan, not a
-full Go parse, but it covers the forms that occur in practice; a |const| you want
-left in italic can be reset with |@@f NAME int|.
+@ cweave sets names declared with |type| in bold, like the predeclared types, and
+GWEB does the same. |detectDecls| scans the code for declarations introduced by
+|keyword| --- both |keyword NAME ...| and the block form |keyword (...)| --- and
+records each declared name with |kind| (unless an |@@f|/|@@s| directive already
+classified it). This is a heuristic scan, not a full Go parse, but it covers the
+forms that occur in practice; a type name you want left in italic can be reset
+with |@@f NAME int|, and any name can be set in typewriter with |@@d|.
 @(internal/weave/weave.go@>=
 func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
 	add := func(name string) {
@@ -119,13 +117,12 @@ func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
 	}
 }
 
-@ |scanDecls| walks a token list and, at each |keyword| (|type| or |const|),
-records the declared name. The keyword followed by |(| opens a parenthesized
-group of declarations, each naming an entry on its own line; |scanDeclGroup|
-collects those until the matching |)|, tracking brace and bracket nesting so that
-struct fields (or the right-hand sides of |const| assignments) are not mistaken
-for names. (A |type| inside a type switch, |x.(type)|, is followed by |)| and so
-names nothing.)
+@ |scanDecls| walks a token list and, at each |keyword| (here |type|), records the
+declared name. The keyword followed by |(| opens a parenthesized group of
+declarations, each naming an entry on its own line; |scanDeclGroup| collects those
+until the matching |)|, tracking brace and bracket nesting so that struct fields
+are not mistaken for names. (A |type| inside a type switch, |x.(type)|, is
+followed by |)| and so names nothing.)
 @(internal/weave/weave.go@>=
 func scanDecls(toks []token, keyword string, add func(string)) {
 	for i := 0; i < len(toks); i++ {
@@ -484,8 +481,9 @@ func renderToken(t token) string {
 	case tkIdent:
 		return "\\GID{" + escIdent(t.text) + "}"
 	case tkMacro:
-		// A const, set in typewriter like a CWEB @d macro. \GMAC wraps \tentex in
-		// an \hbox so it works in the math mode that code is typeset in.
+		// Typewriter, like a CWEB @d macro (an @d name or a predeclared constant).
+		// \GMAC wraps \tentex in an \hbox so it works in the math mode that code is
+		// typeset in.
 		return "\\GMAC{" + escTT(t.text) + "}"
 	case tkNumber:
 		return "\\GNU{" + escTT(t.text) + "}"
@@ -757,7 +755,7 @@ const (
 	tkOp                     // operator or punctuation run
 	tkSpace                  // a run of spaces/tabs
 	tkNewline                // a single '\n'
-	tkMacro                  // a const name (set in typewriter, like a CWEB @d macro)
+	tkMacro                  // typewriter: an @d name or a predeclared constant
 )
 
 @ A |token| pairs a kind with its text; |lexState| carries the cross-fragment
@@ -1438,8 +1436,8 @@ func (wv *Weaver) writeIndex(bw *bufio.Writer) {
 		return it
 	}
 
-	// An identifier's index head follows its display class: a const is set in
-	// typewriter (like its uses in the text), everything else in italic.
+	// An identifier's index head follows its display class: a typewriter name
+	// (@d or a predeclared constant) is set in typewriter, everything else italic.
 	head := func(name string) string {
 		if wv.format[name] == tkMacro {
 			return "\\GMAC{" + escTT(name) + "}"
