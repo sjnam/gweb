@@ -80,6 +80,8 @@ func renderOp(s string) string {
 		return "\\mathord{\\geq}"
 	case "!=":
 		return "\\mathord{\\neq}"
+	case "==":
+		return "\\mathord{\\equiv}" // equality test, as cweb (an equivalence sign)
 	case "<-":
 		return "\\mathord{\\leftarrow}"
 	case "^":
