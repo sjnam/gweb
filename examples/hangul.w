@@ -1,5 +1,6 @@
 \input kotexgweb.tex
 \def\title{피보나치 수}
+\datethis
 
 @* 들어가며.
 {\it 피보나치 수\/}는 처음 두 항이 $F_0=0$, $F_1=1$이고 그다음부터는 바로 앞

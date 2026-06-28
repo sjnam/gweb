@@ -1,4 +1,5 @@
 \def\title{Floyd's Partition Problem}
+\datethis
 
 @* Introduction.
 In the fall of 1972, Bob Floyd posed the following ``toy problem'' to the
