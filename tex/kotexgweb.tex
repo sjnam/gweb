@@ -279,6 +279,12 @@
 \def\GST#1{\hbox{\tentex\tentz #1}}
 \def\GMAC#1{\hbox{\tentex\tentz #1}}
 
+% \.{...} (typewriter text in comments and the limbo) is cmtex10 too; bring the
+% monospace hangul (\tentz) into scope so Korean inside \.{...} is typewriter as
+% well. The original \. then sets cmtex10 for the Latin part as before.
+\let\Gttdot\.
+\def\.#1{{\tentz\Gttdot{#1}}}
+
 % The small print (cross-reference notes, contents columns, section-name notes)
 % is cmr8, which has no Hangul; pair it with the 8pt serif hangul (\eightmj) so
 % Korean there is small too, instead of falling back to the body size. (The
