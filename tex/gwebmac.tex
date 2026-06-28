@@ -102,6 +102,10 @@
 % A localization file may rebind it -- e.g. kotexgweb.tex pairs it with a sans
 % hangul font so Korean in the header matches the upper-cased Latin.
 \def\Gheadfont{\eightrm}
+% Font for the small print: cross-reference notes, the contents columns, and the
+% usage note in the section-name list. A localization file may rebind it -- e.g.
+% kotexgweb.tex pairs it with an 8pt hangul font so Korean there is small too.
+\def\Gsmallfont{\eightrm}
 % \Grunhead builds the header as one \Gpagewidth-wide box (used both by the
 % normal \headline and by the index's own output routine).
 \def\Grunhead{%
@@ -255,7 +259,7 @@
 \def\GDpr#1#2{\hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
 
 % ---- cross-reference notes printed under a definition -----------------------
-\def\Gnote#1{\par\penalty-1\vskip 2pt\noindent{\eightrm #1.}\par}
+\def\Gnote#1{\par\penalty-1\vskip 2pt\noindent{\Gsmallfont #1.}\par}
 \def\GU#1{\Gnote{This code is used in section #1}}
 \def\GUs#1{\Gnote{This code is used in sections #1}}
 \def\GA#1{\Gnote{This code is also defined in section #1}}
@@ -319,7 +323,7 @@
   \begingroup
   \parindent=0pt \parskip=2pt plus 1pt \rightskip=0pt plus 2em \rm}
 \def\GNS#1#2#3{\noindent\hangindent2em \Gangle{#1}{#2}%
-  \ifx\Gempty#3\else\quad{\eightrm#3}\fi\par}
+  \ifx\Gempty#3\else\quad{\Gsmallfont#3}\fi\par}
 
 % ---- contents page: centered title, Section/Page columns, dot leaders --------
 \def\GTline#1#2#3{\line{\Gconsetup{#1}%
@@ -331,7 +335,7 @@
   \titletrue \pageno=\contentspagenumber
   \parindent=0pt
   \centerline{\titlefont\Gtitle}\vskip .7in \vfill
-  \line{\hfil{\eightrm\Gsectionword}\hbox to 3em{\hss\eightrm\Gpageword}}%
+  \line{\hfil{\Gsmallfont\Gsectionword}\hbox to 3em{\hss\Gsmallfont\Gpageword}}%
   \begingroup \rm
     \input \jobname.toc
   \endgroup

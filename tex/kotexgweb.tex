@@ -279,6 +279,12 @@
 \def\GST#1{\hbox{\tentex\tentz #1}}
 \def\GMAC#1{\hbox{\tentex\tentz #1}}
 
+% The small print (cross-reference notes, contents columns, section-name notes)
+% is cmr8, which has no Hangul; pair it with the 8pt serif hangul (\eightmj) so
+% Korean there is small too, instead of falling back to the body size. (The
+% running head's \Gheadfont stays sans, set earlier.)
+\def\Gsmallfont{\eightrm\eightmj}
+
 % ---- Korean wording (the GWEB analogue of cwebman's localization list) ------
 % Cross-reference notes printed beneath a code definition. Korean has no
 % singular/plural inflection, so the "section"/"sections" pair reads the same.
