@@ -233,7 +233,7 @@
 % \GLr: the run-in first code line of a code-only section -- no \par and no
 % indent, so it continues on the section-number line; later lines use \GL.
 \def\GLr#1#2{\strut #2}
-\def\GS{\penalty0\hskip .5em plus .3em minus .15em\relax} % breakable code space
+\def\GS{\penalty0\hskip .222em plus .12em minus .08em\relax} % breakable code space (cweb medmuskip)
 \def\GSO{\penalty0\hskip 0pt\relax}                       % @| optional break
 \def\GBL{\par\penalty\Gcodepenalty\smallskip}             % @# blank line in code
 \def\GBK{\par\penalty\Gcodepenalty\vskip 2.5pt} % a blank source line: a little air
