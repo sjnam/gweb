@@ -383,7 +383,11 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 						(prevSigKind == tkIdent || prevSigKind == tkKeyword || prevSigKind == tkBuiltin) {
 						emit("\\Gthin ")
 					}
-					emit(renderToken(token{kind: wv.effKind(t), text: t.text}))
+					if t.kind == tkComment {
+						emit(wv.renderComment(secNum, t.text))
+					} else {
+						emit(renderToken(token{kind: wv.effKind(t), text: t.text}))
+					}
 					prevSigKind, prevSigText = t.kind, t.text
 				}
 			}
@@ -549,6 +553,67 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 		}
 	}
 	b.WriteString("$")
+	return b.String()
+}
+
+func (wv *Weaver) renderComment(secNum int, text string) string {
+	prefix := ""
+	body := text
+	if rest, ok := strings.CutPrefix(text, "//"); ok {
+		prefix = "/\\kern\\Gcommentkern/"
+		body = rest
+	}
+	return "\\GCM{" + prefix + wv.commentBody(secNum, body) + "}"
+}
+
+// commentBody escapes a comment for roman text mode but renders each |...| span
+// as inline Go code, as cweb does. \| is a literal bar.
+func (wv *Weaver) commentBody(secNum int, s string) string {
+	var b, lit strings.Builder
+	flush := func() {
+		if lit.Len() > 0 {
+			b.WriteString(escComment(lit.String()))
+			lit.Reset()
+		}
+	}
+	n := len(s)
+	for i := 0; i < n; {
+		if s[i] == '\\' && i+1 < n && s[i+1] == '|' {
+			lit.WriteByte('|')
+			i += 2
+			continue
+		}
+		if s[i] == '|' {
+			j := i + 1
+			var code strings.Builder
+			closed := false
+			for j < n {
+				if s[j] == '\\' && j+1 < n && s[j+1] == '|' {
+					code.WriteByte('|')
+					j += 2
+					continue
+				}
+				if s[j] == '|' {
+					closed = true
+					break
+				}
+				code.WriteByte(s[j])
+				j++
+			}
+			if !closed {
+				lit.WriteByte('|') // an unmatched bar is a literal bar
+				i++
+				continue
+			}
+			flush()
+			b.WriteString(wv.inlineCode(code.String(), secNum, true))
+			i = j + 1
+			continue
+		}
+		lit.WriteByte(s[i])
+		i++
+	}
+	flush()
 	return b.String()
 }
 

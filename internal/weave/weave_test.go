@@ -333,6 +333,30 @@ func TestWrappedSectionName(t *testing.T) {
 	}
 }
 
+func TestCommentInlineCode(t *testing.T) {
+	// A |...| span inside a code comment is set as the Go code it names (as in
+	// cweb), not printed literally; an unmatched bar stays literal.
+	out := weaveString(t, "@ x\n@c\nx := 1 // set |x| now\n")
+	if !strings.Contains(out, `\GCM{`) {
+		t.Fatalf("no comment emitted:\n%s", out)
+	}
+	if !strings.Contains(out, `\GID{x}`) {
+		t.Errorf("|x| in a comment should render as code \\GID{x}:\n%s", out)
+	}
+	if strings.Contains(out, "|x|") {
+		t.Errorf("the bars should be consumed, not printed literally:\n%s", out)
+	}
+	// An unmatched bar is left literal (no closing |), not swallowed to end: it
+	// is escaped as a roman bar (\vert), and the following word is not code.
+	out2 := weaveString(t, "@ x\n@c\nx := 1 // a | b\n")
+	if !strings.Contains(out2, `\vert`) {
+		t.Errorf("unmatched bar should stay a literal bar (\\vert):\n%s", out2)
+	}
+	if strings.Contains(out2, `\GID{b}`) {
+		t.Errorf("unmatched bar must not turn the rest into code:\n%s", out2)
+	}
+}
+
 func TestWeaveEmptyBrackets(t *testing.T) {
 	// The empty brackets of a slice type get a thin space so they don't jam.
 	out := weaveString(t, "@ x\n@c\nvar s []byte\n")
