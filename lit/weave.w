@@ -1471,6 +1471,10 @@ func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 	bw.WriteString("\n\\Ginx\n")
 	wv.writeIndex(bw)
 	bw.WriteString("\\Gfin\n")
+	// A destination at the top of the section-names page, targeted by the "Names
+	// of the sections" bookmark. Its number is one past the last section, so it
+	// never collides with a section's own destination.
+	fmt.Fprintf(bw, "\\Gdest{%d}%%\n", len(wv.w.Sections)+1)
 	wv.writeSectionNames(bw)
 	bw.WriteString("\\Gcon\n\\end\n")
 }
@@ -1478,12 +1482,15 @@ func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 @ |writeBookmarks| emits one |\Gbookmark| per starred section, in document
 order, so a PDF outline can be built whose nesting follows the \.{@@*}, \.{@@*1},
 \.{@@*2} depths. Each entry carries its depth (for the dvipdfmx route, which
-nests by level) and its number of direct children (for pdftex's count model).
+nests by level) and its number of direct children (for pdftex's count model). A
+final top-level entry, \.{Names of the sections}, points to the section-names
+page, as cweave does.
 @(internal/weave/xref.go@>=
 // writeBookmarks emits one \Gbookmark per starred section, in document (pre)
 // order, so a PDF outline can be built whose nesting follows the @@*, @@*1,
 // @@*2 ... depths. Each entry carries its depth (the dvipdfmx route nests by
-// level) and its number of direct children (pdftex's count model).
+// level) and its number of direct children (pdftex's count model). A final
+// top-level "Names of the sections" entry points to the section-names page.
 func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 	var starred []*web.Section
 	for _, s := range wv.w.Sections {
@@ -1491,10 +1498,8 @@ func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 			starred = append(starred, s)
 		}
 	}
-	if len(starred) == 0 {
-		return
-	}
 	bw.WriteString("\n\\par")
+	topDepth := 0
 	for i, s := range starred {
 		children := 0
 		for j := i + 1; j < len(starred) && starred[j].Depth > s.Depth; j++ {
@@ -1502,8 +1507,16 @@ func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 				children++
 			}
 		}
+		if s.Depth < topDepth {
+			topDepth = s.Depth
+		}
 		fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%d}{%s}%%\n", s.Depth, s.Number, children, bookmarkTitle(s.Title))
 	}
+	// A final top-level entry for the list of section names, as cweave's "Names
+	// of the sections". It carries no children and links to the destination on
+	// that page (one past the last section). \Goutsecname holds its title, which
+	// the Korean backend localizes.
+	fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{0}{\\Goutsecname}%%\n", topDepth, len(wv.w.Sections)+1)
 }
 
 @ |bookmarkTitle| reduces a starred-section title to plain text safe for a PDF

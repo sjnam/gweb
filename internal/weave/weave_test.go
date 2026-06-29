@@ -47,6 +47,19 @@ println(x)
 	}
 }
 
+func TestNamesBookmark(t *testing.T) {
+	// The back matter ends with a top-level "Names of the sections" PDF outline
+	// entry (\Goutsecname) linking to a destination on the section-names page,
+	// numbered one past the last section, as cweave does.
+	out := weaveString(t, "@* A.\n@c\npackage main\n@ B.\n@<x@>=\n_ = 0\n")
+	if !strings.Contains(out, `\Gbookmark{0}{3}{0}{\Goutsecname}`) {
+		t.Errorf("missing Names-of-the-sections bookmark:\n%s", out)
+	}
+	if !strings.Contains(out, `\Gdest{3}`) {
+		t.Errorf("missing section-names destination:\n%s", out)
+	}
+}
+
 func TestWeaveEscaping(t *testing.T) {
 	out := weaveString(t, `@ x
 @c
