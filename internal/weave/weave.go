@@ -433,6 +433,11 @@ func renderToken(t token) string {
 	case tkIdent:
 		return "\\GID{" + escIdent(t.text) + "}"
 	case tkMacro:
+		if t.text == "nil" {
+			// nil is Go's null value; show it with a symbol (\Gnil, a capital
+			// lambda) as cweave shows C's NULL, rather than in typewriter.
+			return "\\Gnil "
+		}
 		// Typewriter, like a CWEB  macro (an  name or a predeclared constant).
 		// \GMAC wraps \tentex in an \hbox so it works in the math mode that code is
 		// typeset in.

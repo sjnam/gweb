@@ -90,6 +90,21 @@ func TestWeaveStringVisibleSpace(t *testing.T) {
 	}
 }
 
+func TestWeaveNilSymbol(t *testing.T) {
+	// nil prints as a symbol (\Gnil), the way cweb shows C's NULL, not in
+	// typewriter; the other predeclared constants stay typewriter.
+	out := weaveString(t, "@ x\n@c\nvar p *int = nil\n_ = true\n")
+	if !strings.Contains(out, `\Gnil `) {
+		t.Errorf("nil should render as \\Gnil:\n%s", out)
+	}
+	if strings.Contains(out, `\GMAC{nil}`) {
+		t.Errorf("nil should not be typewriter:\n%s", out)
+	}
+	if !strings.Contains(out, `\GMAC{true}`) {
+		t.Errorf("true should stay typewriter:\n%s", out)
+	}
+}
+
 func TestWeaveCommentSlashKern(t *testing.T) {
 	// The leading "//" of a comment is tightened with \Gcommentkern.
 	out := weaveString(t, "@ x\n@c\nx := 1 // hi\n")

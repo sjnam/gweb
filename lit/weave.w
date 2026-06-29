@@ -485,6 +485,11 @@ func renderToken(t token) string {
 	case tkIdent:
 		return "\\GID{" + escIdent(t.text) + "}"
 	case tkMacro:
+		if t.text == "nil" {
+			// nil is Go's null value; show it with a symbol (\Gnil, a capital
+			// lambda) as cweave shows C's NULL, rather than in typewriter.
+			return "\\Gnil "
+		}
 		// Typewriter, like a CWEB @d macro (an @d name or a predeclared constant).
 		// \GMAC wraps \tentex in an \hbox so it works in the math mode that code is
 		// typeset in.
@@ -923,7 +928,8 @@ var goBuiltins = map[string]bool{
 }
 
 // The predeclared constant values are set in typewriter (like a const), not bold
-// like the predeclared types; they denote values, not types.
+// like the predeclared types; they denote values, not types. (nil is the
+// exception: renderToken shows it as a symbol, the way cweave shows C's NULL.)
 var goConstants = map[string]bool{"nil": true, "true": true, "false": true, "iota": true}
 
 @ |classifyWord| maps a word to its class; the character-class predicates follow

@@ -49,7 +49,8 @@ var goBuiltins = map[string]bool{
 }
 
 // The predeclared constant values are set in typewriter (like a const), not bold
-// like the predeclared types; they denote values, not types.
+// like the predeclared types; they denote values, not types. (nil is the
+// exception: renderToken shows it as a symbol, the way cweave shows C's NULL.)
 var goConstants = map[string]bool{"nil": true, "true": true, "false": true, "iota": true}
 
 func classifyWord(w string) tokKind {
