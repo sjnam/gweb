@@ -1194,6 +1194,10 @@ func escTT(s string) string {
 		switch c {
 		case '\\', '{', '}', '$', '&', '#', '%', '^', '_', '~':
 			fmt.Fprintf(&b, "\\char%d ", c)
+		case ' ':
+			// a visible space (\GSP): cweb prints the blanks inside a string with a
+			// space glyph, slot 32 of the typewriter font.
+			b.WriteString("\\GSP ")
 		default:
 			b.WriteByte(c)
 		}

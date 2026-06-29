@@ -81,6 +81,15 @@ s := "a\tb"
 	}
 }
 
+func TestWeaveStringVisibleSpace(t *testing.T) {
+	// A blank inside a string literal prints as a visible space (\GSP), as cweb
+	// does; each blank becomes its own marker.
+	out := weaveString(t, "@ x\n@c\ns := \"a b  c\"\n")
+	if !strings.Contains(out, `\GST{"a\GSP b\GSP \GSP c"}`) {
+		t.Errorf("string blanks should become \\GSP markers:\n%s", out)
+	}
+}
+
 func TestWeaveCommentSlashKern(t *testing.T) {
 	// The leading "//" of a comment is tightened with \Gcommentkern.
 	out := weaveString(t, "@ x\n@c\nx := 1 // hi\n")
