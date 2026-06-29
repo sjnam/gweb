@@ -197,19 +197,14 @@ install.sh       installer for the commands, gwebmac.tex, and man pages
 
 ## Editor support
 
-Syntax highlighting for `.w` files is provided for three editors, each in its own
-folder under [editors/](editors/):
+Syntax highlighting for `.w` files is provided for **VS Code**, it in its own
+folder under [editors/vscode](editors/vscode).
 
-* **VS Code** — [editors/vscode/](editors/vscode/)
-* **Vim / Neovim** — [editors/vim/](editors/vim/)
-* **Emacs** — [editors/emacs/](editors/emacs/)
-
-All three mark the control codes and embed **Go** in code parts and `|…|` inline
-spans; VS Code and Vim also highlight the TeX commentary. For VS Code, install
-the `.vsix` from the [releases page](https://github.com/sjnam/gweb/releases)
+This mark the control codes and embed **Go** in code parts and `|…|` inline
+spans. Install the `.vsix` from the [releases page](https://github.com/sjnam/gweb/releases)
 (Extensions view → *Install from VSIX…*), then fully relaunch.
 
-See each folder's README for Vim, Emacs, and build details.
+See each folder's README for build details.
 
 ## Self-hosting
 
