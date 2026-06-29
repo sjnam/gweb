@@ -218,6 +218,24 @@ func TestWeaveShiftOperators(t *testing.T) {
 	}
 }
 
+func TestWeaveXorOperators(t *testing.T) {
+	// Every operator containing ^ shows it as a circled plus (\oplus), as cweb
+	// does: ^, ^=, &^ (bit clear), and &^=. A bare caret must never appear.
+	out := weaveString(t, "@ x\n@c\na = b ^ c\na ^= b\na &^= b\nd := e &^ f\n")
+	for _, want := range []string{
+		`\mathord{\oplus}\mathord{=}`,             // ^=
+		`\mathord{\&}\mathord{\oplus}\mathord{=}`, // &^=
+		`\mathord{\&}\mathord{\oplus}`,            // &^
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("want %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, `\char94`) {
+		t.Errorf("a caret (\\char94) should never appear; ^ must be \\oplus:\n%s", out)
+	}
+}
+
 func TestWeaveFormatDirective(t *testing.T) {
 	out := weaveString(t, `\input gwebmac
 @f Counts int

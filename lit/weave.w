@@ -1266,6 +1266,12 @@ func renderOp(s string) string {
 		return "\\mathord{\\leftarrow}"
 	case "^":
 		return "\\mathord{\\oplus}" // bitwise xor, as cweb (a circled plus)
+	case "^=":
+		return "\\mathord{\\oplus}\\mathord{=}" // xor-assign: ^ is a circled plus too
+	case "&^":
+		return "\\mathord{\\&}\\mathord{\\oplus}" // bit clear (and-not): ^ as circled plus
+	case "&^=":
+		return "\\mathord{\\&}\\mathord{\\oplus}\\mathord{=}" // and-not-assign
 	case "<<":
 		return "\\mathord{\\ll}" // left shift, as cweb (a tight double angle)
 	case ">>":
