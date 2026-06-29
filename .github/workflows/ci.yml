@@ -19,6 +19,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      # Only the bootstrap Go is committed; tangle the rest (the weave package
+      # and gweave's main) before vet/test/gofmt can see a complete tree.
+      - name: generate
+        run: make generate
+
       - name: gofmt
         run: |
           unformatted=$(gofmt -l .)

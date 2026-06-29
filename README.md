@@ -29,20 +29,27 @@ make build        # builds bin/gtangle and bin/gweave
 make test         # runs the test suite
 ```
 
+As in CWEB, only the Go needed to build `gtangle` is committed; `gweave` and the
+`weave` package are tangled from `lit/*.w` on the fly. `make build` does this for
+you: it builds `gtangle` from the committed sources, runs it to generate the
+rest, then builds `gweave`. (`make generate` performs just the tangling step.) So
+build through `make`, not a bare `go build ./...`, on a fresh checkout.
+
 Producing a PDF additionally requires a TeX engine (e.g. `pdftex`, from TeX
 Live or MacTeX).
 
 ## Install
 
-Just the two commands, the Go way (into your `GOBIN`/`GOPATH/bin`):
+`gtangle` installs the Go way (its sources are committed):
 
 ```sh
 go install github.com/sjnam/gweb/cmd/gtangle@latest
-go install github.com/sjnam/gweb/cmd/gweave@latest
 ```
 
-That installs the binaries only; point `TEXINPUTS` at a copy of
-[tex/gwebmac.tex](tex/gwebmac.tex) so the TeX engine can find it.
+`gweave` is generated rather than committed, so install both from a checkout
+with `make install` (or `make install-tools` to put just the binaries in your
+`GOBIN`). Point `TEXINPUTS` at a copy of [tex/gwebmac.tex](tex/gwebmac.tex) so
+the TeX engine can find it.
 
 For a full install — the commands **plus** `gwebmac.tex` (placed in your TeX tree
 so `pdftex foo.tex` just works) **plus** the man pages — use the install script:
@@ -119,8 +126,8 @@ gtangle foo.w && go build .       # an error reads  foo.w:42: ...
 ```
 
 GWEB tangles its own sources the same way, so editing a `.w` reshuffles the line
-numbers in the committed Go — the price of keeping the generated code honest
-about its literate origin.
+numbers in the bootstrap Go it commits — the price of keeping the generated code
+honest about its literate origin.
 
 ## Try the examples
 
@@ -179,12 +186,15 @@ The full list is in [doc/format.md](doc/format.md).
 
 ## How it is organized
 
+Only the Go that bootstraps `gtangle` is committed (marked ◇ below); the rest
+(✦) is tangled from `lit/*.w` by `make`.
+
 ```text
-cmd/gtangle      gtangle command
-cmd/gweave       gweave command
-internal/web     shared front end: parses .w into sections (CWEB's common.w)
-internal/tangle  the tangle engine
-internal/weave   the weave engine: Go lexer, pretty-printer, cross-references
+cmd/gtangle      gtangle command                                           ◇
+cmd/gweave       gweave command                                            ✦
+internal/web     shared front end: parses .w into sections (CWEB's common.w) ◇
+internal/tangle  the tangle engine                                         ◇
+internal/weave   the weave engine: Go lexer, pretty-printer, cross-references ✦
 tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
 tex/kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
 lit/             GWEB written in itself: the .w sources the Go tree is tangled from
