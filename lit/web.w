@@ -30,7 +30,7 @@ type Format struct {
 	Original string
 	Like     string
 	NoIndex  bool
-	Macro    bool // @d: typeset Original in typewriter (a CWEB-style macro)
+	Macro    bool // @@d: typeset Original in typewriter (a CWEB-style macro)
 }
 
 @ A |Section| is one numbered section of the web. Its three optional parts --

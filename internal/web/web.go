@@ -43,7 +43,7 @@ type Format struct {
 //line lit/web.w:32
 	NoIndex bool
 //line lit/web.w:33
-	Macro bool // : typeset Original in typewriter (a CWEB-style macro)
+	Macro bool // @d: typeset Original in typewriter (a CWEB-style macro)
 //line lit/web.w:34
 }
 
