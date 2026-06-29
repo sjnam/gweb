@@ -19,17 +19,18 @@ build:
 # the components, so it is not tangled).
 WEBS = $(filter-out lit/gweb.w,$(wildcard lit/*.w))
 
-# gtangle emits //line directives by default; we turn them off when tangling
-# GWEB itself so the committed Go stays clean (and the fixpoint below is stable).
+# gtangle always emits //line directives (as cweb's ctangle does), so the
+# committed Go points back at the .w source; editing a .w reshuffles those line
+# numbers, which is the price of staying faithful to the literate source.
 tangle: build
-	@for w in $(WEBS); do $(BIN)/gtangle -line=false -o . "$$w"; done
+	@for w in $(WEBS); do $(BIN)/gtangle -o . "$$w"; done
 
 # Prove the system reproduces itself: tangle every lit/*.w into a scratch tree
 # and check the result is byte-identical to the committed Go sources (the
 # fixpoint). Tests stay as ordinary .go, so they are excluded from the compare.
 bootstrap: build
 	@rm -rf .bootstrap
-	@for w in $(WEBS); do $(BIN)/gtangle -line=false -o .bootstrap "$$w" >/dev/null; done
+	@for w in $(WEBS); do $(BIN)/gtangle -o .bootstrap "$$w" >/dev/null; done
 	@ok=1; for d in internal/tangle internal/weave internal/web cmd/gtangle cmd/gweave; do \
 		diff -r "$$d" ".bootstrap/$$d" --exclude='*_test.go' >/dev/null || { echo "DIFF in $$d"; ok=0; }; \
 	done; \

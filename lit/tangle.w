@@ -33,15 +33,17 @@ type Output struct {
 refinements (|defs|), the \.{@@(file@@>=} outputs, and the unnamed program text
 (|main|). Each destination keeps a list of |codePiece|s rather than one joined
 string, so every piece remembers the \.{.w} line it began on -- the anchor for
-the \.{//line} directives emitted when |lineDirs| is set.
+the \.{//line} directives. As in cweb's \.{ctangle}, those directives are always
+emitted (there is no switch to suppress them), so the Go compiler, \.{go vet},
+and panic traces report positions in the literate \.{.w} source rather than in
+the generated \.{.go}.
 @(internal/tangle/tangle.go@>=
 // Tangler holds the resolved code of a web, classified by destination.
 type Tangler struct {
-	w        *web.Web
-	defs     map[string][]codePiece // canonical named-section -> code pieces
-	files    map[string][]codePiece // @@(file@@>= name -> code pieces
-	main     []codePiece            // unnamed @@c sections, in order
-	lineDirs bool                   // emit //line directives mapping to .w source
+	w     *web.Web
+	defs  map[string][]codePiece // canonical named-section -> code pieces
+	files map[string][]codePiece // @@(file@@>= name -> code pieces
+	main  []codePiece            // unnamed @@c sections, in order
 }
 
 // codePiece is one section's raw code together with the 1-based combined-source
@@ -79,16 +81,6 @@ func New(w *web.Web) *Tangler {
 	}
 	return t
 }
-
-@ |WithLineDirectives| turns on \.{//line} directives in the tangled output, so
-the Go compiler (and \.{go vet}, and panic traces) report errors at \.{.w}
-positions instead of \.{.go} positions. It returns the receiver for chaining and
-is off by default, leaving ordinary output -- and the self-hosting fixpoint --
-unchanged.
-@(internal/tangle/tangle.go@>=
-// WithLineDirectives turns on //line directives that map tangled lines back to
-// their .w source. It returns t for chaining; the default is off.
-func (t *Tangler) WithLineDirectives(on bool) *Tangler { t.lineDirs = on; return t }
 
 @ |Tangle| produces all output files: first the unnamed program (written to
 |defaultFile|), then each \.{@@(file@@>=} target in sorted order.
@@ -210,9 +202,8 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 }
 
 @ The output |buffer| accumulates bytes. It tracks whether it is at the start of
-a line so it can prefix each line with a \.{//line} directive (in line-directive
-mode), and it supports the \.{@@\&} paste operation, which deletes the whitespace
-surrounding it.
+a line so it can prefix each line with a \.{//line} directive, and it supports
+the \.{@@\&} paste operation, which deletes the whitespace surrounding it.
 @(internal/tangle/tangle.go@>=
 // buffer accumulates output, tracks line starts for //line directives, and
 // supports the @@& paste operation.
@@ -223,9 +214,9 @@ type buffer struct {
 	atLineStart bool
 }
 
-// writeText appends s, advancing the source line across newlines. In
-// line-directive mode it prefixes each output line with a //line comment mapping
-// it back to its .w origin. It returns the updated source line.
+// writeText appends s, advancing the source line across newlines. It prefixes
+// each output line with a //line comment mapping it back to its .w origin, and
+// returns the updated source line.
 func (o *buffer) writeText(s string, line int) int {
 	if o.pasteNext {
 		s = strings.TrimLeft(s, " \t\n\r")
@@ -248,9 +239,6 @@ func (o *buffer) writeText(s string, line int) int {
 
 // lineMark emits a //line directive for the given combined-source line.
 func (o *buffer) lineMark(line int) {
-	if !o.t.lineDirs {
-		return
-	}
 	file, ln := o.t.w.Origin(line)
 	o.b = append(o.b, fmt.Sprintf("//line %s:%d\n", file, ln)...)
 }
