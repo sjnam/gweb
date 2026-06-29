@@ -98,7 +98,8 @@ func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 // order, so a PDF outline can be built whose nesting follows the @*, @*1,
 // @*2 ... depths. Each entry carries its depth (the dvipdfmx route nests by
 // level) and its number of direct children (pdftex's count model). A final
-// top-level "Names of the sections" entry points to the section-names page.
+// top-level "Names of the sections" entry lists every section name as a
+// collapsible child linking to its defining section.
 func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 	var starred []*web.Section
 	for _, s := range wv.w.Sections {
@@ -120,11 +121,21 @@ func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 		}
 		fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%d}{%s}%%\n", s.Depth, s.Number, children, bookmarkTitle(s.Title))
 	}
-	// A final top-level entry for the list of section names, as cweave's "Names
-	// of the sections". It carries no children and links to the destination on
-	// that page (one past the last section). \Goutsecname holds its title, which
-	// the Korean backend localizes.
-	fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{0}{\\Goutsecname}%%\n", topDepth, len(wv.w.Sections)+1)
+	// A top-level "Names of the sections" entry (linking to the destination on
+	// that page, one past the last section) with every section name listed
+	// beneath it, each linking to its defining section, as cweave does. The
+	// negative child count starts the group collapsed; the reader can expand it.
+	// \Goutsecname holds the title, which the Korean backend localizes.
+	var names []string
+	for _, n := range wv.sortedSectionNames() {
+		if wv.defNum[n] > 0 {
+			names = append(names, n)
+		}
+	}
+	fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%d}{\\Goutsecname}%%\n", topDepth, len(wv.w.Sections)+1, -len(names))
+	for _, n := range names {
+		fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{0}{%s}%%\n", topDepth+1, wv.defNum[n], bookmarkTitle(n))
+	}
 }
 
 // bookmarkTitle reduces a starred-section title to plain text safe for a PDF
@@ -244,6 +255,16 @@ func (wv *Weaver) writeIndex(bw *bufio.Writer) {
 // writeSectionNames emits the list of named sections with their defining and
 // using section numbers.
 func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
+	for _, n := range wv.sortedSectionNames() {
+		fmt.Fprintf(bw, "\\GNS{%s}{%d}{%s}\n",
+			wv.renderName(n), wv.defNum[n], usedNote(wv.xref.sectionUses[n]))
+	}
+}
+
+// sortedSectionNames returns every section name (defined or used), ordered
+// case-insensitively, as it appears on the section-names page and in the PDF
+// outline beneath "Names of the sections".
+func (wv *Weaver) sortedSectionNames() []string {
 	names := map[string]bool{}
 	for n := range wv.xref.sectionDefs {
 		names[n] = true
@@ -258,10 +279,7 @@ func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	sort.Slice(sorted, func(i, j int) bool {
 		return strings.ToLower(sorted[i]) < strings.ToLower(sorted[j])
 	})
-	for _, n := range sorted {
-		fmt.Fprintf(bw, "\\GNS{%s}{%d}{%s}\n",
-			wv.renderName(n), wv.defNum[n], usedNote(wv.xref.sectionUses[n]))
-	}
+	return sorted
 }
 
 // usedNote renders the "Used in section(s) ..." note for the section-names list,

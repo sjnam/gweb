@@ -49,11 +49,17 @@ println(x)
 
 func TestNamesBookmark(t *testing.T) {
 	// The back matter ends with a top-level "Names of the sections" PDF outline
-	// entry (\Goutsecname) linking to a destination on the section-names page,
-	// numbered one past the last section, as cweave does.
+	// entry (\Goutsecname) linking to a destination on the section-names page
+	// (numbered one past the last section), under which every section name is a
+	// collapsible child linking to its defining section, as cweave does. Here the
+	// one name "x" is defined in section 2, so the group has a single child and a
+	// negative count (collapsed).
 	out := weaveString(t, "@* A.\n@c\npackage main\n@ B.\n@<x@>=\n_ = 0\n")
-	if !strings.Contains(out, `\Gbookmark{0}{3}{0}{\Goutsecname}`) {
-		t.Errorf("missing Names-of-the-sections bookmark:\n%s", out)
+	if !strings.Contains(out, `\Gbookmark{0}{3}{-1}{\Goutsecname}`) {
+		t.Errorf("missing/!collapsed Names-of-the-sections bookmark:\n%s", out)
+	}
+	if !strings.Contains(out, `\Gbookmark{1}{2}{0}{x}`) {
+		t.Errorf("missing section-name child bookmark:\n%s", out)
 	}
 	if !strings.Contains(out, `\Gdest{3}`) {
 		t.Errorf("missing section-names destination:\n%s", out)
