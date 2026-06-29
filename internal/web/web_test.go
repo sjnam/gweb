@@ -77,6 +77,27 @@ func TestParseStructure(t *testing.T) {
 	}
 }
 
+func TestDoubleStarDepth(t *testing.T) {
+	// @** is the top-level group (depth -1), printed bold in the contents, as
+	// cweb does; @* stays depth 0 and @*n stays depth n.
+	w := ParseString("@** Top.\n@c\npackage main\n@* Ordinary.\n@ x\n@*2 Deep.\n@ y\n")
+	want := []int{-1, 0, 2}
+	var got []int
+	for _, s := range w.Sections {
+		if s.Starred {
+			got = append(got, s.Depth)
+		}
+	}
+	if len(got) != len(want) {
+		t.Fatalf("starred sections = %v, want depths %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("starred section %d: depth=%d, want %d", i, got[i], want[i])
+		}
+	}
+}
+
 func TestResolveAbbrev(t *testing.T) {
 	w := ParseString(sample)
 	if got := w.Resolve("Print the..."); got != "Print the greeting" {

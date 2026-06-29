@@ -28,7 +28,7 @@ type Section struct {
 	Number   int    // 1-based section number
 	Line     int    // 1-based source line where the section begins
 	Starred  bool   // true for @* sections
-	Depth    int    // group depth for starred sections (0 == top level)
+	Depth    int    // group depth for starred sections (-1 == @**, 0 == @*, n == @*n)
 	Title    string // starred-section title (text up to the first period)
 	Tex      string // commentary, raw TeX with in-text @-codes still embedded
 	Formats  []Format

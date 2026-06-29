@@ -21,8 +21,8 @@ type ctrl struct {
 	kind    ctrlKind
 	pos     int    // index of the leading '@'
 	end     int    // index just past the control token
-	depth   int    // for cSection: -1 unstarred, >=0 starred depth
-	starred bool   // for cSection
+	depth   int    // for cSection: -1 unstarred (or @** top level), else starred depth
+	starred bool   // for cSection (distinguishes @** from an unstarred section)
 	name    string // for cNamed
 	isFile  bool   // for cNamed (@( vs @<)
 	noIndex bool   // for cFormat (@s)
@@ -51,7 +51,8 @@ func scanStruct(src string, i int) ctrl {
 			j := i + 2
 			depth := 0
 			if j < n && src[j] == '*' {
-				j++ // "@**" is depth 0
+				j++
+				depth = -1 // "@**" is the top level: bold in the contents, as cweb
 			} else {
 				for j < n && src[j] >= '0' && src[j] <= '9' {
 					depth = depth*10 + int(src[j]-'0')
@@ -124,6 +125,7 @@ func findNextSection(src string, i int) ctrl {
 			depth := 0
 			if j < n && src[j] == '*' {
 				j++
+				depth = -1 // "@**" is the top level: bold in the contents, as cweb
 			} else {
 				for j < n && src[j] >= '0' && src[j] <= '9' {
 					depth = depth*10 + int(src[j]-'0')
@@ -237,6 +239,7 @@ func findSectionHeaderEnd(src string, i int) ctrl {
 	depth := 0
 	if j < n && src[j] == '*' {
 		j++
+		depth = -1 // "@**" is the top level: bold in the contents, as cweb
 	} else {
 		for j < n && src[j] >= '0' && src[j] <= '9' {
 			depth = depth*10 + int(src[j]-'0')

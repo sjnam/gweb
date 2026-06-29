@@ -356,7 +356,12 @@
 \def\GTline#1#2#3{\line{\Gconsetup{#1}%
   \csname Gtoctitle\number#2\endcsname\ %
   \rm\leaders\hbox to .5em{\hss.\hss}\hfil\ \Gs{#2}\hbox to 3em{\hss#3}}}
-\def\Gconsetup#1{\ifcase#1 \or\hskip2em\or\hskip4em\or\hskip6em\else\hskip8em\fi}
+% A contents entry's leading material by group depth: a top-level @** section
+% (depth -1) sets its title in bold, as cweave does; @* (0) is flush, and deeper
+% groups (@*1, @*2, ...) are indented. The \bf is reset to \rm before the page
+% number back in \GTline.
+\def\Gconsetup#1{\ifnum#1<0 \bf \else
+  \ifcase#1 \or\hskip2em\or\hskip4em\or\hskip6em\else\hskip8em\fi \fi}
 \def\Gcon{\par\endgroup\vfil\eject % finish the section names
   \immediate\closeout\Gtoc
   \titletrue \pageno=\contentspagenumber
