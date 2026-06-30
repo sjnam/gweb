@@ -25,10 +25,12 @@ GEN_GO = cmd/gtangle/tangle_test.go cmd/gtangle/build_test.go \
 
 all: build
 
-# The two commands. gtangle compiles from the committed bootstrap Go; the rest of
-# the tree (gweave, the weave package, the tangled tests) is generated first.
+# The two commands. `generate' first tangles the tree (building a bootstrap
+# gtangle from the committed Go to do so); we then build both binaries from the
+# freshly generated sources, so each reflects the current .w (e.g. the version).
 build: generate
-	$(GO) build -o $(BIN)/gweave ./cmd/gweave
+	$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
+	$(GO) build -o $(BIN)/gweave  ./cmd/gweave
 
 # Build a bootstrap gtangle from the committed sources, then tangle every web, so
 # the non-committed Go exists and the tree compiles. This rewrites the committed

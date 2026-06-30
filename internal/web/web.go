@@ -27,7 +27,7 @@ import (
 //line internal/web/web.w:23
 //line internal/web/web.w:24
 //line internal/web/web.w:25
-const Version = "0.2.0"
+const Version = "0.3.0"
 
 // Format records an "@f a b" (or "@s a b") directive: typeset identifier
 // Original the way identifier/keyword Like is typeset. NoIndex is true for @s.
