@@ -39,7 +39,7 @@ jobs:
       - name: go test
         run: go test ./...
 
-      - name: bootstrap (lit/*.w must reproduce the committed Go tree)
+      - name: bootstrap (the .w sources must reproduce the committed Go tree)
         run: make bootstrap
 
   docs:

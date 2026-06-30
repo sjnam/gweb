@@ -30,10 +30,10 @@ make test         # runs the test suite
 ```
 
 As in CWEB, only the Go needed to build `gtangle` is committed; `gweave` and the
-`weave` package are tangled from `lit/*.w` on the fly. `make build` does this for
-you: it builds `gtangle` from the committed sources, runs it to generate the
-rest, then builds `gweave`. (`make generate` performs just the tangling step.) So
-build through `make`, not a bare `go build ./...`, on a fresh checkout.
+weave engine are tangled from their `.w` sources on the fly. `make build` does
+this for you: it builds `gtangle` from the committed sources, runs it to generate
+the rest, then builds `gweave`. (`make generate` performs just the tangling step.)
+So build through `make`, not a bare `go build ./...`, on a fresh checkout.
 
 Producing a PDF additionally requires a TeX engine (e.g. `pdftex`, from TeX
 Live or MacTeX).
@@ -186,17 +186,17 @@ The full list is in [doc/format.md](doc/format.md).
 
 ## How it is organized
 
-Only the Go that bootstraps `gtangle` is committed (marked ◇ below); the rest
-(✦) is tangled from `lit/*.w` by `make`.
+Each `.w` source sits next to the Go it generates. Only the Go that bootstraps
+`gtangle` is committed (marked ◇ below); the rest (✦) is tangled by `make`.
 
 ```text
-cmd/gtangle      gtangle: command front end + the tangle engine            ◇
-cmd/gweave       gweave: command front end + the weave engine (lexer,       ✦
+gweb.w           the master web: @i-includes the three below (woven, not tangled)
+cmd/gtangle      gtangle.w -> gtangle: front end + the tangle engine        ◇
+cmd/gweave       gweave.w  -> gweave: front end + the weave engine (lexer,   ✦
                  pretty-printer, cross-references)
-internal/web     shared front end: parses .w into sections (CWEB's common.w) ◇
+internal/web     web.w -> the shared parser (CWEB's common.w)               ◇
 tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
 tex/kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
-lit/             GWEB written in itself: the .w sources the Go tree is tangled from
 man/             gtangle.1 and gweave.1 man pages
 doc/             format reference and the gwebman.tex manual
 examples/        worked examples
@@ -216,27 +216,28 @@ See [editors/vscode/README.md](editors/vscode/README.md) for details.
 
 ## Self-hosting
 
-Like CWEB, GWEB is written in itself. The literate sources in [lit/](lit/) —
-`web.w` (the shared parser), `gtangle.w` (the command and the tangle engine), and
-`gweave.w` (the command and the weave engine) — are the source of truth; the
-`.go` files under `cmd/` and `internal/web` are tangled from them. GWEB is a set
-of commands, not a library, so each engine lives in its command's `main` package
-rather than a separate importable one.
+Like CWEB, GWEB is written in itself. Each `.w` source sits next to its output:
+[internal/web/web.w](internal/web/web.w) (the shared parser),
+[cmd/gtangle/gtangle.w](cmd/gtangle/gtangle.w) (the command and the tangle
+engine), and [cmd/gweave/gweave.w](cmd/gweave/gweave.w) (the command and the
+weave engine) are the source of truth; the `.go` beside them is tangled from
+them. GWEB is a set of commands, not a library, so each engine lives in its
+command's `main` package rather than a separate importable one.
 
 ```sh
-make tangle       # re-tangle lit/*.w back into the Go tree
+make tangle       # re-tangle the .w sources back into the Go tree
 make bootstrap    # tangle into a scratch tree and verify it is byte-for-byte
                   # identical to the committed sources (the fixpoint)
 ```
 
-Editing workflow: change `lit/*.w`, run `make tangle`, then commit both. The
+Editing workflow: change a `.w`, run `make tangle`, then commit both. The
 `bootstrap` target is the self-hosting proof — a freshly built `gtangle`
 reproduces its own committed source exactly. The tests live in the `.w` sources
 too (a `Tests` chapter per web), so they are tangled and git-ignored along with
 the rest of the generated Go: no `_test.go` is committed.
 
-`lit/gweb.w` is a master that `@i`-includes the three component webs in reading
-order, so `gweave` can typeset the whole system as one document:
+`gweb.w` (at the repo root) is a master that `@i`-includes the three component
+webs in reading order, so `gweave` can typeset the whole system as one document:
 
 ```sh
 make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program

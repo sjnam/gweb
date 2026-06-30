@@ -5,18 +5,18 @@ BIN ?= bin
 
 .PHONY: all build generate test install install-tools uninstall clean example tangle bootstrap selfdoc manual
 
-# GWEB is self-hosted: its Go is tangled from the literate sources in lit/*.w.
-# Following cweb's tradition, the repository commits only the Go needed to build
-# gtangle the first time -- the shared internal/web package and cmd/gtangle
-# (its main and the tangle engine). Everything else is tangled on demand by
-# `generate' and is git-ignored: all of gweave (its main and the weave engine)
-# and every test, which now live in the .w sources too.
+# GWEB is self-hosted: its Go is tangled from the literate .w sources, each kept
+# next to its output. Following cweb's tradition, the repository commits only the
+# Go needed to build gtangle the first time -- the shared internal/web package and
+# cmd/gtangle (its main and the tangle engine). Everything else is tangled on
+# demand by `generate' and is git-ignored: all of gweave (its main and the weave
+# engine) and every test, which live in the .w sources too.
 #
-# Each command is a single web: lit/gtangle.w is the gtangle front end plus the
-# tangle engine, lit/gweave.w the gweave front end plus the weave engine, and
-# lit/web.w the shared parser. lit/gweb.w is the weave-only master (it just
-# @i-includes the three, so it is not tangled).
-WEBS   = $(filter-out lit/gweb.w,$(wildcard lit/*.w))
+# Each command is a single web: cmd/gtangle/gtangle.w is the gtangle front end
+# plus the tangle engine, cmd/gweave/gweave.w the gweave front end plus the weave
+# engine, and internal/web/web.w the shared parser. gweb.w (repo root) is the
+# weave-only master (it just @i-includes the three, so it is not tangled).
+WEBS   = internal/web/web.w cmd/gtangle/gtangle.w cmd/gweave/gweave.w
 # The non-committed Go that `generate' produces (removed by `clean').
 GEN_GO = cmd/gtangle/tangle_test.go cmd/gtangle/build_test.go \
          cmd/gweave/main.go cmd/gweave/weave.go cmd/gweave/tex.go \
@@ -40,7 +40,7 @@ generate tangle:
 	$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
 	@for w in $(WEBS); do $(BIN)/gtangle -o . "$$w"; done
 
-# Prove the bootstrap reproduces itself: tangle every lit/*.w into a scratch tree
+# Prove the bootstrap reproduces itself: tangle every web into a scratch tree
 # and check the committed Go is byte-identical (the fixpoint). Only the committed
 # bootstrap dirs are compared; the generated Go (weave package, gweave, tests) has
 # no committed counterpart, and tests are excluded from the compare anyway.
@@ -49,17 +49,17 @@ bootstrap:
 	@rm -rf .bootstrap
 	@for w in $(WEBS); do $(BIN)/gtangle -o .bootstrap "$$w" >/dev/null; done
 	@ok=1; for d in internal/web cmd/gtangle; do \
-		diff -r "$$d" ".bootstrap/$$d" --exclude='*_test.go' >/dev/null || { echo "DIFF in $$d"; ok=0; }; \
+		diff -r "$$d" ".bootstrap/$$d" --exclude='*_test.go' --exclude='*.w' >/dev/null || { echo "DIFF in $$d"; ok=0; }; \
 	done; \
 	rm -rf .bootstrap; \
-	[ $$ok = 1 ] && echo "bootstrap: lit/*.w reproduce the committed Go byte-for-byte"
+	[ $$ok = 1 ] && echo "bootstrap: the .w sources reproduce the committed Go byte-for-byte"
 
-# Weave GWEB's own sources into a typeset PDF of the whole system. lit/gweb.w is
-# the master that @i-includes the three component webs in reading order. Needs a
+# Weave GWEB's own sources into a typeset PDF of the whole system. gweb.w is the
+# master that @i-includes the three component webs in reading order. Needs a
 # TeX engine (pdftex) that can find tex/gwebmac.tex.
 selfdoc: build
 	@mkdir -p build
-	$(BIN)/gweave -o build lit/gweb.w
+	$(BIN)/gweave -o build gweb.w
 	cd build && TEXINPUTS="$(CURDIR)/tex:" pdftex -interaction=nonstopmode gweb.tex
 	@echo "selfdoc: wrote build/gweb.pdf"
 

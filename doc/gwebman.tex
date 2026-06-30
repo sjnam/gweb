@@ -163,10 +163,10 @@ forces \cw{Name} bold, or \cw{@f Name x} (any ordinary identifier) restores plai
 italic.
 
 \section{GWEB is written in itself}
-Like CWEB, GWEB is a literate program: its tools are tangled from the webs in
-\cw{lit/}. The committed Go is byte-for-byte reproducible from those sources --- a
-fixpoint the test suite checks on every change --- so the program you read and
-the program that runs cannot drift apart.
+Like CWEB, GWEB is a literate program: each tool is tangled from a \cw{.w} web
+kept beside its Go. The committed Go is byte-for-byte reproducible from those
+sources --- a fixpoint the test suite checks on every change --- so the program
+you read and the program that runs cannot drift apart.
 
 \chapter{The woven document}
 \cw{gweave} produces the same furniture as \cw{cweave}: run-in bold section
@@ -288,7 +288,7 @@ Toy Problems Useful?};
 \cw{sham}, built on the \cw{go-sgb} module.
 
 \noindent GWEB also documents itself: \cw{make selfdoc} weaves the system's own
-\cw{lit/*.w} sources into a single PDF.
+\cw{.w} sources into a single PDF.
 
 \vfill
 \centerline{\eightrm GWEB --- a literate programming system for Go.}
