@@ -385,14 +385,7 @@ func indexFrom(s, sub string, from int) int {
 The parser works directly on the source text. A |ctrl| value describes the next
 structural control code -- a section break, a code part, a named definition, or
 a definition-part directive -- together with the byte range it occupies.
-@(internal/web/parse.go@>=
-package web
-
-import (
-	"fmt"
-	"strings"
-)
-
+@(internal/web/web.go@>=
 // ctrlKind classifies a structural control code found while scanning.
 type ctrlKind int
 
@@ -420,7 +413,7 @@ type ctrl struct {
 literal \.{@@@@} and argument-terminated codes (\.{@@<...@@>}, \.{@@=...@@>}, and so
 on) so their contents never trigger a false section break. A \.{@@<...@@>} not
 followed by |=| is a reference, not a definition, and is skipped.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 // scanStruct finds the next structural control at or after i. It skips literal
 // "@@@@" and argument-terminated codes (@@<...@@>, @@=...@@>, etc.) so their contents
 // never trigger a false section break. A "@@<...@@>" not followed by "=" is a
@@ -498,7 +491,7 @@ func scanStruct(src string, i int) ctrl {
 @ |findNextSection| scans forward to the next section break (\.{@@ } or \.{@@*}),
 skipping everything else. It is used inside code parts, where \.{@@c}, \.{@@d}, and
 \.{@@f} never legitimately appear.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 // findNextSection scans forward to the next section break (@@ or @@*), skipping
 // everything else including argument-terminated codes. Used inside code parts,
 // where @@c/@@d/@@f never legitimately appear.
@@ -551,7 +544,7 @@ func findNextSection(src string, i int) ctrl {
 
 @ The main loop. |parse| splits the source into limbo and sections, and for
 each section into its TeX, definition, and code parts.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 // parse splits source into limbo and sections.
 func parse(src string) *Web {
 	w := &Web{}
@@ -634,7 +627,7 @@ func parse(src string) *Web {
 }
 
 @ |findSectionHeaderEnd| locates the end of a \.{@@*} header and its depth.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 func findSectionHeaderEnd(src string, i int) ctrl {
 	n := len(src)
 	j := i + 2
@@ -653,7 +646,7 @@ func findSectionHeaderEnd(src string, i int) ctrl {
 
 @ |extractTitle| returns the text of a starred section up to its first period,
 with whitespace collapsed, for the table of contents.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 // extractTitle returns the text of a starred section up to its terminating
 // period, with whitespace collapsed, for use in the table of contents. The
 // terminator is the first period at end of text or followed by whitespace, so a
@@ -680,7 +673,7 @@ func titleEnd(s string) int {
 
 @ |scanDiagnostics| walks the source looking for malformed control codes --
 currently argument-terminated codes missing their closing \.{@@>}.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 // scanDiagnostics walks the source looking for malformed control codes —
 // currently argument-terminated codes (@@<, @@(, @@=, @@t, @@^, @@., @@:, @@q) that are
 // missing their closing @@> — and returns one warning per problem.
@@ -711,7 +704,7 @@ func (w *Web) scanDiagnostics(src string) []string {
 }
 
 @ |parseFormat| parses the body of an \.{@@f} or \.{@@s} directive: two identifiers.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 // parseFormat parses the body of an @@f/@@s directive: two identifiers.
 func parseFormat(seg string, noIndex bool) (Format, bool) {
 	fields := strings.Fields(seg)
@@ -726,7 +719,7 @@ constant to set in typewriter (like a CWEB macro); any value after it is ignored
 since Go has no preprocessor and \.{@@d} never tangles to code. A qualified name
 keeps its final component, so \.{@@d http.StatusOK} and \.{@@d StatusOK} both
 register the identifier |StatusOK|.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 // parseMacro parses an @@d directive: its first word names a constant to set in
 // typewriter; any value after it is ignored (Go has no preprocessor). A
 // qualified name keeps its final component, so "@@d http.StatusOK" and
@@ -749,7 +742,7 @@ func parseMacro(seg string) (Format, bool) {
 @ |extractLimboFormats| pulls \.{@@d}/\.{@@f}/\.{@@s} directives out of the limbo text and
 returns the cleaned text together with the formats. Other control codes and
 argument-terminated groups are copied through unchanged.
-@(internal/web/parse.go@>=
+@(internal/web/web.go@>=
 // extractLimboFormats pulls @@d/@@f/@@s directives out of the limbo text
 // (consuming each to end of line) and returns the cleaned text together with the
 // formats. Other control codes and argument-terminated groups are copied through.
@@ -808,11 +801,7 @@ func extractLimboFormats(src string) (string, []Format) {
 A code part is a mix of ordinary Go text and in-code control codes. |ScanCode|
 turns it into a slice of |Atom|s; the kind of each atom tells \.{gtangle} and
 \.{gweave} how to treat it.
-@(internal/web/code.go@>=
-package web
-
-import "strings"
-
+@(internal/web/web.go@>=
 // AtomKind classifies a piece of a code part.
 type AtomKind int
 
@@ -837,7 +826,7 @@ type Atom struct {
 @ The scanner itself. \.{@@@@} becomes a literal \.{@@} folded into the surrounding
 text; every other control code flushes the pending text and appends its own
 atom.
-@(internal/web/code.go@>=
+@(internal/web/web.go@>=
 // ScanCode splits a raw code part into atoms, interpreting in-code control
 // codes. "@@@@" becomes a literal '@@' folded into the surrounding text.
 func ScanCode(code string) []Atom {
@@ -947,14 +936,7 @@ func ScanCode(code string) []Atom {
 A change file (CWEB's |.ch| mechanism) patches the master source without
 editing it. It is a sequence of changes, each finding a block of lines in the
 master and substituting a replacement block.
-@(internal/web/change.go@>=
-package web
-
-import (
-	"fmt"
-	"strings"
-)
-
+@(internal/web/web.go@>=
 // A change file (CWEB's ".ch" mechanism) patches the master source without
 // editing it. It is a sequence of changes, each of the form
 //
@@ -973,7 +955,7 @@ import (
 @ A |change| records the lines to find and the lines to substitute, plus
 change-file line numbers for diagnostics. A |srcLoc| identifies the origin of a
 line of the expanded, change-applied source.
-@(internal/web/change.go@>=
+@(internal/web/web.go@>=
 type change struct {
 	match    []string // lines to find in the master source
 	repl     []string // lines to substitute for them
@@ -998,7 +980,7 @@ func (l srcLoc) String() string {
 
 @ Recognizing a change control line and comparing source lines (ignoring
 trailing whitespace, as WEB does), with a line splitter that normalizes CRLF.
-@(internal/web/change.go@>=
+@(internal/web/web.go@>=
 // isChangeCtrl reports whether line begins with the change control "@@<c>"
 // (c is 'x', 'y', or 'z'), which must start in the first column.
 func isChangeCtrl(line string, c byte) bool {
@@ -1019,7 +1001,7 @@ func sameLine(a, b string) bool {
 
 @ |parseChangeFile| parses change-file text into an ordered list of changes,
 reporting the malformed-change errors precisely.
-@(internal/web/change.go@>=
+@(internal/web/web.go@>=
 // parseChangeFile parses change-file text into an ordered list of changes.
 func parseChangeFile(src string) ([]change, error) {
 	lines := splitLines(src)
@@ -1064,7 +1046,7 @@ func parseChangeFile(src string) ([]change, error) {
 }
 
 @ |applyChanges| is the string convenience form used by tests.
-@(internal/web/change.go@>=
+@(internal/web/web.go@>=
 // applyChanges returns src with the changes applied (string convenience form,
 // used by tests). See applyChangesMapped for the origin-tracking version.
 func applyChanges(src string, changes []change, chFile string) (string, error) {
@@ -1079,7 +1061,7 @@ func applyChanges(src string, changes []change, chFile string) (string, error) {
 step: passed-through lines keep their origin, replacement lines are attributed
 to the change file. It is an error if a change is never matched, or matches its
 first line but not the rest.
-@(internal/web/change.go@>=
+@(internal/web/web.go@>=
 // applyChangesMapped applies changes to master, keeping a parallel origin map in
 // step: passed-through lines keep their origin, and replacement lines are
 // attributed to the change file. locs may be nil if origins are not tracked.
@@ -1123,7 +1105,7 @@ func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile
 
 @ |blockMatches| reports whether a match block lines up with the master source
 at a given index.
-@(internal/web/change.go@>=
+@(internal/web/web.go@>=
 // blockMatches reports whether match lines up with master starting at index at.
 func blockMatches(master []string, at int, match []string) bool {
 	if at+len(match) > len(master) {

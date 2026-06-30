@@ -18,9 +18,8 @@ BIN ?= bin
 # weave-only master (it just @i-includes the three, so it is not tangled).
 WEBS   = internal/web/web.w cmd/gtangle/gtangle.w cmd/gweave/gweave.w
 # The non-committed Go that `generate' produces (removed by `clean').
-GEN_GO = cmd/gtangle/tangle_test.go cmd/gtangle/build_test.go \
-         cmd/gweave/main.go cmd/gweave/weave.go cmd/gweave/tex.go \
-         cmd/gweave/gotok.go cmd/gweave/xref.go cmd/gweave/weave_test.go \
+GEN_GO = cmd/gtangle/gtangle_test.go \
+         cmd/gweave/gweave.go cmd/gweave/gweave_test.go \
          internal/web/web_test.go
 
 all: build
