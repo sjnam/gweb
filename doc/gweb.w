@@ -26,9 +26,9 @@ engine: a small Go lexer, the pretty-printer, and the cross-reference machinery.
 section that defines it, and the index and list of section names at the end
 gather all the cross-references automatically.
 
-@i common/common.w
-@i cmd/gtangle/gtangle.w
-@i cmd/gweave/gweave.w
+@i ../common/common.w
+@i ../cmd/gtangle/gtangle.w
+@i ../cmd/gweave/gweave.w
 
 @* Index.
 This index lists every identifier used in the program (a section number is

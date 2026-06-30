@@ -60,7 +60,7 @@ bootstrap:
 # TeX engine (pdftex) that can find tex/gwebmac.tex.
 selfdoc: build
 	@mkdir -p build
-	$(BIN)/gweave -o build gweb.w
+	$(BIN)/gweave -o build doc/gweb.w
 	cd build && TEXINPUTS="$(CURDIR)/tex:" pdftex -interaction=nonstopmode gweb.tex
 	@echo "selfdoc: wrote build/gweb.pdf"
 
