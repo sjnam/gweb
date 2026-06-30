@@ -194,7 +194,7 @@ gweb.w           the master web: @i-includes the three below (woven, not tangled
 cmd/gtangle      gtangle.w -> gtangle: front end + the tangle engine        ◇
 cmd/gweave       gweave.w  -> gweave: front end + the weave engine (lexer,   ✦
                  pretty-printer, cross-references)
-internal/web     web.w -> the shared parser (CWEB's common.w)               ◇
+common           common.w -> the shared parser (CWEB's common.w)            ◇
 tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
 tex/kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
 man/             gtangle.1 and gweave.1 man pages
@@ -217,7 +217,7 @@ See [editors/vscode/README.md](editors/vscode/README.md) for details.
 ## Self-hosting
 
 Like CWEB, GWEB is written in itself. Each `.w` source sits next to its output:
-[internal/web/web.w](internal/web/web.w) (the shared parser),
+[common/common.w](common/common.w) (the shared parser),
 [cmd/gtangle/gtangle.w](cmd/gtangle/gtangle.w) (the command and the tangle
 engine), and [cmd/gweave/gweave.w](cmd/gweave/gweave.w) (the command and the
 weave engine) are the source of truth; the `.go` beside them is tangled from

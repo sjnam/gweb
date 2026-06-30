@@ -7,20 +7,20 @@ BIN ?= bin
 
 # GWEB is self-hosted: its Go is tangled from the literate .w sources, each kept
 # next to its output. Following cweb's tradition, the repository commits only the
-# Go needed to build gtangle the first time -- the shared internal/web package and
+# Go needed to build gtangle the first time -- the shared common package and
 # cmd/gtangle (its main and the tangle engine). Everything else is tangled on
 # demand by `generate' and is git-ignored: all of gweave (its main and the weave
 # engine) and every test, which live in the .w sources too.
 #
 # Each command is a single web: cmd/gtangle/gtangle.w is the gtangle front end
 # plus the tangle engine, cmd/gweave/gweave.w the gweave front end plus the weave
-# engine, and internal/web/web.w the shared parser. gweb.w (repo root) is the
+# engine, and common/common.w the shared parser. gweb.w (repo root) is the
 # weave-only master (it just @i-includes the three, so it is not tangled).
-WEBS   = internal/web/web.w cmd/gtangle/gtangle.w cmd/gweave/gweave.w
+WEBS   = common/common.w cmd/gtangle/gtangle.w cmd/gweave/gweave.w
 # The non-committed Go that `generate' produces (removed by `clean').
 GEN_GO = cmd/gtangle/gtangle_test.go \
          cmd/gweave/gweave.go cmd/gweave/gweave_test.go \
-         internal/web/web_test.go
+         common/common_test.go
 
 all: build
 
@@ -49,7 +49,7 @@ bootstrap:
 	@$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
 	@rm -rf .bootstrap
 	@for w in $(WEBS); do $(BIN)/gtangle -o .bootstrap "$$w" >/dev/null; done
-	@ok=1; for d in internal/web cmd/gtangle; do \
+	@ok=1; for d in common cmd/gtangle; do \
 		diff -r "$$d" ".bootstrap/$$d" --exclude='*_test.go' --exclude='*.w' >/dev/null || { echo "DIFF in $$d"; ok=0; }; \
 	done; \
 	rm -rf .bootstrap; \

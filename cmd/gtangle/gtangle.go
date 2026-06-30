@@ -44,7 +44,7 @@ import (
 	"strings"
 
 //line cmd/gtangle/gtangle.w:31
-	"github.com/sjnam/gweb/internal/web"
+	"github.com/sjnam/gweb/common"
 //line cmd/gtangle/gtangle.w:32
 )
 
@@ -61,7 +61,7 @@ func main() {
 //line cmd/gtangle/gtangle.w:43
 	if *showVersion {
 //line cmd/gtangle/gtangle.w:44
-		fmt.Printf("gtangle (GWEB) %s\n", web.Version)
+		fmt.Printf("gtangle (GWEB) %s\n", common.Version)
 //line cmd/gtangle/gtangle.w:45
 		return
 //line cmd/gtangle/gtangle.w:46
@@ -75,7 +75,7 @@ func main() {
 //line cmd/gtangle/gtangle.w:50
 	}
 //line cmd/gtangle/gtangle.w:51
-	fmt.Fprintf(os.Stderr, "This is GTANGLE, Version %s\n", web.Version)
+	fmt.Fprintf(os.Stderr, "This is GTANGLE, Version %s\n", common.Version)
 //line cmd/gtangle/gtangle.w:52
 	if err := run(flag.Arg(0), flag.Arg(1), *outDir); err != nil {
 //line cmd/gtangle/gtangle.w:53
@@ -97,7 +97,7 @@ func usage() {
 }
 
 //line cmd/gtangle/gtangle.w:69
-func reportProgress(w *web.Web) {
+func reportProgress(w *common.Web) {
 //line cmd/gtangle/gtangle.w:70
 	for _, s := range w.Sections {
 //line cmd/gtangle/gtangle.w:71
@@ -116,11 +116,11 @@ func reportProgress(w *web.Web) {
 //line cmd/gtangle/gtangle.w:83
 func run(input, changeFile, outDir string) error {
 //line cmd/gtangle/gtangle.w:84
-	input = web.DefaultExt(input, ".w")
+	input = common.DefaultExt(input, ".w")
 //line cmd/gtangle/gtangle.w:85
-	changeFile = web.DefaultExt(changeFile, ".ch")
+	changeFile = common.DefaultExt(changeFile, ".ch")
 //line cmd/gtangle/gtangle.w:86
-	w, err := web.ParseWithChange(input, changeFile)
+	w, err := common.ParseWithChange(input, changeFile)
 //line cmd/gtangle/gtangle.w:87
 	if err != nil {
 //line cmd/gtangle/gtangle.w:88
@@ -215,7 +215,7 @@ type Output struct {
 //line cmd/gtangle/gtangle.w:153
 type Tangler struct {
 //line cmd/gtangle/gtangle.w:154
-	w *web.Web
+	w *common.Web
 //line cmd/gtangle/gtangle.w:155
 	defs map[string][]codePiece // canonical named-section -> code pieces
 //line cmd/gtangle/gtangle.w:156
@@ -243,7 +243,7 @@ type codePiece struct {
 //
 //line cmd/gtangle/gtangle.w:171
 //line cmd/gtangle/gtangle.w:172
-func New(w *web.Web) *Tangler {
+func New(w *common.Web) *Tangler {
 //line cmd/gtangle/gtangle.w:173
 	t := &Tangler{
 //line cmd/gtangle/gtangle.w:174
@@ -432,15 +432,15 @@ func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) er
 //line cmd/gtangle/gtangle.w:283
 func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error {
 //line cmd/gtangle/gtangle.w:284
-	for _, a := range web.ScanCode(code) {
+	for _, a := range common.ScanCode(code) {
 //line cmd/gtangle/gtangle.w:285
 		switch a.Kind {
 //line cmd/gtangle/gtangle.w:286
-		case web.AText, web.AVerbatim:
+		case common.AText, common.AVerbatim:
 //line cmd/gtangle/gtangle.w:287
 			line = o.writeText(a.Text, line)
 //line cmd/gtangle/gtangle.w:288
-		case web.APaste:
+		case common.APaste:
 //line cmd/gtangle/gtangle.w:289
 			o.trimRight()
 //line cmd/gtangle/gtangle.w:290
@@ -448,7 +448,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 //line cmd/gtangle/gtangle.w:291
 			o.atLineStart = false
 //line cmd/gtangle/gtangle.w:292
-		case web.ARef:
+		case common.ARef:
 //line cmd/gtangle/gtangle.w:293
 			name := t.w.Resolve(a.Text)
 //line cmd/gtangle/gtangle.w:294
@@ -480,7 +480,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 //line cmd/gtangle/gtangle.w:307
 			o.newline()
 //line cmd/gtangle/gtangle.w:308
-		case web.ATeX, web.AIndex, web.ALayout, web.AIndexDef:
+		case common.ATeX, common.AIndex, common.ALayout, common.AIndexDef:
 //line cmd/gtangle/gtangle.w:309
 			// woven-output only; ignored by tangle
 //line cmd/gtangle/gtangle.w:310

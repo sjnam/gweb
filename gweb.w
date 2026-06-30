@@ -14,7 +14,7 @@ what \.{gweave} turns into the pages you are reading. The system is organized as
 three short webs, presented in turn:
 
 \smallskip
-\item{$\bullet$} the \.{web} package -- the shared front end that parses a |.w|
+\item{$\bullet$} the \.{common} package -- the shared front end that parses a |.w|
 file into sections (the analogue of \.{CWEB}'s \.{common.w});
 \item{$\bullet$} \.{gtangle} -- its command-line driver together with the tangle
 engine that extracts the Go a compiler needs;
@@ -26,7 +26,7 @@ engine: a small Go lexer, the pretty-printer, and the cross-reference machinery.
 section that defines it, and the index and list of section names at the end
 gather all the cross-references automatically.
 
-@i internal/web/web.w
+@i common/common.w
 @i cmd/gtangle/gtangle.w
 @i cmd/gweave/gweave.w
 

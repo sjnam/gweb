@@ -28,7 +28,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sjnam/gweb/internal/web"
+	"github.com/sjnam/gweb/common"
 )
 
 @ The entry point parses the flags and arguments and dispatches to |run|. With
@@ -41,14 +41,14 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("gtangle (GWEB) %s\n", web.Version)
+		fmt.Printf("gtangle (GWEB) %s\n", common.Version)
 		return
 	}
 	if flag.NArg() < 1 || flag.NArg() > 2 {
 		usage()
 		os.Exit(2)
 	}
-	fmt.Fprintf(os.Stderr, "This is GTANGLE, Version %s\n", web.Version)
+	fmt.Fprintf(os.Stderr, "This is GTANGLE, Version %s\n", common.Version)
 	if err := run(flag.Arg(0), flag.Arg(1), *outDir); err != nil {
 		fmt.Fprintln(os.Stderr, "gtangle:", err)
 		os.Exit(1)
@@ -66,7 +66,7 @@ func usage() {
 for each starred (chapter) section, giving a sense of the web's structure as it
 is processed.
 @(cmd/gtangle/gtangle.go@>=
-func reportProgress(w *web.Web) {
+func reportProgress(w *common.Web) {
 	for _, s := range w.Sections {
 		if s.Starred {
 			fmt.Fprintf(os.Stderr, "*%d", s.Number)
@@ -81,9 +81,9 @@ report, tangles (always with \.{//line} directives), and writes each output
 file, creating its directory if necessary.
 @(cmd/gtangle/gtangle.go@>=
 func run(input, changeFile, outDir string) error {
-	input = web.DefaultExt(input, ".w")
-	changeFile = web.DefaultExt(changeFile, ".ch")
-	w, err := web.ParseWithChange(input, changeFile)
+	input = common.DefaultExt(input, ".w")
+	changeFile = common.DefaultExt(changeFile, ".ch")
+	w, err := common.ParseWithChange(input, changeFile)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ the generated \.{.go}.
 @(cmd/gtangle/gtangle.go@>=
 // Tangler holds the resolved code of a web, classified by destination.
 type Tangler struct {
-	w     *web.Web
+	w     *common.Web
 	defs  map[string][]codePiece // canonical named-section -> code pieces
 	files map[string][]codePiece // @@(file@@>= name -> code pieces
 	main  []codePiece            // unnamed @@c sections, in order
@@ -169,7 +169,7 @@ or a named refinement, appending each section's code -- with the source line it
 began on -- to the pieces for that destination.
 @(cmd/gtangle/gtangle.go@>=
 // New builds a Tangler from a parsed web.
-func New(w *web.Web) *Tangler {
+func New(w *common.Web) *Tangler {
 	t := &Tangler{
 		w:     w,
 		defs:  map[string][]codePiece{},
@@ -281,15 +281,15 @@ func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) er
 // expand writes the expansion of one code piece into o, starting at the given
 // combined-source line and following @@<...@@> references.
 func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error {
-	for _, a := range web.ScanCode(code) {
+	for _, a := range common.ScanCode(code) {
 		switch a.Kind {
-		case web.AText, web.AVerbatim:
+		case common.AText, common.AVerbatim:
 			line = o.writeText(a.Text, line)
-		case web.APaste:
+		case common.APaste:
 			o.trimRight()
 			o.pasteNext = true
 			o.atLineStart = false
-		case web.ARef:
+		case common.ARef:
 			name := t.w.Resolve(a.Text)
 			def, ok := t.defs[name]
 			if !ok {
@@ -305,7 +305,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 				return err
 			}
 			o.newline()
-		case web.ATeX, web.AIndex, web.ALayout, web.AIndexDef:
+		case common.ATeX, common.AIndex, common.ALayout, common.AIndexDef:
 			// woven-output only; ignored by tangle
 		}
 	}
@@ -388,7 +388,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sjnam/gweb/internal/web"
+	"github.com/sjnam/gweb/common"
 )
 
 @ \.{TestTangleExpandsAndConcatenates}.
@@ -410,7 +410,7 @@ greet()
 @@c
 func greet() { println("hi") }
 `
-	outs, err := New(web.ParseString(src)).Tangle("prog.go")
+	outs, err := New(common.ParseString(src)).Tangle("prog.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -439,7 +439,7 @@ package main
 @@c
 package main
 `
-	outs, err := New(web.ParseString(src)).Tangle("main.go")
+	outs, err := New(common.ParseString(src)).Tangle("main.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +460,7 @@ func TestTangleUndefinedReference(t *testing.T) {
 package main
 var _ = @@<missing@@>
 `
-	_, err := New(web.ParseString(src)).Tangle("p.go")
+	_, err := New(common.ParseString(src)).Tangle("p.go")
 	if err == nil || !strings.Contains(err.Error(), "undefined") {
 		t.Errorf("want undefined-section error, got %v", err)
 	}
@@ -480,7 +480,7 @@ func TestTangleCircularReference(t *testing.T) {
 package main
 var _ = @@<a@@>
 `
-	_, err := New(web.ParseString(src)).Tangle("p.go")
+	_, err := New(common.ParseString(src)).Tangle("p.go")
 	if err == nil || !strings.Contains(err.Error(), "circular") {
 		t.Errorf("want circular-reference error, got %v", err)
 	}
@@ -499,7 +499,7 @@ var area = @@<the |x| value@@>
 @@<the |x| value@@>=
 42
 `
-	outs, err := New(web.ParseString(src)).Tangle("p.go")
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -516,7 +516,7 @@ var area = @@<the |x| value@@>
 @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleIgnoresLayoutCodes(t *testing.T) {
 	const src = "@@ x\n@@c\npackage main\n\nvar n = 1@@,@@/@@|@@#@@+@@[@@]@@;2\n"
-	outs, err := New(web.ParseString(src)).Tangle("p.go")
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -532,7 +532,7 @@ func TestTangleDropsUnknownCode(t *testing.T) {
 	// An unknown @@x must drop exactly its two characters, not corrupt the rest
 	// (guards against a former double-skip bug).
 	const src = "@@ x\n@@c\npackage main\n\nvar a@@?bc = 1\n"
-	outs, err := New(web.ParseString(src)).Tangle("p.go")
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -546,7 +546,7 @@ func TestTangleDropsUnknownCode(t *testing.T) {
 func TestTangleAbbrevAtDefinition(t *testing.T) {
 	// The reference carries the full name; the definition is abbreviated.
 	const src = "@@ x\n@@c\npackage main\n\nvar v = @@<the value@@>\n\n@@ d\n@@<the val...@@>=\n42\n"
-	outs, err := New(web.ParseString(src)).Tangle("p.go")
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -620,7 +620,7 @@ func TestExamplesBuild(t *testing.T) {
 func buildExample(t *testing.T, path string) {
 	t.Helper()
 
-	w, err := web.Parse(path)
+	w, err := common.Parse(path)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -674,7 +674,7 @@ func TestChangeFileBuilds(t *testing.T) {
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skip("go tool not found in PATH")
 	}
-	w, err := web.ParseWithChange(
+	w, err := common.ParseWithChange(
 		filepath.Join("..", "..", "examples", "wc.w"),
 		filepath.Join("..", "..", "examples", "wc.ch"),
 	)

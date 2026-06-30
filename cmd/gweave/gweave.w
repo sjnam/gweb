@@ -26,7 +26,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sjnam/gweb/internal/web"
+	"github.com/sjnam/gweb/common"
 )
 
 @ The entry point parses the flags and arguments and dispatches to |run|. With
@@ -39,14 +39,14 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("gweave (GWEB) %s\n", web.Version)
+		fmt.Printf("gweave (GWEB) %s\n", common.Version)
 		return
 	}
 	if flag.NArg() < 1 || flag.NArg() > 2 {
 		usage()
 		os.Exit(2)
 	}
-	fmt.Fprintf(os.Stderr, "This is GWEAVE, Version %s\n", web.Version)
+	fmt.Fprintf(os.Stderr, "This is GWEAVE, Version %s\n", common.Version)
 	if err := run(flag.Arg(0), flag.Arg(1), *outDir); err != nil {
 		fmt.Fprintln(os.Stderr, "gweave:", err)
 		os.Exit(1)
@@ -64,7 +64,7 @@ func usage() {
 for each starred (chapter) section, giving a sense of the web's structure as it
 is processed.
 @(cmd/gweave/gweave.go@>=
-func reportProgress(w *web.Web) {
+func reportProgress(w *common.Web) {
 	for _, s := range w.Sections {
 		if s.Starred {
 			fmt.Fprintf(os.Stderr, "*%d", s.Number)
@@ -78,9 +78,9 @@ func reportProgress(w *web.Web) {
 report, and writes the woven TeX.
 @(cmd/gweave/gweave.go@>=
 func run(input, changeFile, outDir string) error {
-	input = web.DefaultExt(input, ".w")
-	changeFile = web.DefaultExt(changeFile, ".ch")
-	w, err := web.ParseWithChange(input, changeFile)
+	input = common.DefaultExt(input, ".w")
+	changeFile = common.DefaultExt(changeFile, ".ch")
+	w, err := common.ParseWithChange(input, changeFile)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ cross-reference tables (built lazily).
 @(cmd/gweave/gweave.go@>=
 // Weaver turns a parsed web into woven TeX.
 type Weaver struct {
-	w      *web.Web
+	w      *common.Web
 	defNum map[string]int // canonical named-section -> first defining section
 
 	format  map[string]tokKind // @@f/@@s: identifier -> the token class to use
@@ -136,7 +136,7 @@ type Weaver struct {
 global and per-section format directives (later ones win).
 @(cmd/gweave/gweave.go@>=
 // New builds a Weaver for the given web.
-func New(w *web.Web) *Weaver {
+func New(w *common.Web) *Weaver {
 	wv := &Weaver{
 		w:       w,
 		defNum:  map[string]int{},
@@ -161,7 +161,7 @@ func New(w *web.Web) *Weaver {
 	}
 	// Format directives apply globally; later definitions win. The display
 	// class of identifier a (@@f a b) is the class b would be typeset in.
-	apply := func(fs []web.Format) {
+	apply := func(fs []common.Format) {
 		for _, f := range fs {
 			if f.Macro {
 				wv.format[f.Original] = tkMacro // @d: typewriter, like a CWEB macro
@@ -206,8 +206,8 @@ func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
 			continue
 		}
 		var st lexState
-		for _, a := range web.ScanCode(s.Code) {
-			if a.Kind == web.AText {
+		for _, a := range common.ScanCode(s.Code) {
+			if a.Kind == common.AText {
 				scanDecls(lexGo(a.Text, &st), keyword, add)
 			}
 		}
@@ -351,7 +351,7 @@ func stripGwebmacInput(limbo string) string {
 commentary, and -- if present -- its code part bracketed by |\GB|...|\GE|, with
 the definition headline and cross-reference notes for a named section.
 @(cmd/gweave/gweave.go@>=
-func (wv *Weaver) writeSection(bw *bufio.Writer, sec *web.Section) {
+func (wv *Weaver) writeSection(bw *bufio.Writer, sec *common.Section) {
 	if sec.Starred {
 		// A starred-section title is free TeX (it may contain \. typewriter and
 		// other control sequences), so it is passed through processTex rather than
@@ -496,9 +496,9 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 		pendingSpace = false
 	}
 
-	for _, a := range web.ScanCode(code) {
+	for _, a := range common.ScanCode(code) {
 		switch a.Kind {
-		case web.AText:
+		case common.AText:
 			toks := lexGo(a.Text, &st)
 			for k, t := range toks {
 				switch t.kind {
@@ -538,19 +538,19 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 					prevSigKind, prevSigText = t.kind, t.text
 				}
 			}
-		case web.ARef:
+		case common.ARef:
 			name := wv.w.Resolve(a.Text)
 			wv.xref.addSectionUse(name, secNum)
 			emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
-		case web.AVerbatim:
+		case common.AVerbatim:
 			emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)))
-		case web.ATeX:
+		case common.ATeX:
 			emit(a.Text)
-		case web.AIndex:
+		case common.AIndex:
 			wv.xref.addManualIndex(a.Index, a.Text, secNum)
-		case web.APaste:
+		case common.APaste:
 			pendingSpace = false // join: no space before the next token
-		case web.ALayout:
+		case common.ALayout:
 			switch a.Index {
 			case ',': // thin space, stays within the current chunk
 				emit("\\,")
@@ -564,7 +564,7 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 				pendingSpace = false
 				atLineStart = false
 			}
-		case web.AIndexDef:
+		case common.AIndexDef:
 			forceDef = true // @@!: the next identifier is a definition
 		}
 	}
@@ -1595,7 +1595,7 @@ collapsible child linking to its defining section, as cweave does.
 // top-level "Names of the sections" entry lists every section name as a
 // collapsible child linking to its defining section.
 func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
-	var starred []*web.Section
+	var starred []*common.Section
 	for _, s := range wv.w.Sections {
 		if s.Starred {
 			starred = append(starred, s)
@@ -1850,7 +1850,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sjnam/gweb/internal/web"
+	"github.com/sjnam/gweb/common"
 )
 
 @ \.{weaveString}.
@@ -1858,7 +1858,7 @@ import (
 func weaveString(t *testing.T, src string) string {
 	t.Helper()
 	var b strings.Builder
-	if err := New(web.ParseString(src)).Weave(&b); err != nil {
+	if err := New(common.ParseString(src)).Weave(&b); err != nil {
 		t.Fatal(err)
 	}
 	return b.String()
