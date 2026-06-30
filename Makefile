@@ -14,8 +14,8 @@ BIN ?= bin
 #
 # Each command is a single web: cmd/gtangle/gtangle.w is the gtangle front end
 # plus the tangle engine, cmd/gweave/gweave.w the gweave front end plus the weave
-# engine, and common/common.w the shared parser. gweb.w (repo root) is the
-# weave-only master (it just @i-includes the three, so it is not tangled).
+# engine, and common/common.w the shared parser. doc/gweb.w is the weave-only
+# master (it just @i-includes the three, so it is not tangled).
 WEBS   = common/common.w cmd/gtangle/gtangle.w cmd/gweave/gweave.w
 # The non-committed Go that `generate' produces (removed by `clean').
 GEN_GO = cmd/gtangle/gtangle_test.go \

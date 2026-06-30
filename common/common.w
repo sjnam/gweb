@@ -4,13 +4,12 @@ expands \.{@@i} includes, optionally applies a change file, and splits the
 result into a sequence of {\it sections\/}. Both \.{gtangle} and \.{gweave}
 are built on top of it, so it plays the role of CWEB's \.{common.w}.
 
-We start with the package declaration, the imports, and the |Format| record,
-which captures one \.{@@f} or \.{@@s} directive: typeset identifier |Original| the
-way identifier or keyword |Like| is typeset; |NoIndex| is true for \.{@@s}.
+We start with the package declaration, the imports, the |Version| constant (the
+GWEB release, shared by \.{gtangle} and \.{gweave} for their startup banner and
+their \.{-version} output), and the |Format| record, which captures one \.{@@f}
+or \.{@@s} directive: typeset identifier |Original| the way identifier or keyword
+|Like| is typeset; |NoIndex| is true for \.{@@s}.
 @(common/common.go@>=
-// Package common parses GWEB source files (.w) into a sequence of sections that
-// gtangle and gweave consume. It is the shared front end of the GWEB system,
-// playing the role of CWEB's common.w.
 package common
 
 import (
@@ -20,12 +19,8 @@ import (
 	"strings"
 )
 
-// Version is the GWEB release, shared by gtangle and gweave for their startup
-// banner and their --version output.
 const Version = "0.3.0"
 
-// Format records an "@@f a b" (or "@@s a b") directive: typeset identifier
-// Original the way identifier/keyword Like is typeset. NoIndex is true for @@s.
 type Format struct {
 	Original string
 	Like     string
@@ -37,7 +32,6 @@ type Format struct {
 commentary, definitions, and code -- are stored as raw text with the in-text
 and in-code \.{@@}-codes still embedded; the consumers interpret them later.
 @(common/common.go@>=
-// Section is one numbered section of the web.
 type Section struct {
 	Number  int    // 1-based section number
 	Line    int    // 1-based source line where the section begins
@@ -58,7 +52,6 @@ directives, the sections, and the diagnostics gathered while parsing. The
 unexported fields support diagnostics (mapping a combined-source line back to
 its original file) and name-abbreviation resolution.
 @(common/common.go@>=
-// Web is a fully parsed GWEB document.
 type Web struct {
 	Limbo    string
 	Formats  []Format // @@f / @@s directives found in limbo (apply globally)
@@ -74,15 +67,10 @@ adds CWEB's change-file mechanism; |ParseString| is for tests. All three end by
 calling |finish|, which runs the post-parse bookkeeping. |at| formats a
 combined-source line for a diagnostic, mapping it back to the user's file.
 @(common/common.go@>=
-// Parse reads filename, expands @@i includes, and parses the result.
 func Parse(filename string) (*Web, error) {
 	return ParseWithChange(filename, "")
 }
 
-// ParseWithChange reads the master file, expands @@i includes, applies the change
-// file (CWEB's ".ch" mechanism) if changeFile is non-empty, and parses the
-// result. Diagnostics point back to the original file and line via an origin map
-// kept in step through include expansion and change application.
 func ParseWithChange(filename, changeFile string) (*Web, error) {
 	lines, locs, err := expandIncludes(filename, 0)
 	if err != nil {
@@ -110,22 +98,18 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 	return w, nil
 }
 
-// ParseString parses already-loaded source (used by tests; no includes).
 func ParseString(src string) *Web {
 	w := parse(src)
 	w.finish(src)
 	return w
 }
 
-// finish runs post-parse bookkeeping: name collection and diagnostics.
 func (w *Web) finish(src string) {
 	w.collectNames()
 	w.Warnings = append(w.Warnings, w.scanDiagnostics(src)...)
 	w.Warnings = append(w.Warnings, w.checkNames()...)
 }
 
-// at formats a combined-source line for a diagnostic, mapping it back to the
-// original file and line when an origin map is available.
 func (w *Web) at(line int) string {
 	if i := line - 1; i >= 0 && i < len(w.locs) {
 		return w.locs[i].String()
@@ -141,8 +125,6 @@ returning the two parts separately (|at| formats the same information as a
 string). |gtangle| uses it to emit \.{//line} directives so the Go compiler
 reports errors at \.{.w} positions.
 @(common/common.go@>=
-// Origin maps a 1-based combined-source line back to the original file and line.
-// When no origin map is available it falls back to the web's own filename.
 func (w *Web) Origin(line int) (file string, ln int) {
 	if i := line - 1; i >= 0 && i < len(w.locs) {
 		return w.locs[i].file, w.locs[i].line
@@ -154,9 +136,6 @@ func (w *Web) Origin(line int) (file string, ln int) {
 commands accept a bare web name as CWEB does (|gtangle wc| reads \.{wc.w}). A
 name that already has an extension, or is empty, is returned unchanged.
 @(common/common.go@>=
-// DefaultExt returns name with ext appended when name has no extension of its
-// own (and is non-empty), so "wc" becomes "wc.w". A name that already carries an
-// extension is left alone.
 func DefaultExt(name, ext string) string {
 	if name == "" || filepath.Ext(name) != "" {
 		return name
@@ -168,11 +147,6 @@ func DefaultExt(name, ext string) string {
 non-blank text is \.{@@i} names a file whose expansion replaces that line. We
 keep a parallel origin map so diagnostics can cite the file the user wrote.
 @(common/common.go@>=
-// expandIncludes reads file and splices in @@i includes, returning the combined
-// lines together with a parallel origin map. As in CWEB, @@i is line-oriented: a
-// line whose first non-blank text is "@@i" (followed by whitespace) names a file
-// whose expansion replaces that line. A final newline does not produce a
-// trailing blank line.
 func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 	if depth > 25 {
 		return nil, nil, fmt.Errorf("gweb: @@i include nesting too deep at %q", file)
@@ -209,8 +183,6 @@ func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 	return lines, locs, nil
 }
 
-// includeDirective returns the file named by an "@@i" line, or ok=false. The @@i
-// must be the first non-blank text on the line and be followed by whitespace.
 func includeDirective(line string) (name string, ok bool) {
 	t := strings.TrimLeft(line, " \t")
 	if !strings.HasPrefix(t, "@@i") {
@@ -229,11 +201,6 @@ the set of canonical (non-abbreviated) names. A full name may appear at a
 definition or at any reference, in code or in commentary, so all of those are
 scanned.
 @(common/common.go@>=
-// collectNames records the set of canonical (non-abbreviated) section names so
-// abbreviations ending in "..." can be resolved. A full name may appear at a
-// definition (@@<name@@>=) or at any reference (@@<name@@>), in code or in
-// commentary, so all of those are scanned. Output files (@@(...@@>=) are roots,
-// not referable refinements, so their names are excluded.
 func (w *Web) collectNames() {
 	seen := map[string]bool{}
 	add := func(name string) {
@@ -256,7 +223,6 @@ func (w *Web) collectNames() {
 	}
 }
 
-// prefixMatches counts canonical names beginning with prefix.
 func (w *Web) prefixMatches(prefix string) int {
 	n := 0
 	for _, full := range w.full {
@@ -272,10 +238,6 @@ references to undefined sections, and named sections that are defined but never
 used. All are warnings; \.{gtangle} still fails hard if it actually meets an
 undefined reference while expanding.
 @(common/common.go@>=
-// checkNames validates @@<...@@> references: it reports ambiguous or unmatched
-// abbreviations, references to undefined sections, and named sections that are
-// defined but never used. All are warnings (gtangle still fails hard if it
-// actually meets an undefined reference while expanding).
 func (w *Web) checkNames() []string {
 	// "defined" is the set of sections that actually have a definition (not just
 	// the full names known for abbreviation resolution, which include references).
@@ -329,10 +291,10 @@ func (w *Web) checkNames() []string {
 }
 
 @ A few small helpers: |lineAt| converts a byte offset to a line number,
-|Resolve| maps a possibly abbreviated name to its canonical form, and
+|canonName| normalizes a name by collapsing each run of whitespace to a single
+space, |Resolve| maps a possibly abbreviated name to its canonical form, and
 |indexFrom| is a bounded |strings.Index|.
 @(common/common.go@>=
-// lineAt returns the 1-based line number of byte offset off in src.
 func lineAt(src string, off int) int {
 	if off > len(src) {
 		off = len(src)
@@ -340,16 +302,10 @@ func lineAt(src string, off int) int {
 	return 1 + strings.Count(src[:off], "\n")
 }
 
-// canonName canonicalizes a section name's whitespace: every run of spaces,
-// tabs, and newlines becomes a single space, and leading/trailing space is
-// dropped. As in CWEB, this lets a long name that is wrapped across lines in one
-// place still match the same name written on a single line elsewhere.
 func canonName(name string) string {
 	return strings.Join(strings.Fields(name), " ")
 }
 
-// Resolve maps a (possibly abbreviated) name to its canonical form. An
-// abbreviation "Prefix..." matches the unique full name starting with Prefix.
 func (w *Web) Resolve(name string) string {
 	name = canonName(name)
 	if !strings.HasSuffix(name, "...") {
@@ -386,7 +342,6 @@ The parser works directly on the source text. A |ctrl| value describes the next
 structural control code -- a section break, a code part, a named definition, or
 a definition-part directive -- together with the byte range it occupies.
 @(common/common.go@>=
-// ctrlKind classifies a structural control code found while scanning.
 type ctrlKind int
 
 const (
@@ -414,10 +369,6 @@ literal \.{@@@@} and argument-terminated codes (\.{@@<...@@>}, \.{@@=...@@>}, an
 on) so their contents never trigger a false section break. A \.{@@<...@@>} not
 followed by |=| is a reference, not a definition, and is skipped.
 @(common/common.go@>=
-// scanStruct finds the next structural control at or after i. It skips literal
-// "@@@@" and argument-terminated codes (@@<...@@>, @@=...@@>, etc.) so their contents
-// never trigger a false section break. A "@@<...@@>" not followed by "=" is a
-// reference, not a definition, and is skipped.
 func scanStruct(src string, i int) ctrl {
 	n := len(src)
 	for i < n {
@@ -492,9 +443,6 @@ func scanStruct(src string, i int) ctrl {
 skipping everything else. It is used inside code parts, where \.{@@c}, \.{@@d}, and
 \.{@@f} never legitimately appear.
 @(common/common.go@>=
-// findNextSection scans forward to the next section break (@@ or @@*), skipping
-// everything else including argument-terminated codes. Used inside code parts,
-// where @@c/@@d/@@f never legitimately appear.
 func findNextSection(src string, i int) ctrl {
 	n := len(src)
 	for i < n {
@@ -545,7 +493,6 @@ func findNextSection(src string, i int) ctrl {
 @ The main loop. |parse| splits the source into limbo and sections, and for
 each section into its TeX, definition, and code parts.
 @(common/common.go@>=
-// parse splits source into limbo and sections.
 func parse(src string) *Web {
 	w := &Web{}
 	n := len(src)
@@ -647,10 +594,6 @@ func findSectionHeaderEnd(src string, i int) ctrl {
 @ |extractTitle| returns the text of a starred section up to its first period,
 with whitespace collapsed, for the table of contents.
 @(common/common.go@>=
-// extractTitle returns the text of a starred section up to its terminating
-// period, with whitespace collapsed, for use in the table of contents. The
-// terminator is the first period at end of text or followed by whitespace, so a
-// period inside a control sequence such as \.{web} does not end the title early.
 func extractTitle(tex string) string {
 	t := strings.TrimLeft(tex, " \t\n")
 	if i := titleEnd(t); i >= 0 {
@@ -659,8 +602,6 @@ func extractTitle(tex string) string {
 	return strings.Join(strings.Fields(t), " ")
 }
 
-// titleEnd returns the index of the period that ends a starred-section title --
-// the first '.' at end of s or followed by whitespace -- or -1 if there is none.
 func titleEnd(s string) int {
 	for i := 0; i < len(s); i++ {
 		if s[i] == '.' && (i+1 == len(s) || s[i+1] == ' ' || s[i+1] == '\t' ||
@@ -674,9 +615,6 @@ func titleEnd(s string) int {
 @ |scanDiagnostics| walks the source looking for malformed control codes --
 currently argument-terminated codes missing their closing \.{@@>}.
 @(common/common.go@>=
-// scanDiagnostics walks the source looking for malformed control codes —
-// currently argument-terminated codes (@@<, @@(, @@=, @@t, @@^, @@., @@:, @@q) that are
-// missing their closing @@> — and returns one warning per problem.
 func (w *Web) scanDiagnostics(src string) []string {
 	var warns []string
 	n := len(src)
@@ -705,7 +643,6 @@ func (w *Web) scanDiagnostics(src string) []string {
 
 @ |parseFormat| parses the body of an \.{@@f} or \.{@@s} directive: two identifiers.
 @(common/common.go@>=
-// parseFormat parses the body of an @@f/@@s directive: two identifiers.
 func parseFormat(seg string, noIndex bool) (Format, bool) {
 	fields := strings.Fields(seg)
 	if len(fields) < 2 {
@@ -720,10 +657,6 @@ since Go has no preprocessor and \.{@@d} never tangles to code. A qualified name
 keeps its final component, so \.{@@d http.StatusOK} and \.{@@d StatusOK} both
 register the identifier |StatusOK|.
 @(common/common.go@>=
-// parseMacro parses an @@d directive: its first word names a constant to set in
-// typewriter; any value after it is ignored (Go has no preprocessor). A
-// qualified name keeps its final component, so "@@d http.StatusOK" and
-// "@@d StatusOK" both register StatusOK.
 func parseMacro(seg string) (Format, bool) {
 	fields := strings.Fields(seg)
 	if len(fields) == 0 {
@@ -743,9 +676,6 @@ func parseMacro(seg string) (Format, bool) {
 returns the cleaned text together with the formats. Other control codes and
 argument-terminated groups are copied through unchanged.
 @(common/common.go@>=
-// extractLimboFormats pulls @@d/@@f/@@s directives out of the limbo text
-// (consuming each to end of line) and returns the cleaned text together with the
-// formats. Other control codes and argument-terminated groups are copied through.
 func extractLimboFormats(src string) (string, []Format) {
 	var b strings.Builder
 	var formats []Format
@@ -802,7 +732,6 @@ A code part is a mix of ordinary Go text and in-code control codes. |ScanCode|
 turns it into a slice of |Atom|s; the kind of each atom tells \.{gtangle} and
 \.{gweave} how to treat it.
 @(common/common.go@>=
-// AtomKind classifies a piece of a code part.
 type AtomKind int
 
 const (
@@ -816,7 +745,6 @@ const (
 	AIndexDef                 // @@! force the next identifier to index as a definition
 )
 
-// Atom is one element of a scanned code part.
 type Atom struct {
 	Kind  AtomKind
 	Text  string // payload for AText/AVerbatim/ATeX/AIndex; name for ARef
@@ -827,8 +755,6 @@ type Atom struct {
 text; every other control code flushes the pending text and appends its own
 atom.
 @(common/common.go@>=
-// ScanCode splits a raw code part into atoms, interpreting in-code control
-// codes. "@@@@" becomes a literal '@@' folded into the surrounding text.
 func ScanCode(code string) []Atom {
 	var atoms []Atom
 	var buf strings.Builder
@@ -963,9 +889,6 @@ type change struct {
 	replLine int      // 1-based change-file line of the first replacement line
 }
 
-// srcLoc identifies the origin (file and 1-based line) of a line of the
-// includes-expanded, change-applied source, so diagnostics can point back to
-// the file the user actually wrote.
 type srcLoc struct {
 	file string
 	line int
@@ -981,20 +904,14 @@ func (l srcLoc) String() string {
 @ Recognizing a change control line and comparing source lines (ignoring
 trailing whitespace, as WEB does), with a line splitter that normalizes CRLF.
 @(common/common.go@>=
-// isChangeCtrl reports whether line begins with the change control "@@<c>"
-// (c is 'x', 'y', or 'z'), which must start in the first column.
 func isChangeCtrl(line string, c byte) bool {
 	return len(line) >= 2 && line[0] == '@@' && line[1] == c
 }
 
-// splitLines splits text into lines, normalizing CRLF, so that joining the
-// result with "\n" reproduces the (LF-normalized) input.
 func splitLines(s string) []string {
 	return strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
 }
 
-// sameLine compares two source lines for change matching, ignoring trailing
-// whitespace (as WEB does).
 func sameLine(a, b string) bool {
 	return strings.TrimRight(a, " \t") == strings.TrimRight(b, " \t")
 }
@@ -1002,7 +919,6 @@ func sameLine(a, b string) bool {
 @ |parseChangeFile| parses change-file text into an ordered list of changes,
 reporting the malformed-change errors precisely.
 @(common/common.go@>=
-// parseChangeFile parses change-file text into an ordered list of changes.
 func parseChangeFile(src string) ([]change, error) {
 	lines := splitLines(src)
 	var changes []change
@@ -1047,8 +963,6 @@ func parseChangeFile(src string) ([]change, error) {
 
 @ |applyChanges| is the string convenience form used by tests.
 @(common/common.go@>=
-// applyChanges returns src with the changes applied (string convenience form,
-// used by tests). See applyChangesMapped for the origin-tracking version.
 func applyChanges(src string, changes []change, chFile string) (string, error) {
 	out, _, err := applyChangesMapped(splitLines(src), nil, changes, chFile)
 	if err != nil {
@@ -1062,12 +976,6 @@ step: passed-through lines keep their origin, replacement lines are attributed
 to the change file. It is an error if a change is never matched, or matches its
 first line but not the rest.
 @(common/common.go@>=
-// applyChangesMapped applies changes to master, keeping a parallel origin map in
-// step: passed-through lines keep their origin, and replacement lines are
-// attributed to the change file. locs may be nil if origins are not tracked.
-// chFile names the change file for diagnostics. It is an error if a change's
-// first line is never found, or is found but the rest of the block does not
-// match.
 func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) ([]string, []srcLoc, error) {
 	loc := func(i int) srcLoc {
 		if locs != nil && i < len(locs) {
@@ -1106,7 +1014,6 @@ func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile
 @ |blockMatches| reports whether a match block lines up with the master source
 at a given index.
 @(common/common.go@>=
-// blockMatches reports whether match lines up with master starting at index at.
 func blockMatches(master []string, at int, match []string) bool {
 	if at+len(match) > len(master) {
 		return false

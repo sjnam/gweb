@@ -5,15 +5,6 @@ its \.{.w} extension (|gweave wc| reads \.{wc.w}, as in cweb). The woven documen
 extension; process it with a TeX engine that can find \.{gwebmac.tex} to produce
 a PDF.
 @(cmd/gweave/gweave.go@>=
-// Command gweave turns a GWEB (.w) file into a TeX document.
-//
-// Usage:
-//
-//	gweave [-o dir] file[.w] [change[.ch]]
-//
-// The .w (and .ch) extension may be omitted. The woven document is written to
-// <basename>.tex. Process it with a TeX engine that can find gwebmac.tex (e.g.
-// "pdftex file.tex") to produce a PDF.
 package main
 
 import (
@@ -120,7 +111,6 @@ tangled together with the front end into the single file \.{gweave.go}.
 first defining section, the \.{@@f}/\.{@@s} format overrides, and the
 cross-reference tables (built lazily).
 @(cmd/gweave/gweave.go@>=
-// Weaver turns a parsed web into woven TeX.
 type Weaver struct {
 	w      *common.Web
 	defNum map[string]int // canonical named-section -> first defining section
@@ -135,7 +125,6 @@ type Weaver struct {
 @ |New| records the first defining section of each refinement and installs the
 global and per-section format directives (later ones win).
 @(cmd/gweave/gweave.go@>=
-// New builds a Weaver for the given web.
 func New(w *common.Web) *Weaver {
 	wv := &Weaver{
 		w:       w,
@@ -238,8 +227,6 @@ func scanDecls(toks []token, keyword string, add func(string)) {
 	}
 }
 
-// nextSignificant returns the index of the first token at or after i that is not
-// whitespace or a newline, or -1 if there is none.
 func nextSignificant(toks []token, i int) int {
 	for ; i < len(toks); i++ {
 		if toks[i].kind != tkSpace && toks[i].kind != tkNewline {
@@ -249,9 +236,6 @@ func nextSignificant(toks []token, i int) int {
 	return -1
 }
 
-// scanDeclGroup collects the declared names in a parenthesized type or const
-// group beginning at index i, returning the index of the closing ")". The first
-// identifier on each line at nesting depth 0 is a declared name.
 func scanDeclGroup(toks []token, i int, add func(string)) int {
 	depth := 0
 	atStart := true
@@ -291,7 +275,6 @@ func scanDeclGroup(toks []token, i int, add func(string)) int {
 @ |effKind| returns the token class to typeset a token in, honoring \.{@@f}/\.{@@s}
 overrides for identifiers, keywords, and builtins.
 @(cmd/gweave/gweave.go@>=
-// effKind returns the token class to typeset t in, honoring @@f/@@s overrides.
 func (wv *Weaver) effKind(t token) tokKind {
 	switch t.kind {
 	case tkIdent, tkKeyword, tkBuiltin:
@@ -307,10 +290,6 @@ and only fills the cross-reference tables (so a ``used in section'' note can be
 printed under a definition even when the use occurs later); the second produces
 the real output. \.{gweave} supplies the macro package itself.
 @(cmd/gweave/gweave.go@>=
-// Weave writes the complete TeX document to out. It runs two passes: the first
-// is discarded and only populates the cross-reference tables (so that, e.g.,
-// "used in section N" notes can be printed under a definition even when the use
-// occurs later); the second produces the real output.
 func (wv *Weaver) Weave(out io.Writer) error {
 	wv.xref = newXref()
 	scan := bufio.NewWriter(io.Discard)
@@ -333,8 +312,6 @@ func (wv *Weaver) Weave(out io.Writer) error {
 @ |Weave| emits the macro package itself, so any stray copy of it in the limbo
 is dropped.
 @(cmd/gweave/gweave.go@>=
-// stripGwebmacInput removes any "\input gwebmac" line from the limbo, since
-// gweave now emits it automatically.
 func stripGwebmacInput(limbo string) string {
 	lines := strings.Split(limbo, "\n")
 	kept := make([]string, 0, len(lines))
@@ -415,12 +392,6 @@ between chunks. Because |gofmt| already encodes the grammar in its spacing, this
 reproduces it exactly (pointer |*T| vs.\ |a * b|, slice |[]T| vs.\ index |a[i]|)
 and lets long lines wrap at |\GS|.
 @(cmd/gweave/gweave.go@>=
-// renderCode formats a code part into a sequence of \GL code lines. Spacing
-// mirrors the source: a run of tokens with no source whitespace between them
-// becomes one tight math "chunk" (one TeX math group), and a gap becomes a
-// breakable \GS space between chunks. Because gofmt-formatted Go already encodes
-// the grammar in its spacing, this reproduces it exactly (pointer *T vs a * b,
-// slice []T vs index a[i], and so on) and lets long lines wrap at \GS.
 func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	var out strings.Builder
 	var line strings.Builder // the current source line: chunks joined by \GS
@@ -574,7 +545,6 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 
 @ |renderToken| renders a single Go token as a TeX fragment (used inside math).
 @(cmd/gweave/gweave.go@>=
-// renderToken renders a single Go token as a TeX fragment (used inside math).
 func renderToken(t token) string {
 	switch t.kind {
 	case tkKeyword, tkBuiltin:
@@ -633,8 +603,6 @@ func renderNumber(s string) string {
 	return "\\GNU{" + numDigits(s) + "}"
 }
 
-// isOctalDigits reports whether s is a nonempty run of octal digits (with
-// optional _ separators) -- the tail of a classic 0NNN octal literal.
 func isOctalDigits(s string) bool {
 	if s == "" {
 		return false
@@ -647,8 +615,6 @@ func isOctalDigits(s string) bool {
 	return true
 }
 
-// numDigits renders the digits of a literal: a _ separator becomes a thin space;
-// digits and hex letters are safe as is (no TeX specials occur in a number).
 func numDigits(s string) string {
 	return strings.ReplaceAll(s, "_", "\\,")
 }
@@ -657,9 +623,6 @@ func numDigits(s string) string {
 a literal at-sign, and index entries (\.{@@\^ @@. @@:}) are recorded and removed.
 Everything else -- the user's TeX -- passes through unchanged.
 @(cmd/gweave/gweave.go@>=
-// processTex transforms commentary: |Go code| inline, @@<refs@@>, @@@@->@@, and
-// index entries (@@^ @@. @@:) are recorded and removed. Everything else (the
-// user's TeX) passes through unchanged.
 func (wv *Weaver) processTex(secNum int, s string) string {
 	var b strings.Builder
 	n := len(s)
@@ -724,15 +687,10 @@ func (wv *Weaver) processTex(secNum int, s string) string {
 as one math group, mirroring the source whitespace (such fragments are not
 wrapped).
 @(cmd/gweave/gweave.go@>=
-// renderInline formats a |...| inline Go fragment (from prose) as one math
-// group, recording identifier uses in section secNum.
 func (wv *Weaver) renderInline(secNum int, code string) string {
 	return wv.inlineCode(code, secNum, true)
 }
 
-// inlineCode formats a short Go fragment as one math group, mirroring the source
-// whitespace (it is not wrapped). When record is true, identifier uses are added
-// to the cross-reference under secNum.
 func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	var st lexState
 	var b strings.Builder
@@ -777,9 +735,6 @@ func (wv *Weaver) renderComment(secNum int, text string) string {
 	return "\\GCM{" + prefix + wv.commentBody(secNum, body) + "}"
 }
 
-// commentBody escapes a comment for roman text mode but, as cweb does, renders a
-// |...| span as inline Go code and lets a \.{...} typewriter span through
-// verbatim (\. escapes its own argument). \| is a literal bar.
 func (wv *Weaver) commentBody(secNum int, s string) string {
 	var b, lit strings.Builder
 	flush := func() {
@@ -853,10 +808,6 @@ in a starred-section title. A |@@(file@@>=| name is different: it is a literal
 file path, not TeX, so it is set in typewriter with its specials escaped (an
 underscore in a name like \.{squint\_test.go} would otherwise derail \TeX).
 @(cmd/gweave/gweave.go@>=
-// renderName typesets a section name for TeX text mode. A |...| span is set as
-// inline code (as in CWEB section names); the rest passes through as TeX, so
-// control sequences and math work. A literal bar is written backslash-bar.
-// An @(file@>= name is a literal path: typeset it in typewriter, escaped.
 func (wv *Weaver) renderName(name string) string {
 	if wv.isFile[name] {
 		return "\\.{" + escTT(name) + "}"
@@ -903,8 +854,6 @@ func (wv *Weaver) renderName(name string) string {
 @ |indexable| excludes the blank identifier from the index, and |declKeywords|
 lists the keywords that introduce a declaration.
 @(cmd/gweave/gweave.go@>=
-// indexable reports whether an identifier should appear in the index. The blank
-// identifier "_" is excluded.
 func indexable(name string) bool { return name != "_" }
 
 var declKeywords = map[string]bool{
@@ -916,10 +865,6 @@ it follows a |func|/|var|/|const|/|type| keyword, or it is immediately followed
 by |:=|. This is best-effort -- there is no full Go parse -- but it covers the
 cases CWEB underlines in its index.
 @(cmd/gweave/gweave.go@>=
-// isDefinition heuristically decides whether the identifier at toks[k] is being
-// declared: it follows a func/var/const/type keyword, or it is immediately
-// followed by ":=". This is best-effort (no full Go parse) but covers the
-// common cases CWEB underlines in its index.
 func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
 	if prevKind == tkKeyword && declKeywords[prevText] {
 		return true
@@ -940,8 +885,6 @@ func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
 @ |indentLevel| measures a leading-whitespace run: one level per tab, plus one
 per four spaces.
 @(cmd/gweave/gweave.go@>=
-// indentLevel returns the indentation level of a leading-whitespace run: one
-// level per tab, plus one per four spaces.
 func indentLevel(s string) int {
 	level, spaces := 0, 0
 	for i := 0; i < len(s); i++ {
@@ -998,7 +941,6 @@ type token struct {
 	text string
 }
 
-// lexState carries lexer state across fragments of one code part.
 type lexState struct {
 	inBlockComment bool
 	inRawString    bool
@@ -1022,9 +964,6 @@ var goBuiltins = map[string]bool{
 	"any": true, "comparable": true,
 }
 
-// The predeclared constant values are set in typewriter (like a const), not bold
-// like the predeclared types; they denote values, not types. (nil is the
-// exception: renderToken shows it as a symbol, the way cweave shows C's NULL.)
 var goConstants = map[string]bool{"nil": true, "true": true, "false": true, "iota": true}
 
 @ |classifyWord| maps a word to its class; the character-class predicates follow
@@ -1056,8 +995,6 @@ func isDigit(c byte) bool { return c >= '0' && c <= '9' }
 @ |lexGo| tokenizes a fragment, updating |*st|. Newlines and whitespace runs are
 returned as their own tokens.
 @(cmd/gweave/gweave.go@>=
-// lexGo tokenizes src, updating *st. Newlines and whitespace runs are returned
-// as their own tokens.
 func lexGo(src string, st *lexState) []token {
 	var toks []token
 	n := len(src)
@@ -1193,8 +1130,6 @@ func lexGo(src string, st *lexState) []token {
 combines them into single tokens. The empty pairs |[]| and |{}| are kept whole
 so the typesetter can give them a thin space.
 @(cmd/gweave/gweave.go@>=
-// multiOps lists Go's multi-character operators, longest first, so matchOp can
-// greedily combine them into single tokens.
 var multiOps = []string{
 	"<<=", ">>=", "&^=", "...",
 	"<-", "++", "--", "==", "!=", "<=", ">=", ":=", "&&", "||",
@@ -1215,9 +1150,6 @@ func matchOp(src string, i int) int {
 @ |lexQuoted| scans an interpreted string or rune literal, honoring backslash
 escapes and tolerating an unterminated literal.
 @(cmd/gweave/gweave.go@>=
-// lexQuoted scans an interpreted string ("...") or rune ('...') starting at i,
-// honoring backslash escapes, and appends a tkString token. It stops at the
-// closing quote or end of line (unterminated literals are tolerated).
 func lexQuoted(src string, i int, quote byte, toks *[]token) int {
 	n := len(src)
 	j := i + 1
@@ -1282,15 +1214,12 @@ operators (text- or math-mode-safe sequences).
 
 @ |escIdent| escapes an identifier or keyword for text mode.
 @(cmd/gweave/gweave.go@>=
-// escIdent escapes an identifier or keyword for text mode.
 func escIdent(s string) string {
 	return strings.ReplaceAll(s, "_", "\\_")
 }
 
 @ |escTT| escapes arbitrary text for a typewriter box.
 @(cmd/gweave/gweave.go@>=
-// escTT escapes arbitrary text for a typewriter (\tt) box. Specials become
-// \charNN so braces, backslashes, etc. survive.
 func escTT(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
@@ -1311,7 +1240,6 @@ func escTT(s string) string {
 
 @ |escMathOp| encodes an operator run so it is safe inside math mode.
 @(cmd/gweave/gweave.go@>=
-// escMathOp encodes an operator/punctuation run so it is safe inside math mode.
 func escMathOp(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
@@ -1349,11 +1277,6 @@ func escMathOp(s string) string {
 symbols where they exist. Because inter-token spacing comes from the source, the
 unary/binary distinction for |*|, |&|, and friends needs no grammar analysis.
 @(cmd/gweave/gweave.go@>=
-// renderOp typesets a Go operator token as a single tight math atom (no math
-// spacing of its own), using real math symbols where they exist. Inter-token
-// spacing is supplied by the surrounding source whitespace, so the result
-// reproduces gofmt's spacing exactly and the unary/binary distinction for *, &,
-// etc. needs no grammar analysis.
 func renderOp(s string) string {
 	switch s {
 	case "<=":
@@ -1406,8 +1329,6 @@ func renderOp(s string) string {
 @ |tightMathOp| sets each character of an operator as an ordinary atom, so |==|
 or |&&| prints with its characters adjacent.
 @(cmd/gweave/gweave.go@>=
-// tightMathOp encodes each character of an operator as an ordinary atom, so that
-// e.g. "==" or "<<" prints with the characters adjacent rather than spaced.
 func tightMathOp(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
@@ -1420,7 +1341,6 @@ func tightMathOp(s string) string {
 
 @ |escProse| escapes text for ordinary roman text mode (used for section names).
 @(cmd/gweave/gweave.go@>=
-// escProse escapes text for ordinary roman text mode (used for section names).
 func escProse(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
@@ -1462,8 +1382,6 @@ func escProse(s string) string {
 so TeX math works inside a comment (as in cweb); everything outside the math is
 still escaped for roman text mode.
 @(cmd/gweave/gweave.go@>=
-// escComment escapes a comment for roman text mode, but passes a $...$ span
-// through unescaped so TeX math works inside comments (as in cweb).
 func escComment(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); {
@@ -1488,13 +1406,6 @@ defined and used, and the manual index entries from \.{@@\^ @@. @@:}. They are t
 consulted during the real pass and when emitting the back matter.
 @ The tables themselves and a manual index entry.
 @(cmd/gweave/gweave.go@>=
-// xref accumulates cross-reference information while a web is woven:
-//   - where each identifier is used and (heuristically) defined;
-//   - where each named section is defined and used;
-//   - manual index entries from @@^ @@. @@: control codes.
-//
-// It is populated during a first (discarded) weaving pass and then consulted
-// during the real pass and when emitting the back matter.
 type xref struct {
 	identUse    map[string]map[int]bool
 	identDef    map[string]map[int]bool
@@ -1538,7 +1449,6 @@ func (x *xref) addManualIndex(kind byte, text string, sec int) {
 @ |sortedKeys| orders a section set, and |secList| renders it as hyperlinks with
 the defining sections underlined.
 @(cmd/gweave/gweave.go@>=
-// sortedKeys returns the keys of a section set in ascending order.
 func sortedKeys(m map[int]bool) []int {
 	ks := make([]int, 0, len(m))
 	for k := range m {
@@ -1548,8 +1458,6 @@ func sortedKeys(m map[int]bool) []int {
 	return ks
 }
 
-// secList renders a set of section numbers as hyperlinks, with the defining
-// sections (those in def) additionally underlined.
 func secList(secs, def map[int]bool) string {
 	nums := sortedKeys(secs)
 	parts := make([]string, len(nums))
@@ -1566,8 +1474,6 @@ func secList(secs, def map[int]bool) string {
 @ |writeBackMatter| emits the PDF bookmarks, the index, the list of named
 sections, and the table of contents that close a woven document.
 @(cmd/gweave/gweave.go@>=
-// writeBackMatter emits the index, the list of named sections, and the table of
-// contents that close a woven document.
 func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 	wv.writeBookmarks(bw)
 	bw.WriteString("\n\\Ginx\n")
@@ -1588,12 +1494,6 @@ nests by level) and its number of direct children (for pdftex's count model). A
 final top-level entry, \.{Names of the sections}, lists every section name as a
 collapsible child linking to its defining section, as cweave does.
 @(cmd/gweave/gweave.go@>=
-// writeBookmarks emits one \Gbookmark per starred section, in document (pre)
-// order, so a PDF outline can be built whose nesting follows the @@*, @@*1,
-// @@*2 ... depths. Each entry carries its depth (the dvipdfmx route nests by
-// level) and its number of direct children (pdftex's count model). A final
-// top-level "Names of the sections" entry lists every section name as a
-// collapsible child linking to its defining section.
 func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 	var starred []*common.Section
 	for _, s := range wv.w.Sections {
@@ -1636,9 +1536,6 @@ func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 outline: a |...| span keeps its inner text, \.{@@@@} becomes an at-sign, and the
 (rare) TeX-special characters are dropped.
 @(cmd/gweave/gweave.go@>=
-// bookmarkTitle reduces a starred-section title to plain text safe for a PDF
-// outline: |code| spans keep their inner text, @@@@ becomes @@, and TeX-special
-// characters (which are rare in titles) are dropped.
 func bookmarkTitle(raw string) string {
 	var b strings.Builder
 	n := len(raw)
@@ -1684,7 +1581,6 @@ func bookmarkTitle(raw string) string {
 |writeIndex| merges identifier uses and definitions with the manual entries,
 sorts them case-insensitively, and emits one |\GII| line apiece.
 @(cmd/gweave/gweave.go@>=
-// indexItem is one alphabetized entry of the identifier/manual index.
 type indexItem struct {
 	sortKey string
 	render  string // typeset form of the entry head (\GID{...}, \GIR{...}, ...)
@@ -1758,8 +1654,6 @@ func (wv *Weaver) writeIndex(bw *bufio.Writer) {
 using section numbers. |sortedSectionNames| gives the shared ordering used both
 here and for the PDF outline children beneath ``Names of the sections''.
 @(cmd/gweave/gweave.go@>=
-// writeSectionNames emits the list of named sections with their defining and
-// using section numbers.
 func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	for _, n := range wv.sortedSectionNames() {
 		fmt.Fprintf(bw, "\\GNS{%s}{%d}{%s}\n",
@@ -1767,9 +1661,6 @@ func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	}
 }
 
-// sortedSectionNames returns every section name (defined or used), ordered
-// case-insensitively, as it appears on the section-names page and in the PDF
-// outline beneath "Names of the sections".
 func (wv *Weaver) sortedSectionNames() []string {
 	names := map[string]bool{}
 	for n := range wv.xref.sectionDefs {
@@ -1793,9 +1684,6 @@ list, or |""| when the section is never used. The wording is deferred to the
 |\GNused|/|\GNuseds| macros (singular/plural) so a localization file can
 translate it, exactly as |\GU|/|\GUs| do for the under-definition notes.
 @(cmd/gweave/gweave.go@>=
-// usedNote renders the "Used in section(s) ..." note for the section-names list,
-// or "" when the section is never used. It emits a \GNused/\GNuseds macro so the
-// wording can be localized, like the \GU/\GUs notes under a definition.
 func usedNote(uses map[int]bool) string {
 	if len(uses) == 0 {
 		return ""
@@ -1810,8 +1698,6 @@ func usedNote(uses map[int]bool) string {
 @ |crossRefNotes| returns the ``also defined in'' and ``used in'' notes printed
 under the first definition of a named section.
 @(cmd/gweave/gweave.go@>=
-// crossRefNotes returns the "also defined in"/"used in" notes printed under the
-// first definition of a named section, or "" if none apply.
 func (wv *Weaver) crossRefNotes(name string, secNum int) string {
 	if wv.defNum[name] != secNum {
 		return "" // notes appear only under the first definition
