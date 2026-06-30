@@ -236,7 +236,7 @@ reproduces its own committed source exactly. The tests live in the `.w` sources
 too (a `Tests` chapter per web), so they are tangled and git-ignored along with
 the rest of the generated Go: no `_test.go` is committed.
 
-`gweb.w` (at the repo root) is a master that `@i`-includes the three component
+`gweb.w` (at the repo doc) is a master that `@i`-includes the three component
 webs in reading order, so `gweave` can typeset the whole system as one document:
 
 ```sh
