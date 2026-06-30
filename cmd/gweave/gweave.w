@@ -2,7 +2,7 @@
 This is the command-line front end of \.{gweave}; the weave engine it drives is
 defined in the second half of this web. The input may be named with or without
 its \.{.w} extension (|gweave wc| reads \.{wc.w}, as in cweb). The woven document is written to the input's base name with a \.{.tex}
-extension; process it with a TeX engine that can find \.{gwebmac.tex} to produce
+extension; process it with a \TeX\ engine that can find \.{gwebmac.tex} to produce
 a PDF.
 @(cmd/gweave/gweave.go@>=
 package main
@@ -22,7 +22,7 @@ import (
 
 @ The entry point parses the flags and arguments and dispatches to |run|. With
 \.{-version} it just prints the version; otherwise it prints a one-line banner
-to the standard error, in the style of cweb, before processing.
+to the standard error, in the style of \.{CWEB}, before processing.
 @(cmd/gweave/gweave.go@>=
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
@@ -51,7 +51,7 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-@ A brief progress report in the style of cweb: one |*N| on the standard error
+@ A brief progress report in the style of \.{CWEB}: one \.{*N} on the standard error
 for each starred (chapter) section, giving a sense of the web's structure as it
 is processed.
 @(cmd/gweave/gweave.go@>=
@@ -66,7 +66,7 @@ func reportProgress(w *common.Web) {
 
 @ |run| supplies the default \.{.w} (and \.{.ch}) extension, parses the web
 (applying a change file if given), prints any warnings and a short progress
-report, and writes the woven TeX.
+report, and writes the woven \TeX.
 @(cmd/gweave/gweave.go@>=
 func run(input, changeFile, outDir string) error {
 	input = common.DefaultExt(input, ".w")
@@ -101,10 +101,10 @@ func run(input, changeFile, outDir string) error {
 
 @* The weave engine.
 The rest of this web is the engine that \.{gweave}'s front end drives: it turns a
-parsed web into a TeX document with pretty-printed Go code (bold reserved words,
+parsed web into a \TEX/ document with pretty-printed Go code (bold reserved words,
 italic identifiers), linked section references, and -- assembled in the
 cross-reference part below -- an index and a list of section names, the Go
-analogue of CWEB's \.{cweave}. It is part of the command's \.{main} package,
+analogue of \.{CWEB}'s \.{cweave}. It is part of the command's \.{main} package,
 tangled together with the front end into the single file \.{gweave.go}.
 
 @ A |Weaver| carries the per-document state: the map from a named section to its
@@ -115,9 +115,9 @@ type Weaver struct {
 	w      *common.Web
 	defNum map[string]int // canonical named-section -> first defining section
 
-	format  map[string]tokKind // @@f/@@s: identifier -> the token class to use
-	noIndex map[string]bool    // @@s: identifiers omitted from the index
-	isFile  map[string]bool    // @@(file@@>= outputs: names are literal file paths
+	format  map[string]tokKind // \.{@@f}/\.{@@s}: identifier -> the token class to use
+	noIndex map[string]bool    // \.{@@s}: identifiers omitted from the index
+	isFile  map[string]bool    // \.{@@(file@@>=} outputs: names are literal file paths
 
 	xref *xref // identifier and section cross-references (built lazily)
 }
@@ -133,9 +133,9 @@ func New(w *common.Web) *Weaver {
 		noIndex: map[string]bool{},
 		isFile:  map[string]bool{},
 	}
-	// Both refinements and @@(file@@>= outputs get a defining section number, so
-	// their headlines and links resolve; only @@(file@@>= names are never the
-	// target of a @@<...@@> reference. A file name is a literal path, not TeX, so
+	// Both refinements and \.{@@(file@@>=} outputs get a defining section number, so
+	// their headlines and links resolve; only \.{@@(file@@>=} names are never the
+	// target of a \.{@@<...@@>} reference. A file name is a literal path, not TeX, so
 	// we remember which names are files and typeset them verbatim.
 	for _, s := range w.Sections {
 		if s.HasCode && s.Name != "" {
@@ -149,11 +149,11 @@ func New(w *common.Web) *Weaver {
 		}
 	}
 	// Format directives apply globally; later definitions win. The display
-	// class of identifier a (@@f a b) is the class b would be typeset in.
+	// class of identifier a (\.{@@f} a b) is the class b would be typeset in.
 	apply := func(fs []common.Format) {
 		for _, f := range fs {
 			if f.Macro {
-				wv.format[f.Original] = tkMacro // @d: typewriter, like a CWEB macro
+				wv.format[f.Original] = tkMacro // \.{@d}: typewriter, like a \.{CWEB} macro
 			} else {
 				wv.format[f.Original] = classifyWord(f.Like)
 			}
@@ -166,14 +166,14 @@ func New(w *common.Web) *Weaver {
 	for _, s := range w.Sections {
 		apply(s.Formats)
 	}
-	// As in cweave, a name declared with |type| is set bold, like the predeclared
-	// types. (Typewriter treatment is applied only on request, with |@@d|.) An
-	// explicit |@@f|/|@@s| above still wins.
+	// As in cweave, a name declared with \.{|type|} is set bold, like the predeclared
+	// types. (Typewriter treatment is applied only on request, with \.{@@d}.) An
+	// explicit \.{@@f}|/\.{@@s} above still wins.
 	wv.detectDecls("type", tkBuiltin)
 	return wv
 }
 
-@ cweave sets names declared with |type| in bold, like the predeclared types, and
+@ \.{cweave} sets names declared with \.{|type|} in bold, like the predeclared types, and
 GWEB does the same. |detectDecls| scans the code for declarations introduced by
 |keyword| --- both |keyword NAME ...| and the block form |keyword (...)| --- and
 records each declared name with |kind| (unless an |@@f|/|@@s| directive already
@@ -400,7 +400,7 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	indent := 0
 	atLineStart := true
 	pendingSpace := false
-	forceDef := false     // set by @@! to force the next identifier to index as a def
+	forceDef := false     // set by \.{@@!} to force the next identifier to index as a def
 	haveContent := false  // at least one code line has been emitted
 	blankPending := false // a blank source line is waiting to become a \GBK gap
 
@@ -557,7 +557,7 @@ func renderToken(t token) string {
 			// lambda) as cweave shows C's NULL, rather than in typewriter.
 			return "\\Gnil "
 		}
-		// Typewriter, like a CWEB @d macro (an @d name or a predeclared constant).
+		// Typewriter, like a \.{CWEB} @d macro (an @d name or a predeclared constant).
 		// \GMAC wraps \tentex in an \hbox so it works in the math mode that code is
 		// typeset in.
 		return "\\GMAC{" + escTT(t.text) + "}"
@@ -719,7 +719,7 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	return b.String()
 }
 
-@ |renderComment| typesets a code comment. As in cweb, a |...| span inside a
+@ |renderComment| typesets a code comment. As in \.{CWEB}, a |...| span inside a
 comment is set as the Go code it represents (via |inlineCode|), and the text
 around it is escaped for roman text mode (|$...$| math still passes through). A
 literal bar is written |\\||. The whole thing is wrapped in |\GCM|, with the
@@ -802,7 +802,7 @@ func (wv *Weaver) commentBody(secNum int, s string) string {
 }
 
 @ |renderName| typesets a section name for text mode: a |...| span is set as
-inline code, as in CWEB section names, and the rest is passed through verbatim as
+inline code, as in \.{CWEB} section names, and the rest is passed through verbatim as
 TeX, so control sequences (a typewriter group, say) and math typeset, exactly as
 in a starred-section title. A |@@(file@@>=| name is different: it is a literal
 file path, not TeX, so it is set in typewriter with its specials escaped (an
@@ -844,7 +844,7 @@ func (wv *Weaver) renderName(name string) string {
 		for i < n && name[i] != '|' && !(name[i] == '\\' && i+1 < n && name[i+1] == '|') {
 			i++
 		}
-		// The non-code text of a name is TeX, passed through as in CWEB so that
+		// The non-code text of a name is TeX, passed through as in \.{CWEB} so that
 		// control sequences and math typeset; the user escapes any specials.
 		b.WriteString(name[start:i])
 	}
@@ -863,7 +863,7 @@ var declKeywords = map[string]bool{
 @ |isDefinition| heuristically decides whether an identifier is being declared:
 it follows a |func|/|var|/|const|/|type| keyword, or it is immediately followed
 by |:=|. This is best-effort -- there is no full Go parse -- but it covers the
-cases CWEB underlines in its index.
+cases \.{CWEB} underlines in its index.
 @(cmd/gweave/gweave.go@>=
 func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
 	if prevKind == tkKeyword && declKeywords[prevText] {
@@ -1228,7 +1228,7 @@ func escTT(s string) string {
 		case '\\', '{', '}', '$', '&', '#', '%', '^', '_', '~':
 			fmt.Fprintf(&b, "\\char%d ", c)
 		case ' ':
-			// a visible space (\GSP): cweb prints the blanks inside a string with a
+			// a visible space (\GSP): \.{CWEB} prints the blanks inside a string with a
 			// space glyph, slot 32 of the typewriter font.
 			b.WriteString("\\GSP ")
 		default:
@@ -1286,17 +1286,17 @@ func renderOp(s string) string {
 	case "!=":
 		return "\\mathord{\\neq}"
 	case "==":
-		return "\\mathord{\\equiv}" // equality test, as cweb (an equivalence sign)
+		return "\\mathord{\\equiv}" // equality test, as \.{CWEB} (an equivalence sign)
 	case "!":
-		return "\\mathord{\\lnot}" // logical not, as cweb (a negation sign)
+		return "\\mathord{\\lnot}" // logical not, as \.{CWEB} (a negation sign)
 	case "&&":
-		return "\\mathord{\\land}" // logical and, as cweb (a wedge)
+		return "\\mathord{\\land}" // logical and, as \.{CWEB} (a wedge)
 	case "||":
-		return "\\mathord{\\lor}" // logical or, as cweb (a vee)
+		return "\\mathord{\\lor}" // logical or, as \.{CWEB} (a vee)
 	case "<-":
 		return "\\mathord{\\leftarrow}"
 	case "^":
-		return "\\mathord{\\oplus}" // bitwise xor, as cweb (a circled plus)
+		return "\\mathord{\\oplus}" // bitwise xor, as \.{CWEB} (a circled plus)
 	case "^=":
 		return "\\mathord{\\oplus}\\mathord{=}" // xor-assign: ^ is a circled plus too
 	case "&^":
@@ -1304,7 +1304,7 @@ func renderOp(s string) string {
 	case "&^=":
 		return "\\mathord{\\&}\\mathord{\\oplus}\\mathord{=}" // and-not-assign
 	case "<<":
-		return "\\mathord{\\ll}" // left shift, as cweb (a tight double angle)
+		return "\\mathord{\\ll}" // left shift, as \.{CWEB} (a tight double angle)
 	case ">>":
 		return "\\mathord{\\gg}" // right shift
 	case "<<=":
@@ -1379,7 +1379,7 @@ func escProse(s string) string {
 }
 
 @ |escComment| is like |escProse| but lets a |$...$| span pass through verbatim,
-so TeX math works inside a comment (as in cweb); everything outside the math is
+so TeX math works inside a comment (as in \.{CWEB}); everything outside the math is
 still escaped for roman text mode.
 @(cmd/gweave/gweave.go@>=
 func escComment(s string) string {
@@ -1728,7 +1728,7 @@ func (wv *Weaver) crossRefNotes(name string, secNum int) string {
 }
 
 @* Tests.
-The weave engine's tests, one section per case.
+The weave engine's tests, one section per case. %'
 @(cmd/gweave/gweave_test.go@>=
 package main
 
@@ -1739,8 +1739,7 @@ import (
 	"github.com/sjnam/gweb/common"
 )
 
-@ \.{weaveString}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func weaveString(t *testing.T, src string) string {
 	t.Helper()
 	var b strings.Builder
@@ -1750,8 +1749,7 @@ func weaveString(t *testing.T, src string) string {
 	return b.String()
 }
 
-@ \.{TestWeaveHighlighting}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveHighlighting(t *testing.T) {
 	out := weaveString(t, `\input gwebmac
 @@* Demo.
@@ -1783,8 +1781,7 @@ println(x)
 	}
 }
 
-@ \.{TestNamesBookmark}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestNamesBookmark(t *testing.T) {
 	// The back matter ends with a top-level "Names of the sections" PDF outline
 	// entry (\Goutsecname) linking to a destination on the section-names page
@@ -1804,8 +1801,7 @@ func TestNamesBookmark(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveEscaping}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveEscaping(t *testing.T) {
 	out := weaveString(t, `@@ x
 @@c
@@ -1821,8 +1817,7 @@ s := "a\tb"
 	}
 }
 
-@ \.{TestWeaveStringVisibleSpace}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveStringVisibleSpace(t *testing.T) {
 	// A blank inside a string literal prints as a visible space (\GSP), as cweb
 	// does; each blank becomes its own marker.
@@ -1832,8 +1827,7 @@ func TestWeaveStringVisibleSpace(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveNilSymbol}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveNilSymbol(t *testing.T) {
 	// nil prints as a symbol (\Gnil), the way cweb shows C's NULL, not in
 	// typewriter; the other predeclared constants stay typewriter.
@@ -1849,8 +1843,7 @@ func TestWeaveNilSymbol(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveCommentSlashKern}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveCommentSlashKern(t *testing.T) {
 	// The leading "//" of a comment is tightened with \Gcommentkern.
 	out := weaveString(t, "@@ x\n@@c\nx := 1 // hi\n")
@@ -1859,8 +1852,7 @@ func TestWeaveCommentSlashKern(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveUnderscoreIdent}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveUnderscoreIdent(t *testing.T) {
 	out := weaveString(t, `@@ x
 @@c
@@ -1871,8 +1863,7 @@ var my_var int
 	}
 }
 
-@ \.{TestWeaveIndexAndXref}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveIndexAndXref(t *testing.T) {
 	out := weaveString(t, `@@ Program.
 @@c
@@ -1906,8 +1897,7 @@ println(x + 1)
 	}
 }
 
-@ \.{TestWeaveOperators}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveOperators(t *testing.T) {
 	out := weaveString(t, `@@ x
 @@c
@@ -1937,8 +1927,7 @@ func f(ch chan int) {
 	}
 }
 
-@ \.{TestWeaveTypeNamesAreBold}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveTypeNamesAreBold(t *testing.T) {
 	// A name declared with `type' is a user type and renders bold (\GKW)
 	// everywhere, like a predeclared type -- as cweave does.
@@ -1971,8 +1960,7 @@ func use() {
 	}
 }
 
-@ \.{TestWeaveThinSpaceBeforeParen}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveThinSpaceBeforeParen(t *testing.T) {
 	// As in cweave, a "(" directly after a word (a function name or a keyword
 	// like func) gets a thin space, so it does not jam against it.
@@ -1984,10 +1972,9 @@ func TestWeaveThinSpaceBeforeParen(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveShiftOperators}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveShiftOperators(t *testing.T) {
-	// << and >> render as the tight double-angle symbols \ll and \gg (as cweb),
+	// << and >> render as the tight double-angle symbols \ll and \gg (as \.{CWEB}),
 	// not two separate less-than/greater-than signs.
 	out := weaveString(t, "@@ x\n@@c\nvar a = b<<2 | c>>3\n")
 	for _, want := range []string{`\mathord{\ll}`, `\mathord{\gg}`} {
@@ -2000,10 +1987,9 @@ func TestWeaveShiftOperators(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveXorOperators}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveXorOperators(t *testing.T) {
-	// Every operator containing ^ shows it as a circled plus (\oplus), as cweb
+	// Every operator containing ^ shows it as a circled plus (\oplus), as \.{CWEB}
 	// does: ^, ^=, &^ (bit clear), and &^=. A bare caret must never appear.
 	out := weaveString(t, "@@ x\n@@c\na = b ^ c\na ^= b\na &^= b\nd := e &^ f\n")
 	for _, want := range []string{
@@ -2020,8 +2006,7 @@ func TestWeaveXorOperators(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveFormatDirective}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveFormatDirective(t *testing.T) {
 	out := weaveString(t, `\input gwebmac
 @@f Counts int
@@ -2047,8 +2032,7 @@ var hidden int
 	}
 }
 
-@ \.{TestWeaveSourceSpacing}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveSourceSpacing(t *testing.T) {
 	out := weaveString(t, `@@ x
 @@c
@@ -2070,8 +2054,7 @@ func f(p *int) {
 	}
 }
 
-@ \.{TestWeaveCodeInSectionName}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveCodeInSectionName(t *testing.T) {
 	out := weaveString(t, `@@ use
 @@c
@@ -2092,8 +2075,7 @@ w * h
 	}
 }
 
-@ \.{TestWeaveLayoutCodes}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveLayoutCodes(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar y = a@@,b\nvar z = c@@/d\nvar w = e@@|f\nvar v = g@@#h\n")
 	checks := map[string]string{
@@ -2109,8 +2091,7 @@ func TestWeaveLayoutCodes(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveForceDefinition}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveForceDefinition(t *testing.T) {
 	// foo is only *used* (inside a call), but @@! forces it to be indexed as a
 	// definition, so its section number is underlined.
@@ -2120,8 +2101,7 @@ func TestWeaveForceDefinition(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveIndexExcludesBlankAndPluralizes}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveIndexExcludesBlankAndPluralizes(t *testing.T) {
 	out := weaveString(t, `@@ def
 @@<chunk@@>=
@@ -2153,11 +2133,10 @@ func g() { @@<chunk@@> }
 	}
 }
 
-@ \.{TestWrappedSectionName}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWrappedSectionName(t *testing.T) {
 	// A section name wrapped across lines (a newline inside @@<...@@>) must match
-	// the same name written on one line, as in CWEB. Otherwise the reference
+	// the same name written on one line, as in \.{CWEB}. Otherwise the reference
 	// resolves to section 0, which also crashes luatex's PDF backend.
 	out := weaveString(t, "@@* Start.\n@@c\nfunc main() { @@<do the\nthing@@> }\n@@ @@<do the thing@@>=\nx := 1\n")
 	if strings.Contains(out, `\GX{0}`) {
@@ -2168,11 +2147,10 @@ func TestWrappedSectionName(t *testing.T) {
 	}
 }
 
-@ \.{TestCommentInlineCode}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestCommentInlineCode(t *testing.T) {
 	// A |...| span inside a code comment is set as the Go code it names (as in
-	// cweb), not printed literally; an unmatched bar stays literal.
+	// \.{CWEB}), not printed literally; an unmatched bar stays literal.
 	out := weaveString(t, "@@ x\n@@c\nx := 1 // set |x| now\n")
 	if !strings.Contains(out, `\GCM{`) {
 		t.Fatalf("no comment emitted:\n%s", out)
@@ -2183,7 +2161,7 @@ func TestCommentInlineCode(t *testing.T) {
 	if strings.Contains(out, "|x|") {
 		t.Errorf("the bars should be consumed, not printed literally:\n%s", out)
 	}
-	// A \.{...} typewriter span in a comment passes through verbatim (cweb-style),
+	// A \.{...} typewriter span in a comment passes through verbatim (\.{CWEB}-style),
 	// rather than being escaped character by character.
 	out3 := weaveString(t, "@@ x\n@@c\nx := 1 // see \\.{foo.go}\n")
 	if !strings.Contains(out3, `\.{foo.go}`) {
@@ -2201,8 +2179,7 @@ func TestCommentInlineCode(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveEmptyBrackets}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveEmptyBrackets(t *testing.T) {
 	// The empty brackets of a slice type get a thin space so they don't jam.
 	out := weaveString(t, "@@ x\n@@c\nvar s []byte\n")
@@ -2225,8 +2202,7 @@ func TestWeaveEmptyBrackets(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveBookmarks}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveBookmarks(t *testing.T) {
 	out := weaveString(t, `@@* Chapter one. intro.
 @@c
@@ -2255,8 +2231,7 @@ var _ = 0
 	}
 }
 
-@ \.{TestBookmarkTitle}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestBookmarkTitle(t *testing.T) {
 	cases := map[string]string{
 		"The scanner":        "The scanner",
@@ -2271,8 +2246,7 @@ func TestBookmarkTitle(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveInjectsGwebmac}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveInjectsGwebmac(t *testing.T) {
 	// gweave supplies \input gwebmac; the .w file need not.
 	out := weaveString(t, "@@ x\n@@c\npackage main\n")
@@ -2286,8 +2260,7 @@ func TestWeaveInjectsGwebmac(t *testing.T) {
 	}
 }
 
-@ \.{TestWeaveMultilineRawString}.
-@(cmd/gweave/gweave_test.go@>=
+@ @(cmd/gweave/gweave_test.go@>=
 func TestWeaveMultilineRawString(t *testing.T) {
 	// A raw string spanning lines weaves as one code line per physical line, not
 	// as a single multi-line \GST (which would end the enclosing \GL paragraph).

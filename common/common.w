@@ -1,11 +1,11 @@
 @* The \.{common} package.
-This package is the shared front end of GWEB. It reads a |.w| source file,
+This package is the shared front end of \.{GWEB}. It reads a |.w| source file,
 expands \.{@@i} includes, optionally applies a change file, and splits the
 result into a sequence of {\it sections\/}. Both \.{gtangle} and \.{gweave}
-are built on top of it, so it plays the role of CWEB's \.{common.w}.
+are built on top of it, so it plays the role of \.{CWEB}'s \.{common.w}.
 
 We start with the package declaration, the imports, the |Version| constant (the
-GWEB release, shared by \.{gtangle} and \.{gweave} for their startup banner and
+\.{GWEB} release, shared by \.{gtangle} and \.{gweave} for their startup banner and
 their \.{-version} output), and the |Format| record, which captures one \.{@@f}
 or \.{@@s} directive: typeset identifier |Original| the way identifier or keyword
 |Like| is typeset; |NoIndex| is true for \.{@@s}.
@@ -25,7 +25,7 @@ type Format struct {
 	Original string
 	Like     string
 	NoIndex  bool
-	Macro    bool // @@d: typeset Original in typewriter (a CWEB-style macro)
+	Macro    bool // \.{@@d}: typeset Original in typewriter (a \.{CWEB}-style macro)
 }
 
 @ A |Section| is one numbered section of the web. Its three optional parts --
@@ -35,35 +35,35 @@ and in-code \.{@@}-codes still embedded; the consumers interpret them later.
 type Section struct {
 	Number  int    // 1-based section number
 	Line    int    // 1-based source line where the section begins
-	Starred bool   // true for @@* sections
-	Depth   int    // group depth for starred sections (-1 == @@**, 0 == @@*, n == @@*n)
+	Starred bool   // true for \.{@@*} sections
+	Depth   int    // group depth for starred sections (-1 |==| \.{@@**}, 0 |==| \.{@@*}, n |==| \.{@@*n})
 	Title   string // starred-section title (text up to the first period)
-	Tex     string // commentary, raw TeX with in-text @@-codes still embedded
+	Tex     string // commentary, raw TeX with in-text\.{@@}-codes still embedded
 	Formats []Format
 	HasCode bool   // true if the section contributes code
-	Name    string // named-section name, or "" for an unnamed @@c section
-	IsFile  bool   // true if the name is an output file (@@(file@@>=)
-	Code    string // raw code text with in-code @@-codes still embedded
+	Name    string // named-section name, or \.{""} for an unnamed @@c section
+	IsFile  bool   // true if the name is an output file (\.{@@(file@@>=})
+	Code    string // raw code text with in-code \.{@@}-codes still embedded
 	CodeLine int   // 1-based combined-source line where Code begins (0 if none)
 }
 
-@ A |Web| is a fully parsed GWEB document: the limbo text, the global format
+@ A |Web| is a fully parsed \.{GWEB} document: the limbo text, the global format
 directives, the sections, and the diagnostics gathered while parsing. The
 unexported fields support diagnostics (mapping a combined-source line back to
 its original file) and name-abbreviation resolution.
 @(common/common.go@>=
 type Web struct {
 	Limbo    string
-	Formats  []Format // @@f / @@s directives found in limbo (apply globally)
+	Formats  []Format // \.{@@f}/\.{@@s} directives found in limbo (apply globally)
 	Sections []*Section
 	Warnings []string // non-fatal diagnostics gathered while parsing/checking
-	file     string   // source filename, for diagnostics ("" if unknown)
+	file     string   // source filename, for diagnostics (\.{""} if unknown)
 	locs     []srcLoc // origin (file, line) of each combined-source line
 	full     []string // canonical (non-abbreviated) section names
 }
 
 @ The parsing entry points. |Parse| handles the common case; |ParseWithChange|
-adds CWEB's change-file mechanism; |ParseString| is for tests. All three end by
+adds \.{CWEB}'s change-file mechanism; |ParseString| is for tests. All three end by
 calling |finish|, which runs the post-parse bookkeeping. |at| formats a
 combined-source line for a diagnostic, mapping it back to the user's file.
 @(common/common.go@>=
@@ -98,6 +98,7 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 	return w, nil
 }
 
+@ @(common/common.go@>=
 func ParseString(src string) *Web {
 	w := parse(src)
 	w.finish(src)
@@ -122,7 +123,7 @@ func (w *Web) at(line int) string {
 
 @ |Origin| maps a combined-source line back to the file and line the user wrote,
 returning the two parts separately (|at| formats the same information as a
-string). |gtangle| uses it to emit \.{//line} directives so the Go compiler
+string). \.{gtangle} uses it to emit \.{//line} directives so the Go compiler
 reports errors at \.{.w} positions.
 @(common/common.go@>=
 func (w *Web) Origin(line int) (file string, ln int) {
@@ -133,7 +134,7 @@ func (w *Web) Origin(line int) (file string, ln int) {
 }
 
 @ |DefaultExt| supplies a default extension when the user omits one, so the
-commands accept a bare web name as CWEB does (|gtangle wc| reads \.{wc.w}). A
+commands accept a bare web name as \.{CWEB} does (\.{gtangle wc} reads \.{wc.w}). A
 name that already has an extension, or is empty, is returned unchanged.
 @(common/common.go@>=
 func DefaultExt(name, ext string) string {
@@ -143,7 +144,7 @@ func DefaultExt(name, ext string) string {
 	return name + ext
 }
 
-@ Include expansion. As in CWEB, \.{@@i} is line-oriented: a line whose first
+@ Include expansion. As in \.{CWEB}, \.{@@i} is line-oriented: a line whose first
 non-blank text is \.{@@i} names a file whose expansion replaces that line. We
 keep a parallel origin map so diagnostics can cite the file the user wrote.
 @(common/common.go@>=
@@ -183,6 +184,7 @@ func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 	return lines, locs, nil
 }
 
+@ @(common/common.go@>=
 func includeDirective(line string) (name string, ok bool) {
 	t := strings.TrimLeft(line, " \t")
 	if !strings.HasPrefix(t, "@@i") {
@@ -196,7 +198,7 @@ func includeDirective(line string) (name string, ok bool) {
 	return name, name != ""
 }
 
-@ Collecting section names. To resolve an abbreviation ending in |...| we need
+@ Collecting section names. To resolve an abbreviation ending in \.{...} we need
 the set of canonical (non-abbreviated) names. A full name may appear at a
 definition or at any reference, in code or in commentary, so all of those are
 scanned.
@@ -347,21 +349,21 @@ type ctrlKind int
 const (
 	cEOF ctrlKind = iota
 	cSection
-	cCode  // @@c (or its synonym @@p)
-	cNamed // @@<name@@>= or @@(file@@>=
-	cDefn  // @@d
+	cCode  // \.{@@c} (or its synonym \.{@@p})
+	cNamed // \.{@@<name@@>=} or \.{@@(file@@>=}
+	cDefn  // \.{@@d}
 	cFormat
 )
 
 type ctrl struct {
 	kind    ctrlKind
-	pos     int    // index of the leading '@@'
+	pos     int    // index of the leading '\.{@@}'
 	end     int    // index just past the control token
-	depth   int    // for cSection: -1 unstarred (or @@** top level), else starred depth
-	starred bool   // for cSection (distinguishes @@** from an unstarred section)
+	depth   int    // for cSection: -1 unstarred (or \.{@@**} top level), else starred depth
+	starred bool   // for cSection (distinguishes \.{@@**} from an unstarred section)
 	name    string // for cNamed
-	isFile  bool   // for cNamed (@@( vs @@<)
-	noIndex bool   // for cFormat (@@s)
+	isFile  bool   // for cNamed (\.{@@(} vs \.{@@<})
+	noIndex bool   // for cFormat (\.{@@s})
 }
 
 @ |scanStruct| finds the next structural control at or after |i|. It skips
@@ -463,7 +465,7 @@ func findNextSection(src string, i int) ctrl {
 			depth := 0
 			if j < n && src[j] == '*' {
 				j++
-				depth = -1 // "@@**" is the top level: bold in the contents, as cweb
+				depth = -1 // "\.{@@**}" is the top level: bold in the contents, as \.{CWEB}
 			} else {
 				for j < n && src[j] >= '0' && src[j] <= '9' {
 					depth = depth*10 + int(src[j]-'0')
@@ -491,15 +493,15 @@ func findNextSection(src string, i int) ctrl {
 }
 
 @ The main loop. |parse| splits the source into limbo and sections, and for
-each section into its TeX, definition, and code parts.
+each section into its \TeX, definition, and code parts.
+Limbo runs until the first section break. Format directiveas placed there
+(\.{@@f}/\.{@@s}, a common \.{CWEB} idiom) are extracted and removed from the copied
+\TeX\ so they apply globally rather than printing literally.
 @(common/common.go@>=
 func parse(src string) *Web {
 	w := &Web{}
 	n := len(src)
 
-	// Limbo runs until the first section break. Format directives placed there
-	// (@@f / @@s, a common CWEB idiom) are extracted and removed from the copied
-	// TeX so they apply globally rather than printing literally.
 	first := findNextSection(src, 0)
 	w.Limbo, w.Formats = extractLimboFormats(src[:first.pos])
 	i := first.pos
@@ -526,13 +528,13 @@ func parse(src string) *Web {
 			sec.Title = extractTitle(sec.Tex)
 		}
 
-		// Definition part: a run of @@d / @@f / @@s.
+		// Definition part: a run of \.{@@d} / \.{@@f} / \.{@@s}.
 		for ct.kind == cDefn || ct.kind == cFormat {
 			nx := scanStruct(src, ct.end)
 			seg := src[ct.end:nx.pos]
-			// @@d has no Go analogue (Go has no preprocessor), so it never tangles
+			// \.{@@d} has no Go analogue (Go has no preprocessor), so it never tangles
 			// to code; gweave uses it only to set the named identifier in
-			// typewriter, as cweave sets a macro. @@f/@@s format like another word.
+			// typewriter, as cweave sets a macro. \.{@@f}/\.{@@s} format like another word.
 			if ct.kind == cDefn {
 				if f, ok := parseMacro(seg); ok {
 					sec.Formats = append(sec.Formats, f)
@@ -581,7 +583,7 @@ func findSectionHeaderEnd(src string, i int) ctrl {
 	depth := 0
 	if j < n && src[j] == '*' {
 		j++
-		depth = -1 // "@@**" is the top level: bold in the contents, as cweb
+		depth = -1 // ``\.{@@**}'' is the top level: bold in the contents, as \.{CWEB}
 	} else {
 		for j < n && src[j] >= '0' && src[j] <= '9' {
 			depth = depth*10 + int(src[j]-'0')
@@ -652,10 +654,10 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 }
 
 @ |parseMacro| parses the body of an \.{@@d} directive. Its first word names a
-constant to set in typewriter (like a CWEB macro); any value after it is ignored,
+constant to set in typewriter (like a \.{CWEB} macro); any value after it is ignored,
 since Go has no preprocessor and \.{@@d} never tangles to code. A qualified name
 keeps its final component, so \.{@@d http.StatusOK} and \.{@@d StatusOK} both
-register the identifier |StatusOK|.
+register the identifier \.{StatusOK}.
 @(common/common.go@>=
 func parseMacro(seg string) (Format, bool) {
 	fields := strings.Fields(seg)
@@ -736,19 +738,19 @@ type AtomKind int
 
 const (
 	AText     AtomKind = iota // ordinary Go source text
-	ARef                      // @@<name@@> reference to a named section
-	AVerbatim                 // @@=text@@> passed verbatim to tangled output
-	ATeX                      // @@t text@@> TeX text for the woven output
-	AIndex                    // @@^/@@./@@: index entry
-	APaste                    // @@& join (delete surrounding whitespace)
-	ALayout                   // @@, @@/ @@| @@# woven-output layout hints
-	AIndexDef                 // @@! force the next identifier to index as a definition
+	ARef                      // \.{@@<name@@>} reference to a named section
+	AVerbatim                 // \.{@@=text@@>} passed verbatim to tangled output
+	ATeX                      // \.{@@t text@@>} TeX text for the woven output
+	AIndex                    // \.{@@\^/@@./@@}: index entry
+	APaste                    // \.{@@\&} join (delete surrounding whitespace)
+	ALayout                   // \.{@@}, \.{@@/} \.{@@|} \.{@@\#} woven-output layout hints
+	AIndexDef                 // \.{@@!} force the next identifier to index as a definition
 )
 
 type Atom struct {
 	Kind  AtomKind
-	Text  string // payload for AText/AVerbatim/ATeX/AIndex; name for ARef
-	Index byte   // '^','.',':' for AIndex; ',' '/' '|' '#' for ALayout
+	Text  string // payload for |AText|/|AVerbatim|/|ATeX|/|AIndex|; name for |ARef|
+	Index byte   // '\.{\^}','\.{.}','\.{:}' for AIndex; '\.{,}' '\.{/}' '\.{|}' '\.{\#}' for |ALayout|
 }
 
 @ The scanner itself. \.{@@@@} becomes a literal \.{@@} folded into the surrounding
@@ -846,12 +848,12 @@ func ScanCode(code string) []Atom {
 			atoms = append(atoms, Atom{Kind: AIndexDef})
 			i += 2
 		case '+', '[', ']', ';':
-			// CWEB prettyprinter hints (cancel break, expression brackets,
-			// invisible semicolon). GWEB mirrors the source instead of reflowing
+			// \.{CWEB} prettyprinter hints (cancel break, expression brackets,
+			// invisible semicolon). \.{GWEB} mirrors the source instead of reflowing
 			// it, so these have no effect; accept and drop them for portability.
 			i += 2
 		default:
-			i += 2 // unknown @@x: drop it rather than corrupt the output
+			i += 2 // unknown \.{@@x}: drop it rather than corrupt the output
 		}
 	}
 	flush()
@@ -859,24 +861,15 @@ func ScanCode(code string) []Atom {
 }
 
 @* Change files.
-A change file (CWEB's |.ch| mechanism) patches the master source without
+A change file (\.{CWEB}'s |.ch| mechanism) patches the master source without
 editing it. It is a sequence of changes, each finding a block of lines in the
 master and substituting a replacement block.
-@(common/common.go@>=
-// A change file (CWEB's ".ch" mechanism) patches the master source without
-// editing it. It is a sequence of changes, each of the form
-//
-//	@@x
-//	<lines to find in the master source>
-//	@@y
-//	<lines to substitute>
-//	@@z
-//
-// Text outside an @@x...@@z group is ignored (it serves as commentary). Changes
-// are matched against the master source — after @@i includes are expanded — in
-// the order they appear: GWEB scans the master line by line, and at the first
-// line equal to a change's first match line it requires the whole match block
-// to match, then substitutes the replacement lines.
+
+Text outside an \.{@@x...@@z} group is ignored (it serves as commentary). Changes
+are matched against the master source — after \.{@@i} includes are expanded — in
+the order they appear: \.{GWEB} scans the master line by line, and at the first
+line equal to a change's first match line it requires the whole match block
+to match, then substitutes the replacement lines.
 
 @ A |change| records the lines to find and the lines to substitute, plus
 change-file line numbers for diagnostics. A |srcLoc| identifies the origin of a
@@ -885,7 +878,7 @@ line of the expanded, change-applied source.
 type change struct {
 	match    []string // lines to find in the master source
 	repl     []string // lines to substitute for them
-	line     int      // 1-based line of the @@x in the change file (for diagnostics)
+	line     int      // 1-based line of the \.{@@x} in the change file (for diagnostics)
 	replLine int      // 1-based change-file line of the first replacement line
 }
 
@@ -1026,8 +1019,7 @@ func blockMatches(master []string, at int, match []string) bool {
 	return true
 }
 
-@* Tests.
-The \.{common} package's tests, one section per case.
+@* Tests. The \.{common} package's tests, one section per case.
 @(common/common_test.go@>=
 package common
 
@@ -1037,8 +1029,7 @@ import (
 	"testing"
 )
 
-@ \.{sample}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 const sample = `\input gwebmac
 This is limbo text.
 
@@ -1065,8 +1056,7 @@ println("hello, world")
 println("again")
 `
 
-@ \.{TestParseStructure}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestParseStructure(t *testing.T) {
 	w := ParseString(sample)
 
@@ -1112,11 +1102,10 @@ func TestParseStructure(t *testing.T) {
 	}
 }
 
-@ \.{TestDoubleStarDepth}.
+@ \.{@@**} is the top-level group (depth -1), printed bold in the contents, as
+ \.{CWEB} does; \.{@@*} stays depth 0 and @@*n stays depth n.
 @(common/common_test.go@>=
 func TestDoubleStarDepth(t *testing.T) {
-	// @@** is the top-level group (depth -1), printed bold in the contents, as
-	// cweb does; @@* stays depth 0 and @@*n stays depth n.
 	w := ParseString("@@** Top.\n@@c\npackage main\n@@* Ordinary.\n@@ x\n@@*2 Deep.\n@@ y\n")
 	want := []int{-1, 0, 2}
 	var got []int
@@ -1135,8 +1124,7 @@ func TestDoubleStarDepth(t *testing.T) {
 	}
 }
 
-@ \.{TestResolveAbbrev}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestResolveAbbrev(t *testing.T) {
 	w := ParseString(sample)
 	if got := w.Resolve("Print the..."); got != "Print the greeting" {
@@ -1144,10 +1132,9 @@ func TestResolveAbbrev(t *testing.T) {
 	}
 }
 
-@ \.{TestCodePragmaP}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestCodePragmaP(t *testing.T) {
-	// @@p is a synonym for @@c (CWEB compatibility).
+	// \.{@@p} is a synonym for @@c (\.{CWEB} compatibility).
 	w := ParseString("@@ x\n@@p\npackage main\n")
 	if len(w.Sections) != 1 || !w.Sections[0].HasCode {
 		t.Fatalf("@@p should begin a code section, got %+v", w.Sections)
@@ -1160,8 +1147,7 @@ func TestCodePragmaP(t *testing.T) {
 	}
 }
 
-@ \.{TestDefaultExt}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestDefaultExt(t *testing.T) {
 	cases := []struct{ name, ext, want string }{
 		{"wc", ".w", "wc.w"},         // bare name gets the extension
@@ -1177,14 +1163,12 @@ func TestDefaultExt(t *testing.T) {
 	}
 }
 
-@ \.{contains}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && indexFrom(s, sub, 0) >= 0
 }
 
-@ \.{TestLimboFormats}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestLimboFormats(t *testing.T) {
 	w := ParseString(`\input gwebmac
 @@f Counts int
@@ -1210,8 +1194,7 @@ package main
 	}
 }
 
-@ \.{hasWarning}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func hasWarning(ws []string, sub string) bool {
 	for _, w := range ws {
 		if indexFrom(w, sub, 0) >= 0 {
@@ -1221,8 +1204,7 @@ func hasWarning(ws []string, sub string) bool {
 	return false
 }
 
-@ \.{TestSectionLines}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestSectionLines(t *testing.T) {
 	w := ParseString("limbo\n\n@@ first\n@@c\nx\n\n@@ second\n@@c\ny\n")
 	if w.Sections[0].Line != 3 {
@@ -1233,8 +1215,7 @@ func TestSectionLines(t *testing.T) {
 	}
 }
 
-@ \.{TestDiagnostics}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestDiagnostics(t *testing.T) {
 	cases := []struct {
 		name, src, want string
@@ -1258,8 +1239,7 @@ func TestDiagnostics(t *testing.T) {
 	}
 }
 
-@ \.{TestChangeFileApply}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestChangeFileApply(t *testing.T) {
 	master := "@@ greet\n@@c\npackage main\n\nfunc main() {\n\tprintln(\"hello\")\n}\n"
 	chSrc := "Ignored commentary.\n@@x\n\tprintln(\"hello\")\n@@y\n\tprintln(\"goodbye\")\n@@z\n"
@@ -1279,8 +1259,7 @@ func TestChangeFileApply(t *testing.T) {
 	}
 }
 
-@ \.{TestChangeFileNoMatch}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestChangeFileNoMatch(t *testing.T) {
 	master := "@@ x\n@@c\npackage main\n"
 	changes, _ := parseChangeFile("@@x\nnonexistent line\n@@y\nwhatever\n@@z\n")
@@ -1290,8 +1269,7 @@ func TestChangeFileNoMatch(t *testing.T) {
 	}
 }
 
-@ \.{TestChangeFilePartialMismatch}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestChangeFilePartialMismatch(t *testing.T) {
 	master := "alpha\nbeta\ngamma\n"
 	changes, _ := parseChangeFile("@@x\nbeta\nWRONG\n@@y\nx\n@@z\n")
@@ -1301,16 +1279,14 @@ func TestChangeFilePartialMismatch(t *testing.T) {
 	}
 }
 
-@ \.{TestChangeFileMalformed}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestChangeFileMalformed(t *testing.T) {
 	if _, err := parseChangeFile("@@x\nfind\n@@z\n"); err == nil {
 		t.Error("want error for @@x without @@y")
 	}
 }
 
-@ \.{TestIncludeLineMapping}.
-@(common/common_test.go@>=
+@ @(common/common_test.go@>=
 func TestIncludeLineMapping(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite := func(name, content string) string {
@@ -1332,17 +1308,16 @@ func TestIncludeLineMapping(t *testing.T) {
 	if !hasWarning(w.Warnings, "part.w:1") {
 		t.Errorf("want a warning citing part.w:1, got %v", w.Warnings)
 	}
-	// Section 2 (the @@c in part.w) should map back to part.w.
+	// Section 2 (the \.{@@c} in \.{part.w}) should map back to \.{part.w}.
 	if got := w.at(w.Sections[1].Line); !contains(got, "part.w") {
 		t.Errorf("section 2 origin = %q, want a part.w location", got)
 	}
 }
 
-@ \.{TestResolveAbbrevEitherSide}.
+@ The full name may appear only at a reference, with the definition
+abbreviated -- and vice versa. Neither should warn.
 @(common/common_test.go@>=
 func TestResolveAbbrevEitherSide(t *testing.T) {
-	// The full name may appear only at a reference, with the definition
-	// abbreviated -- and vice versa. Neither should warn.
 	srcs := []string{
 		"@@ x\n@@c\nvar _ = @@<The parallel-map function@@>\n@@ d\n@@<The parallel...@@>=\n1\n",
 		"@@ x\n@@c\nvar _ = @@<The parallel...@@>\n@@ d\n@@<The parallel-map function@@>=\n1\n",

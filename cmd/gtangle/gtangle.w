@@ -22,7 +22,7 @@ import (
 
 @ The entry point parses the flags and arguments and dispatches to |run|. With
 \.{-version} it just prints the version; otherwise it prints a one-line banner
-to the standard error, in the style of cweb, before processing.
+to the standard error, in the style of \.{CWEB}, before processing.
 @(cmd/gtangle/gtangle.go@>=
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
@@ -51,7 +51,7 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-@ A brief progress report in the style of cweb: one |*N| on the standard error
+@ A brief progress report in the style of \.{CWEB}: one |*N| on the standard error
 for each starred (chapter) section, giving a sense of the web's structure as it
 is processed.
 @(cmd/gtangle/gtangle.go@>=
@@ -114,7 +114,7 @@ func run(input, changeFile, outDir string) error {
 @* The tangle engine.
 The rest of this web is the engine that \.{gtangle}'s front end drives: it
 extracts compilable Go source from a parsed web, expanding named-section
-references in program order, the Go analogue of CWEB's \.{ctangle}. It is part of
+references in program order, the Go analogue of \.{CWEB}'s \.{ctangle}. It is part of
 the command's \.{main} package, tangled together with the front end into the
 single file \.{gtangle.go}.
 
@@ -131,7 +131,7 @@ type Output struct {
 refinements (|defs|), the \.{@@(file@@>=} outputs, and the unnamed program text
 (|main|). Each destination keeps a list of |codePiece|s rather than one joined
 string, so every piece remembers the \.{.w} line it began on -- the anchor for
-the \.{//line} directives. As in cweb's \.{ctangle}, those directives are always
+the \.{//line} directives. As in \.{CWEB}'s \.{ctangle}, those directives are always
 emitted (there is no switch to suppress them), so the Go compiler, \.{go vet},
 and panic traces report positions in the literate \.{.w} source rather than in
 the generated \.{.go}.
@@ -358,8 +358,7 @@ import (
 	"github.com/sjnam/gweb/common"
 )
 
-@ \.{TestTangleExpandsAndConcatenates}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleExpandsAndConcatenates(t *testing.T) {
 	const src = `@@ main
 @@c
@@ -395,8 +394,7 @@ func greet() { println("hi") }
 	}
 }
 
-@ \.{TestTangleFileSections}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleFileSections(t *testing.T) {
 	const src = `@@ first
 @@(extra.go@@>=
@@ -419,8 +417,7 @@ package main
 	}
 }
 
-@ \.{TestTangleUndefinedReference}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleUndefinedReference(t *testing.T) {
 	const src = `@@ x
 @@c
@@ -433,8 +430,7 @@ var _ = @@<missing@@>
 	}
 }
 
-@ \.{TestTangleCircularReference}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleCircularReference(t *testing.T) {
 	const src = `@@ a
 @@<a@@>=
@@ -453,8 +449,7 @@ var _ = @@<a@@>
 	}
 }
 
-@ \.{TestTangleCodeInName}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleCodeInName(t *testing.T) {
 	const src = `@@ root
 @@c
@@ -479,8 +474,7 @@ var area = @@<the |x| value@@>
 	}
 }
 
-@ \.{TestTangleIgnoresLayoutCodes}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleIgnoresLayoutCodes(t *testing.T) {
 	const src = "@@ x\n@@c\npackage main\n\nvar n = 1@@,@@/@@|@@#@@+@@[@@]@@;2\n"
 	outs, err := New(common.ParseString(src)).Tangle("p.go")
@@ -493,8 +487,7 @@ func TestTangleIgnoresLayoutCodes(t *testing.T) {
 	}
 }
 
-@ \.{TestTangleDropsUnknownCode}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleDropsUnknownCode(t *testing.T) {
 	// An unknown @@x must drop exactly its two characters, not corrupt the rest
 	// (guards against a former double-skip bug).
@@ -508,8 +501,7 @@ func TestTangleDropsUnknownCode(t *testing.T) {
 	}
 }
 
-@ \.{TestTangleAbbrevAtDefinition}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestTangleAbbrevAtDefinition(t *testing.T) {
 	// The reference carries the full name; the definition is abbreviated.
 	const src = "@@ x\n@@c\npackage main\n\nvar v = @@<the value@@>\n\n@@ d\n@@<the val...@@>=\n42\n"
@@ -527,8 +519,7 @@ func TestTangleAbbrevAtDefinition(t *testing.T) {
 @* Integration tests.
 The tangle engine's integration tests: every example tangles to compilable Go.
 
-@ \.{importsThirdParty}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func importsThirdParty(content []byte) bool {
 	f, err := parser.ParseFile(token.NewFileSet(), "", content, parser.ImportsOnly)
 	if err != nil {
@@ -549,8 +540,7 @@ func importsThirdParty(content []byte) bool {
 	return false
 }
 
-@ \.{TestExamplesBuild}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestExamplesBuild(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping go build of examples in -short mode")
@@ -575,8 +565,7 @@ func TestExamplesBuild(t *testing.T) {
 	}
 }
 
-@ \.{buildExample}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func buildExample(t *testing.T, path string) {
 	t.Helper()
 
@@ -623,8 +612,7 @@ func buildExample(t *testing.T, path string) {
 	}
 }
 
-@ \.{TestChangeFileBuilds}.
-@(cmd/gtangle/gtangle_test.go@>=
+@ @(cmd/gtangle/gtangle_test.go@>=
 func TestChangeFileBuilds(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping go build in -short mode")
