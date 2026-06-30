@@ -439,3 +439,165 @@ func TestTangleAbbrevAtDefinition(t *testing.T) {
 		t.Errorf("abbreviated definition should resolve:\n%s", got)
 	}
 }
+
+@* Integration tests.
+The \.{tangle} package's integration tests: every example tangles to compilable Go.
+@(internal/tangle/build_test.go@>=
+package tangle
+
+import (
+	"go/parser"
+	"go/token"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/sjnam/gweb/internal/web"
+)
+
+@ \.{importsThirdParty}.
+@(internal/tangle/build_test.go@>=
+// importsThirdParty reports whether the tangled Go source imports a package
+// outside the standard library (an import path whose first segment contains a
+// dot, e.g. github.com/...). Such examples can't be `go build`-ed here without
+// network and module access, so the build test only checks that they tangle.
+func importsThirdParty(content []byte) bool {
+	f, err := parser.ParseFile(token.NewFileSet(), "", content, parser.ImportsOnly)
+	if err != nil {
+		return false
+	}
+	for _, imp := range f.Imports {
+		p, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			continue
+		}
+		if i := strings.IndexByte(p, '/'); i >= 0 {
+			p = p[:i]
+		}
+		if strings.Contains(p, ".") {
+			return true
+		}
+	}
+	return false
+}
+
+@ \.{TestExamplesBuild}.
+@(internal/tangle/build_test.go@>=
+// TestExamplesBuild tangles every bundled example and runs `go build` on the
+// result, proving end to end that the tools emit real, compilable Go. It is
+// skipped in -short mode and when the go tool is unavailable.
+func TestExamplesBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping go build of examples in -short mode")
+	}
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go tool not found in PATH")
+	}
+
+	examples, err := filepath.Glob(filepath.Join("..", "..", "examples", "*.w"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(examples) == 0 {
+		t.Fatal("no example .w files found")
+	}
+
+	for _, ex := range examples {
+		t.Run(filepath.Base(ex), func(t *testing.T) {
+			t.Parallel()
+			buildExample(t, ex)
+		})
+	}
+}
+
+@ \.{buildExample}.
+@(internal/tangle/build_test.go@>=
+func buildExample(t *testing.T, path string) {
+	t.Helper()
+
+	w, err := web.Parse(path)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	base := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+	outs, err := New(w).Tangle(base + ".go")
+	if err != nil {
+		t.Fatalf("tangle: %v", err)
+	}
+	for _, o := range outs {
+		if strings.HasSuffix(o.File, ".go") && importsThirdParty(o.Content) {
+			t.Skipf("%s imports a third-party module; tangled OK, skipping go build", filepath.Base(path))
+		}
+	}
+
+	dir := t.TempDir()
+	haveMod := false
+	for _, o := range outs {
+		if o.Warning != "" {
+			t.Fatalf("%s: %s", o.File, o.Warning)
+		}
+		if o.File == "go.mod" {
+			haveMod = true
+		}
+		if err := os.WriteFile(filepath.Join(dir, o.File), o.Content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if !haveMod {
+		// go 1.23 so examples may use range-over-func iterators (e.g. seq.w).
+		const mod = "module gwebexample\n\ngo 1.23\n"
+		if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cmd := exec.Command("go", "build", "-o", os.DevNull, ".")
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed: %v\n%s", err, out)
+	}
+}
+
+@ \.{TestChangeFileBuilds}.
+@(internal/tangle/build_test.go@>=
+// TestChangeFileBuilds applies the wc.ch change file to wc.w and confirms the
+// patched program still tangles to compilable Go (and was actually changed).
+func TestChangeFileBuilds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping go build in -short mode")
+	}
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go tool not found in PATH")
+	}
+	w, err := web.ParseWithChange(
+		filepath.Join("..", "..", "examples", "wc.w"),
+		filepath.Join("..", "..", "examples", "wc.ch"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outs, err := New(w).Tangle("wc.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(outs[0].Content)
+	if !strings.Contains(got, `%d,%d,%d`) || strings.Contains(got, `%8d`) {
+		t.Fatalf("change file not applied to tangled output:\n%s", got)
+	}
+
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "wc.go"), outs[0].Content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module gwebexample\n\ngo 1.23\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "build", "-o", os.DevNull, ".")
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed: %v\n%s", err, out)
+	}
+}

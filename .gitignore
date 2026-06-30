@@ -14,6 +14,7 @@
 /internal/weave/xref.go
 /internal/web/web_test.go
 /internal/tangle/tangle_test.go
+/internal/tangle/build_test.go
 /internal/weave/weave_test.go
 
 # tangled / woven artifacts

@@ -18,7 +18,7 @@ WEBS   = $(filter-out lit/gweb.w,$(wildcard lit/*.w))
 GEN_GO = internal/weave/weave.go internal/weave/tex.go internal/weave/gotok.go \
          internal/weave/xref.go cmd/gweave/main.go \
          internal/web/web_test.go internal/tangle/tangle_test.go \
-         internal/weave/weave_test.go
+         internal/tangle/build_test.go internal/weave/weave_test.go
 
 all: build
 
