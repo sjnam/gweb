@@ -7,18 +7,21 @@ BIN ?= bin
 
 # GWEB is self-hosted: its Go is tangled from the literate sources in lit/*.w.
 # Following cweb's tradition, the repository commits only the Go needed to build
-# gtangle the first time -- internal/web, internal/tangle, cmd/gtangle. Everything
-# else is tangled on demand by `generate' and is git-ignored: the weave package,
-# gweave's main, and the test files, which now live in the .w sources too.
+# gtangle the first time -- the shared internal/web package and cmd/gtangle
+# (its main and the tangle engine). Everything else is tangled on demand by
+# `generate' and is git-ignored: all of gweave (its main and the weave engine)
+# and every test, which now live in the .w sources too.
 #
-# All component webs (lit/gweb.w is the weave-only master; it just @i-includes
-# the components, so it is not tangled).
+# Each command is a single web: lit/gtangle.w is the gtangle front end plus the
+# tangle engine, lit/gweave.w the gweave front end plus the weave engine, and
+# lit/web.w the shared parser. lit/gweb.w is the weave-only master (it just
+# @i-includes the three, so it is not tangled).
 WEBS   = $(filter-out lit/gweb.w,$(wildcard lit/*.w))
 # The non-committed Go that `generate' produces (removed by `clean').
-GEN_GO = internal/weave/weave.go internal/weave/tex.go internal/weave/gotok.go \
-         internal/weave/xref.go cmd/gweave/main.go \
-         internal/web/web_test.go internal/tangle/tangle_test.go \
-         internal/tangle/build_test.go internal/weave/weave_test.go
+GEN_GO = cmd/gtangle/tangle_test.go cmd/gtangle/build_test.go \
+         cmd/gweave/main.go cmd/gweave/weave.go cmd/gweave/tex.go \
+         cmd/gweave/gotok.go cmd/gweave/xref.go cmd/gweave/weave_test.go \
+         internal/web/web_test.go
 
 all: build
 
@@ -45,14 +48,14 @@ bootstrap:
 	@$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
 	@rm -rf .bootstrap
 	@for w in $(WEBS); do $(BIN)/gtangle -o .bootstrap "$$w" >/dev/null; done
-	@ok=1; for d in internal/web internal/tangle cmd/gtangle; do \
+	@ok=1; for d in internal/web cmd/gtangle; do \
 		diff -r "$$d" ".bootstrap/$$d" --exclude='*_test.go' >/dev/null || { echo "DIFF in $$d"; ok=0; }; \
 	done; \
 	rm -rf .bootstrap; \
 	[ $$ok = 1 ] && echo "bootstrap: lit/*.w reproduce the committed Go byte-for-byte"
 
 # Weave GWEB's own sources into a typeset PDF of the whole system. lit/gweb.w is
-# the master that @i-includes the five component webs in reading order. Needs a
+# the master that @i-includes the three component webs in reading order. Needs a
 # TeX engine (pdftex) that can find tex/gwebmac.tex.
 selfdoc: build
 	@mkdir -p build

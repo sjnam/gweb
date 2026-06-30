@@ -190,11 +190,10 @@ Only the Go that bootstraps `gtangle` is committed (marked ◇ below); the rest
 (✦) is tangled from `lit/*.w` by `make`.
 
 ```text
-cmd/gtangle      gtangle command                                           ◇
-cmd/gweave       gweave command                                            ✦
+cmd/gtangle      gtangle: command front end + the tangle engine            ◇
+cmd/gweave       gweave: command front end + the weave engine (lexer,       ✦
+                 pretty-printer, cross-references)
 internal/web     shared front end: parses .w into sections (CWEB's common.w) ◇
-internal/tangle  the tangle engine                                         ◇
-internal/weave   the weave engine: Go lexer, pretty-printer, cross-references ✦
 tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
 tex/kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
 lit/             GWEB written in itself: the .w sources the Go tree is tangled from
@@ -218,9 +217,11 @@ See [editors/vscode/README.md](editors/vscode/README.md) for details.
 ## Self-hosting
 
 Like CWEB, GWEB is written in itself. The literate sources in [lit/](lit/) —
-`web.w`, `tangle.w`, `weave.w`, `gtangle.w`, `gweave.w` — are the source of
-truth; the `.go` files under `internal/` and `cmd/` are tangled from them (and
-committed too, so a fresh checkout still builds without a `gtangle` to hand).
+`web.w` (the shared parser), `gtangle.w` (the command and the tangle engine), and
+`gweave.w` (the command and the weave engine) — are the source of truth; the
+`.go` files under `cmd/` and `internal/web` are tangled from them. GWEB is a set
+of commands, not a library, so each engine lives in its command's `main` package
+rather than a separate importable one.
 
 ```sh
 make tangle       # re-tangle lit/*.w back into the Go tree
@@ -234,7 +235,7 @@ reproduces its own committed source exactly. The tests live in the `.w` sources
 too (a `Tests` chapter per web), so they are tangled and git-ignored along with
 the rest of the generated Go: no `_test.go` is committed.
 
-`lit/gweb.w` is a master that `@i`-includes the five component webs in reading
+`lit/gweb.w` is a master that `@i`-includes the three component webs in reading
 order, so `gweave` can typeset the whole system as one document:
 
 ```sh

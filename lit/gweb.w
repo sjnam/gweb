@@ -1,5 +1,5 @@
 % GWEB, woven as a literate program describing itself.
-% This master simply \i-includes the five component webs in reading order;
+% This master simply \i-includes the three component webs in reading order;
 % it is meant for gweave only (the components are what `make tangle' builds).
 
 @* Introduction.
@@ -11,16 +11,15 @@ compiler needs, and \.{gweave} produces a typeset document for people.
 \.{GWEB} is itself written this way, and this document is the proof: the very
 sources printed here are what \.{gtangle} turns into the Go of the program, and
 what \.{gweave} turns into the pages you are reading. The system is organized as
-five short webs, presented in turn:
+three short webs, presented in turn:
 
 \smallskip
 \item{$\bullet$} the \.{web} package -- the shared front end that parses a |.w|
 file into sections (the analogue of \.{CWEB}'s \.{common.w});
-\item{$\bullet$} the \.{tangle} package -- the engine of \.{gtangle};
-\item{$\bullet$} the \.{weave} package -- the engine of \.{gweave}, including a
-small Go lexer, the pretty-printer, and the cross-reference machinery;
-\item{$\bullet$} the \.{gtangle} and \.{gweave} commands -- the thin
-command-line drivers.
+\item{$\bullet$} \.{gtangle} -- its command-line driver together with the tangle
+engine that extracts the Go a compiler needs;
+\item{$\bullet$} \.{gweave} -- its command-line driver together with the weave
+engine: a small Go lexer, the pretty-printer, and the cross-reference machinery.
 \smallskip
 
 \noindent Every section is numbered; a named-section reference is a link to the
@@ -28,8 +27,6 @@ section that defines it, and the index and list of section names at the end
 gather all the cross-references automatically.
 
 @i web.w
-@i tangle.w
-@i weave.w
 @i gtangle.w
 @i gweave.w
 

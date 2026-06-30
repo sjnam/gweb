@@ -1,438 +1,431 @@
-// Package tangle implements gtangle: it extracts compilable Go source from a
-// GWEB web, expanding named-section references in program order. It is the Go
-// analogue of CWEB's ctangle.
-//
-//line lit/tangle.w:6
-//line lit/tangle.w:7
-//line lit/tangle.w:8
-//line lit/tangle.w:9
-package tangle
+//line lit/gtangle.w:128
+package main
 
-//line lit/tangle.w:11
+//line lit/gtangle.w:130
 import (
-//line lit/tangle.w:12
+//line lit/gtangle.w:131
 	"fmt"
-//line lit/tangle.w:13
+//line lit/gtangle.w:132
 	"go/format"
-//line lit/tangle.w:14
+//line lit/gtangle.w:133
 	"slices"
-//line lit/tangle.w:15
+//line lit/gtangle.w:134
 	"sort"
-//line lit/tangle.w:16
+//line lit/gtangle.w:135
 	"strings"
 
-//line lit/tangle.w:18
+//line lit/gtangle.w:137
 	"github.com/sjnam/gweb/internal/web"
-//line lit/tangle.w:19
+//line lit/gtangle.w:138
 )
 
 // Output is one tangled file: its target name and Go contents. Warning is set
 // (non-fatal) when gofmt could not format the assembled program.
 //
-//line lit/tangle.w:24
-//line lit/tangle.w:25
-//line lit/tangle.w:26
+//line lit/gtangle.w:143
+//line lit/gtangle.w:144
+//line lit/gtangle.w:145
 type Output struct {
-//line lit/tangle.w:27
+//line lit/gtangle.w:146
 	File string
-//line lit/tangle.w:28
+//line lit/gtangle.w:147
 	Content []byte
-//line lit/tangle.w:29
+//line lit/gtangle.w:148
 	Warning string
-//line lit/tangle.w:30
+//line lit/gtangle.w:149
 }
 
 // Tangler holds the resolved code of a web, classified by destination.
 //
-//line lit/tangle.w:41
-//line lit/tangle.w:42
+//line lit/gtangle.w:160
+//line lit/gtangle.w:161
 type Tangler struct {
-//line lit/tangle.w:43
+//line lit/gtangle.w:162
 	w *web.Web
-//line lit/tangle.w:44
+//line lit/gtangle.w:163
 	defs map[string][]codePiece // canonical named-section -> code pieces
-//line lit/tangle.w:45
+//line lit/gtangle.w:164
 	files map[string][]codePiece // @(file@>= name -> code pieces
-//line lit/tangle.w:46
+//line lit/gtangle.w:165
 	main []codePiece // unnamed @c sections, in order
-//line lit/tangle.w:47
+//line lit/gtangle.w:166
 }
 
 // codePiece is one section's raw code together with the 1-based combined-source
 // line it begins on, so tangled output can be mapped back to the .w file.
 //
-//line lit/tangle.w:49
-//line lit/tangle.w:50
-//line lit/tangle.w:51
+//line lit/gtangle.w:168
+//line lit/gtangle.w:169
+//line lit/gtangle.w:170
 type codePiece struct {
-//line lit/tangle.w:52
+//line lit/gtangle.w:171
 	code string
-//line lit/tangle.w:53
+//line lit/gtangle.w:172
 	line int
-//line lit/tangle.w:54
+//line lit/gtangle.w:173
 }
 
 // New builds a Tangler from a parsed web.
 //
-//line lit/tangle.w:60
-//line lit/tangle.w:61
+//line lit/gtangle.w:179
+//line lit/gtangle.w:180
 func New(w *web.Web) *Tangler {
-//line lit/tangle.w:62
+//line lit/gtangle.w:181
 	t := &Tangler{
-//line lit/tangle.w:63
+//line lit/gtangle.w:182
 		w: w,
-//line lit/tangle.w:64
+//line lit/gtangle.w:183
 		defs: map[string][]codePiece{},
-//line lit/tangle.w:65
+//line lit/gtangle.w:184
 		files: map[string][]codePiece{},
-//line lit/tangle.w:66
+//line lit/gtangle.w:185
 	}
-//line lit/tangle.w:67
+//line lit/gtangle.w:186
 	for _, s := range w.Sections {
-//line lit/tangle.w:68
+//line lit/gtangle.w:187
 		if !s.HasCode {
-//line lit/tangle.w:69
+//line lit/gtangle.w:188
 			continue
-//line lit/tangle.w:70
+//line lit/gtangle.w:189
 		}
-//line lit/tangle.w:71
+//line lit/gtangle.w:190
 		p := codePiece{s.Code, s.CodeLine}
-//line lit/tangle.w:72
+//line lit/gtangle.w:191
 		switch {
-//line lit/tangle.w:73
+//line lit/gtangle.w:192
 		case s.Name == "":
-//line lit/tangle.w:74
+//line lit/gtangle.w:193
 			t.main = append(t.main, p)
-//line lit/tangle.w:75
+//line lit/gtangle.w:194
 		case s.IsFile:
-//line lit/tangle.w:76
+//line lit/gtangle.w:195
 			t.files[s.Name] = append(t.files[s.Name], p)
-//line lit/tangle.w:77
+//line lit/gtangle.w:196
 		default:
-//line lit/tangle.w:78
+//line lit/gtangle.w:197
 			name := w.Resolve(s.Name)
-//line lit/tangle.w:79
+//line lit/gtangle.w:198
 			t.defs[name] = append(t.defs[name], p)
-//line lit/tangle.w:80
+//line lit/gtangle.w:199
 		}
-//line lit/tangle.w:81
+//line lit/gtangle.w:200
 	}
-//line lit/tangle.w:82
+//line lit/gtangle.w:201
 	return t
-//line lit/tangle.w:83
+//line lit/gtangle.w:202
 }
 
 // Tangle produces all output files. defaultFile names the file that receives
 // the unnamed program text (typically "<basename>.go").
 //
-//line lit/tangle.w:88
-//line lit/tangle.w:89
-//line lit/tangle.w:90
+//line lit/gtangle.w:207
+//line lit/gtangle.w:208
+//line lit/gtangle.w:209
 func (t *Tangler) Tangle(defaultFile string) ([]Output, error) {
-//line lit/tangle.w:91
+//line lit/gtangle.w:210
 	var outs []Output
 
-//line lit/tangle.w:93
+//line lit/gtangle.w:212
 	if nonEmpty(t.main) {
-//line lit/tangle.w:94
+//line lit/gtangle.w:213
 		out, err := t.renderOutput(defaultFile, t.main)
-//line lit/tangle.w:95
+//line lit/gtangle.w:214
 		if err != nil {
-//line lit/tangle.w:96
+//line lit/gtangle.w:215
 			return nil, err
-//line lit/tangle.w:97
+//line lit/gtangle.w:216
 		}
-//line lit/tangle.w:98
+//line lit/gtangle.w:217
 		outs = append(outs, out)
-//line lit/tangle.w:99
+//line lit/gtangle.w:218
 	}
 
-//line lit/tangle.w:101
+//line lit/gtangle.w:220
 	names := make([]string, 0, len(t.files))
-//line lit/tangle.w:102
+//line lit/gtangle.w:221
 	for name := range t.files {
-//line lit/tangle.w:103
+//line lit/gtangle.w:222
 		names = append(names, name)
-//line lit/tangle.w:104
+//line lit/gtangle.w:223
 	}
-//line lit/tangle.w:105
+//line lit/gtangle.w:224
 	sort.Strings(names)
-//line lit/tangle.w:106
+//line lit/gtangle.w:225
 	for _, name := range names {
-//line lit/tangle.w:107
+//line lit/gtangle.w:226
 		out, err := t.renderOutput(name, t.files[name])
-//line lit/tangle.w:108
+//line lit/gtangle.w:227
 		if err != nil {
-//line lit/tangle.w:109
+//line lit/gtangle.w:228
 			return nil, err
-//line lit/tangle.w:110
+//line lit/gtangle.w:229
 		}
-//line lit/tangle.w:111
+//line lit/gtangle.w:230
 		outs = append(outs, out)
-//line lit/tangle.w:112
+//line lit/gtangle.w:231
 	}
 
-//line lit/tangle.w:114
+//line lit/gtangle.w:233
 	if len(outs) == 0 {
-//line lit/tangle.w:115
+//line lit/gtangle.w:234
 		return nil, fmt.Errorf("no code to tangle (no @c or @(file@>= sections)")
-//line lit/tangle.w:116
+//line lit/gtangle.w:235
 	}
-//line lit/tangle.w:117
+//line lit/gtangle.w:236
 	return outs, nil
-//line lit/tangle.w:118
+//line lit/gtangle.w:237
 }
 
 // nonEmpty reports whether any piece carries non-blank code.
 //
-//line lit/tangle.w:123
-//line lit/tangle.w:124
+//line lit/gtangle.w:242
+//line lit/gtangle.w:243
 func nonEmpty(pieces []codePiece) bool {
-//line lit/tangle.w:125
+//line lit/gtangle.w:244
 	for _, p := range pieces {
-//line lit/tangle.w:126
+//line lit/gtangle.w:245
 		if strings.TrimSpace(p.code) != "" {
-//line lit/tangle.w:127
+//line lit/gtangle.w:246
 			return true
-//line lit/tangle.w:128
+//line lit/gtangle.w:247
 		}
-//line lit/tangle.w:129
+//line lit/gtangle.w:248
 	}
-//line lit/tangle.w:130
+//line lit/gtangle.w:249
 	return false
-//line lit/tangle.w:131
+//line lit/gtangle.w:250
 }
 
 // renderOutput expands a destination's code pieces and runs gofmt. A genuine web
 // error (undefined or circular reference) is fatal; a gofmt failure is not: the
 // unformatted Go is kept and reported via Output.Warning.
 //
-//line lit/tangle.w:138
-//line lit/tangle.w:139
-//line lit/tangle.w:140
-//line lit/tangle.w:141
+//line lit/gtangle.w:257
+//line lit/gtangle.w:258
+//line lit/gtangle.w:259
+//line lit/gtangle.w:260
 func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) {
-//line lit/tangle.w:142
+//line lit/gtangle.w:261
 	o := &buffer{t: t, atLineStart: true}
-//line lit/tangle.w:143
+//line lit/gtangle.w:262
 	if err := t.expandPieces(pieces, o, nil); err != nil {
-//line lit/tangle.w:144
+//line lit/gtangle.w:263
 		return Output{}, err
-//line lit/tangle.w:145
+//line lit/gtangle.w:264
 	}
-//line lit/tangle.w:146
+//line lit/gtangle.w:265
 	raw := o.bytes()
-//line lit/tangle.w:147
+//line lit/gtangle.w:266
 	if formatted, err := format.Source(raw); err == nil {
-//line lit/tangle.w:148
+//line lit/gtangle.w:267
 		return Output{File: file, Content: formatted}, nil
-//line lit/tangle.w:149
+//line lit/gtangle.w:268
 	} else {
-//line lit/tangle.w:150
+//line lit/gtangle.w:269
 		return Output{File: file, Content: raw,
-//line lit/tangle.w:151
+//line lit/gtangle.w:270
 			Warning: "gofmt could not format the output: " + err.Error()}, nil
-//line lit/tangle.w:152
+//line lit/gtangle.w:271
 	}
-//line lit/tangle.w:153
+//line lit/gtangle.w:272
 }
 
 // expandPieces expands a list of code pieces in order.
 //
-//line lit/tangle.w:160
-//line lit/tangle.w:161
+//line lit/gtangle.w:279
+//line lit/gtangle.w:280
 func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) error {
-//line lit/tangle.w:162
+//line lit/gtangle.w:281
 	for _, p := range pieces {
-//line lit/tangle.w:163
+//line lit/gtangle.w:282
 		if err := t.expand(p.code, p.line, o, stack); err != nil {
-//line lit/tangle.w:164
+//line lit/gtangle.w:283
 			return err
-//line lit/tangle.w:165
+//line lit/gtangle.w:284
 		}
-//line lit/tangle.w:166
+//line lit/gtangle.w:285
 	}
-//line lit/tangle.w:167
+//line lit/gtangle.w:286
 	return nil
-//line lit/tangle.w:168
+//line lit/gtangle.w:287
 }
 
 // expand writes the expansion of one code piece into o, starting at the given
 // combined-source line and following @<...@> references.
 //
-//line lit/tangle.w:170
-//line lit/tangle.w:171
-//line lit/tangle.w:172
+//line lit/gtangle.w:289
+//line lit/gtangle.w:290
+//line lit/gtangle.w:291
 func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error {
-//line lit/tangle.w:173
+//line lit/gtangle.w:292
 	for _, a := range web.ScanCode(code) {
-//line lit/tangle.w:174
+//line lit/gtangle.w:293
 		switch a.Kind {
-//line lit/tangle.w:175
+//line lit/gtangle.w:294
 		case web.AText, web.AVerbatim:
-//line lit/tangle.w:176
+//line lit/gtangle.w:295
 			line = o.writeText(a.Text, line)
-//line lit/tangle.w:177
+//line lit/gtangle.w:296
 		case web.APaste:
-//line lit/tangle.w:178
+//line lit/gtangle.w:297
 			o.trimRight()
-//line lit/tangle.w:179
+//line lit/gtangle.w:298
 			o.pasteNext = true
-//line lit/tangle.w:180
+//line lit/gtangle.w:299
 			o.atLineStart = false
-//line lit/tangle.w:181
+//line lit/gtangle.w:300
 		case web.ARef:
-//line lit/tangle.w:182
+//line lit/gtangle.w:301
 			name := t.w.Resolve(a.Text)
-//line lit/tangle.w:183
+//line lit/gtangle.w:302
 			def, ok := t.defs[name]
-//line lit/tangle.w:184
+//line lit/gtangle.w:303
 			if !ok {
-//line lit/tangle.w:185
+//line lit/gtangle.w:304
 				return fmt.Errorf("undefined section <%s>", a.Text)
-//line lit/tangle.w:186
+//line lit/gtangle.w:305
 			}
-//line lit/tangle.w:187
+//line lit/gtangle.w:306
 			if slices.Contains(stack, name) {
-//line lit/tangle.w:188
+//line lit/gtangle.w:307
 				return fmt.Errorf("circular reference through <%s>", name)
-//line lit/tangle.w:189
+//line lit/gtangle.w:308
 			}
-//line lit/tangle.w:190
+//line lit/gtangle.w:309
 			// Surround an expanded reference with newlines so adjacent
-//line lit/tangle.w:191
+//line lit/gtangle.w:310
 			// statements stay on separate lines; gofmt collapses the rest.
-//line lit/tangle.w:192
+//line lit/gtangle.w:311
 			o.newline()
-//line lit/tangle.w:193
+//line lit/gtangle.w:312
 			if err := t.expandPieces(def, o, append(stack, name)); err != nil {
-//line lit/tangle.w:194
+//line lit/gtangle.w:313
 				return err
-//line lit/tangle.w:195
+//line lit/gtangle.w:314
 			}
-//line lit/tangle.w:196
+//line lit/gtangle.w:315
 			o.newline()
-//line lit/tangle.w:197
+//line lit/gtangle.w:316
 		case web.ATeX, web.AIndex, web.ALayout, web.AIndexDef:
-//line lit/tangle.w:198
+//line lit/gtangle.w:317
 			// woven-output only; ignored by tangle
-//line lit/tangle.w:199
+//line lit/gtangle.w:318
 		}
-//line lit/tangle.w:200
+//line lit/gtangle.w:319
 	}
-//line lit/tangle.w:201
+//line lit/gtangle.w:320
 	return nil
-//line lit/tangle.w:202
+//line lit/gtangle.w:321
 }
 
 // buffer accumulates output, tracks line starts for //line directives, and
 // supports the @& paste operation.
 //
-//line lit/tangle.w:208
-//line lit/tangle.w:209
-//line lit/tangle.w:210
+//line lit/gtangle.w:327
+//line lit/gtangle.w:328
+//line lit/gtangle.w:329
 type buffer struct {
-//line lit/tangle.w:211
+//line lit/gtangle.w:330
 	t *Tangler
-//line lit/tangle.w:212
+//line lit/gtangle.w:331
 	b []byte
-//line lit/tangle.w:213
+//line lit/gtangle.w:332
 	pasteNext bool
-//line lit/tangle.w:214
+//line lit/gtangle.w:333
 	atLineStart bool
-//line lit/tangle.w:215
+//line lit/gtangle.w:334
 }
 
 // writeText appends s, advancing the source line across newlines. It prefixes
 // each output line with a //line comment mapping it back to its .w origin, and
 // returns the updated source line.
 //
-//line lit/tangle.w:217
-//line lit/tangle.w:218
-//line lit/tangle.w:219
-//line lit/tangle.w:220
+//line lit/gtangle.w:336
+//line lit/gtangle.w:337
+//line lit/gtangle.w:338
+//line lit/gtangle.w:339
 func (o *buffer) writeText(s string, line int) int {
-//line lit/tangle.w:221
+//line lit/gtangle.w:340
 	if o.pasteNext {
-//line lit/tangle.w:222
+//line lit/gtangle.w:341
 		s = strings.TrimLeft(s, " \t\n\r")
-//line lit/tangle.w:223
+//line lit/gtangle.w:342
 		o.pasteNext = false
-//line lit/tangle.w:224
+//line lit/gtangle.w:343
 	}
-//line lit/tangle.w:225
+//line lit/gtangle.w:344
 	for i := 0; i < len(s); i++ {
-//line lit/tangle.w:226
+//line lit/gtangle.w:345
 		c := s[i]
-//line lit/tangle.w:227
+//line lit/gtangle.w:346
 		if o.atLineStart && c != '\n' {
-//line lit/tangle.w:228
+//line lit/gtangle.w:347
 			o.lineMark(line)
-//line lit/tangle.w:229
+//line lit/gtangle.w:348
 			o.atLineStart = false
-//line lit/tangle.w:230
+//line lit/gtangle.w:349
 		}
-//line lit/tangle.w:231
+//line lit/gtangle.w:350
 		o.b = append(o.b, c)
-//line lit/tangle.w:232
+//line lit/gtangle.w:351
 		if c == '\n' {
-//line lit/tangle.w:233
+//line lit/gtangle.w:352
 			line++
-//line lit/tangle.w:234
+//line lit/gtangle.w:353
 			o.atLineStart = true
-//line lit/tangle.w:235
+//line lit/gtangle.w:354
 		}
-//line lit/tangle.w:236
+//line lit/gtangle.w:355
 	}
-//line lit/tangle.w:237
+//line lit/gtangle.w:356
 	return line
-//line lit/tangle.w:238
+//line lit/gtangle.w:357
 }
 
 // lineMark emits a //line directive for the given combined-source line.
 //
-//line lit/tangle.w:240
-//line lit/tangle.w:241
+//line lit/gtangle.w:359
+//line lit/gtangle.w:360
 func (o *buffer) lineMark(line int) {
-//line lit/tangle.w:242
+//line lit/gtangle.w:361
 	file, ln := o.t.w.Origin(line)
-//line lit/tangle.w:243
+//line lit/gtangle.w:362
 	o.b = append(o.b, fmt.Sprintf("//line %s:%d\n", file, ln)...)
-//line lit/tangle.w:244
+//line lit/gtangle.w:363
 }
 
 // newline starts a fresh output line (used around an expanded reference).
 //
-//line lit/tangle.w:246
-//line lit/tangle.w:247
+//line lit/gtangle.w:365
+//line lit/gtangle.w:366
 func (o *buffer) newline() {
-//line lit/tangle.w:248
+//line lit/gtangle.w:367
 	o.b = append(o.b, '\n')
-//line lit/tangle.w:249
+//line lit/gtangle.w:368
 	o.atLineStart = true
-//line lit/tangle.w:250
+//line lit/gtangle.w:369
 }
 
-//line lit/tangle.w:252
+//line lit/gtangle.w:371
 func (o *buffer) trimRight() {
-//line lit/tangle.w:253
+//line lit/gtangle.w:372
 	for len(o.b) > 0 {
-//line lit/tangle.w:254
+//line lit/gtangle.w:373
 		switch o.b[len(o.b)-1] {
-//line lit/tangle.w:255
+//line lit/gtangle.w:374
 		case ' ', '\t', '\n', '\r':
-//line lit/tangle.w:256
+//line lit/gtangle.w:375
 			o.b = o.b[:len(o.b)-1]
-//line lit/tangle.w:257
+//line lit/gtangle.w:376
 		default:
-//line lit/tangle.w:258
+//line lit/gtangle.w:377
 			return
-//line lit/tangle.w:259
+//line lit/gtangle.w:378
 		}
-//line lit/tangle.w:260
+//line lit/gtangle.w:379
 	}
-//line lit/tangle.w:261
+//line lit/gtangle.w:380
 }
 
-//line lit/tangle.w:263
+//line lit/gtangle.w:382
 func (o *buffer) bytes() []byte { return o.b }
