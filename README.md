@@ -230,7 +230,10 @@ make bootstrap    # tangle into a scratch tree and verify it is byte-for-byte
 
 Editing workflow: change `lit/*.w`, run `make tangle`, then commit both. The
 `bootstrap` target is the self-hosting proof — a freshly built `gtangle`
-reproduces its own source exactly. Tests stay as ordinary `_test.go` files.
+reproduces its own committed source exactly. The package tests live in the `.w`
+sources too (an `@* Tests` chapter per web), so they are tangled and git-ignored
+like the rest of the generated Go; only `internal/tangle`'s build/example tests
+stay as ordinary committed `_test.go` files.
 
 `lit/gweb.w` is a master that `@i`-includes the five component webs in reading
 order, so `gweave` can typeset the whole system as one document:

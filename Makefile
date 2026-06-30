@@ -7,47 +7,42 @@ BIN ?= bin
 
 # GWEB is self-hosted: its Go is tangled from the literate sources in lit/*.w.
 # Following cweb's tradition, the repository commits only the Go needed to build
-# gtangle the first time -- internal/web, internal/tangle, cmd/gtangle (plus the
-# hand-written *_test.go). Everything else (the weave package and gweave's main)
-# is tangled on demand by `generate' and is git-ignored.
+# gtangle the first time -- internal/web, internal/tangle, cmd/gtangle. Everything
+# else is tangled on demand by `generate' and is git-ignored: the weave package,
+# gweave's main, and the test files, which now live in the .w sources too.
 #
 # All component webs (lit/gweb.w is the weave-only master; it just @i-includes
 # the components, so it is not tangled).
-WEBS     = $(filter-out lit/gweb.w,$(wildcard lit/*.w))
-# The .w sources whose Go is not committed, and the files they produce.
-GEN_WEBS = lit/weave.w lit/gweave.w
-GEN_GO   = internal/weave/weave.go internal/weave/tex.go internal/weave/gotok.go \
-           internal/weave/xref.go cmd/gweave/main.go
-# The committed Go that builds the bootstrap gtangle.
-BOOT_GO  = cmd/gtangle/main.go internal/tangle/tangle.go $(wildcard internal/web/*.go)
+WEBS   = $(filter-out lit/gweb.w,$(wildcard lit/*.w))
+# The non-committed Go that `generate' produces (removed by `clean').
+GEN_GO = internal/weave/weave.go internal/weave/tex.go internal/weave/gotok.go \
+         internal/weave/xref.go cmd/gweave/main.go \
+         internal/web/web_test.go internal/tangle/tangle_test.go \
+         internal/weave/weave_test.go
 
 all: build
 
-# The two commands. gtangle builds straight from the committed bootstrap Go;
-# gweave needs its sources generated first.
-build: $(BIN)/gtangle generate
+# The two commands. gtangle compiles from the committed bootstrap Go; the rest of
+# the tree (gweave, the weave package, the tangled tests) is generated first.
+build: generate
 	$(GO) build -o $(BIN)/gweave ./cmd/gweave
 
-$(BIN)/gtangle: $(BOOT_GO)
-	$(GO) build -o $@ ./cmd/gtangle
-
-# Tangle the non-committed Go (the weave package and gweave's main) so the tree
-# compiles. cmd/gweave/main.go is the sentinel for the whole GEN_GO group.
-generate: cmd/gweave/main.go
-cmd/gweave/main.go: $(GEN_WEBS) $(BIN)/gtangle
-	@for w in $(GEN_WEBS); do $(BIN)/gtangle -o . "$$w"; done
-
-# Regenerate every Go source from lit/*.w (committed bootstrap and generated
-# alike). gtangle always emits //line directives (as cweb's ctangle does), so the
-# Go points back at the .w source; editing a .w reshuffles those line numbers.
-tangle: $(BIN)/gtangle
+# Build a bootstrap gtangle from the committed sources, then tangle every web, so
+# the non-committed Go exists and the tree compiles. This rewrites the committed
+# bootstrap Go in place too (identically, unless a .w changed); Go's build cache
+# absorbs the no-op rewrites. gtangle always emits //line directives (as cweb's
+# ctangle does), so the Go points back at the .w source, and editing a .w
+# reshuffles those line numbers. `tangle' is a synonym.
+generate tangle:
+	$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
 	@for w in $(WEBS); do $(BIN)/gtangle -o . "$$w"; done
 
 # Prove the bootstrap reproduces itself: tangle every lit/*.w into a scratch tree
 # and check the committed Go is byte-identical (the fixpoint). Only the committed
-# bootstrap dirs are compared; the generated weave Go has no committed counterpart.
-# Tests stay as ordinary .go, so they are excluded from the compare.
-bootstrap: $(BIN)/gtangle
+# bootstrap dirs are compared; the generated Go (weave package, gweave, tests) has
+# no committed counterpart, and tests are excluded from the compare anyway.
+bootstrap:
+	@$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
 	@rm -rf .bootstrap
 	@for w in $(WEBS); do $(BIN)/gtangle -o .bootstrap "$$w" >/dev/null; done
 	@ok=1; for d in internal/web internal/tangle cmd/gtangle; do \
