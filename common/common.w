@@ -38,7 +38,7 @@ type Section struct {
 	Starred bool   // true for \.{@@*} sections
 	Depth   int    // group depth for starred sections (-1 |==| \.{@@**}, 0 |==| \.{@@*}, n |==| \.{@@*n})
 	Title   string // starred-section title (text up to the first period)
-	Tex     string // commentary, raw TeX with in-text\.{@@}-codes still embedded
+	Tex     string // commentary, raw \TEX/ with in-text\.{@@}-codes still embedded
 	Formats []Format
 	HasCode bool   // true if the section contributes code
 	Name    string // named-section name, or \.{""} for an unnamed @@c section
@@ -123,7 +123,7 @@ func (w *Web) at(line int) string {
 
 @ |Origin| maps a combined-source line back to the file and line the user wrote,
 returning the two parts separately (|at| formats the same information as a
-string). \.{gtangle} uses it to emit \.{//line} directives so the Go compiler
+string). \.{gtangle} uses it to emit \.{//line} directives so the \GO/ compiler
 reports errors at \.{.w} positions.
 @(common/common.go@>=
 func (w *Web) Origin(line int) (file string, ln int) {
@@ -493,10 +493,10 @@ func findNextSection(src string, i int) ctrl {
 }
 
 @ The main loop. |parse| splits the source into limbo and sections, and for
-each section into its \TeX, definition, and code parts.
+each section into its \TEX/, definition, and code parts.
 Limbo runs until the first section break. Format directiveas placed there
 (\.{@@f}/\.{@@s}, a common \.{CWEB} idiom) are extracted and removed from the copied
-\TeX\ so they apply globally rather than printing literally.
+\TEX/ so they apply globally rather than printing literally.
 @(common/common.go@>=
 func parse(src string) *Web {
 	w := &Web{}
@@ -521,7 +521,7 @@ func parse(src string) *Web {
 			i += 2
 		}
 
-		// TeX part: from here to the next structural control.
+		// \TEX/ part: from here to the next structural control.
 		ct := scanStruct(src, i)
 		sec.Tex = src[i:ct.pos]
 		if sec.Starred {
@@ -532,7 +532,7 @@ func parse(src string) *Web {
 		for ct.kind == cDefn || ct.kind == cFormat {
 			nx := scanStruct(src, ct.end)
 			seg := src[ct.end:nx.pos]
-			// \.{@@d} has no Go analogue (Go has no preprocessor), so it never tangles
+			// \.{@@d} has no \GO/ analogue (\GO/ has no preprocessor), so it never tangles
 			// to code; gweave uses it only to set the named identifier in
 			// typewriter, as cweave sets a macro. \.{@@f}/\.{@@s} format like another word.
 			if ct.kind == cDefn {
@@ -655,7 +655,7 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 
 @ |parseMacro| parses the body of an \.{@@d} directive. Its first word names a
 constant to set in typewriter (like a \.{CWEB} macro); any value after it is ignored,
-since Go has no preprocessor and \.{@@d} never tangles to code. A qualified name
+since \GO/ has no preprocessor and \.{@@d} never tangles to code. A qualified name
 keeps its final component, so \.{@@d http.StatusOK} and \.{@@d StatusOK} both
 register the identifier \.{StatusOK}.
 @(common/common.go@>=
@@ -730,17 +730,17 @@ func extractLimboFormats(src string) (string, []Format) {
 }
 
 @* Scanning a code part into atoms.
-A code part is a mix of ordinary Go text and in-code control codes. |ScanCode|
+A code part is a mix of ordinary \GO/ text and in-code control codes. |ScanCode|
 turns it into a slice of |Atom|s; the kind of each atom tells \.{gtangle} and
 \.{gweave} how to treat it.
 @(common/common.go@>=
 type AtomKind int
 
 const (
-	AText     AtomKind = iota // ordinary Go source text
+	AText     AtomKind = iota // ordinary \GO/ source text
 	ARef                      // \.{@@<name@@>} reference to a named section
 	AVerbatim                 // \.{@@=text@@>} passed verbatim to tangled output
-	ATeX                      // \.{@@t text@@>} TeX text for the woven output
+	ATeX                      // \.{@@t text@@>} \TEX/ text for the woven output
 	AIndex                    // \.{@@\^/@@./@@}: index entry
 	APaste                    // \.{@@\&} join (delete surrounding whitespace)
 	ALayout                   // \.{@@}, \.{@@/} \.{@@|} \.{@@\#} woven-output layout hints

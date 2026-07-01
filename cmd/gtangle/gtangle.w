@@ -113,12 +113,12 @@ func run(input, changeFile, outDir string) error {
 
 @* The tangle engine.
 The rest of this web is the engine that \.{gtangle}'s front end drives: it
-extracts compilable Go source from a parsed web, expanding named-section
-references in program order, the Go analogue of \.{CWEB}'s \.{ctangle}. It is part of
+extracts compilable \GO/ source from a parsed web, expanding named-section
+references in program order, the \GO/ analogue of \.{CWEB}'s \.{ctangle}. It is part of
 the command's \.{main} package, tangled together with the front end into the
 single file \.{gtangle.go}.
 
-@ An |Output| is one tangled file: its target name and Go contents. |Warning|
+@ An |Output| is one tangled file: its target name and \GO/ contents. |Warning|
 is set (non-fatally) when |gofmt| could not format the assembled program.
 @(cmd/gtangle/gtangle.go@>=
 type Output struct {
@@ -132,7 +132,7 @@ refinements (|defs|), the \.{@@(file@@>=} outputs, and the unnamed program text
 (|main|). Each destination keeps a list of |codePiece|s rather than one joined
 string, so every piece remembers the \.{.w} line it began on -- the anchor for
 the \.{//line} directives. As in \.{CWEB}'s \.{ctangle}, those directives are always
-emitted (there is no switch to suppress them), so the Go compiler, \.{go vet},
+emitted (there is no switch to suppress them), so the \GO/ compiler, \.{go vet},
 and panic traces report positions in the literate \.{.w} source rather than in
 the generated \.{.go}.
 @(cmd/gtangle/gtangle.go@>=
@@ -223,7 +223,7 @@ func nonEmpty(pieces []codePiece) bool {
 
 @ |renderOutput| expands one destination's pieces and runs |gofmt| on the
 result. A genuine web error (an undefined or circular reference) is fatal; a
-|gofmt| failure is not -- the unformatted Go is kept and reported via
+|gofmt| failure is not -- the unformatted \GO/ is kept and reported via
 |Output.Warning|.
 @(cmd/gtangle/gtangle.go@>=
 func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) {
@@ -517,7 +517,7 @@ func TestTangleAbbrevAtDefinition(t *testing.T) {
 }
 
 @* Integration tests.
-The tangle engine's integration tests: every example tangles to compilable Go.
+The tangle engine's integration tests: every example tangles to compilable \GO/.
 
 @ @(cmd/gtangle/gtangle_test.go@>=
 func importsThirdParty(content []byte) bool {

@@ -43,7 +43,7 @@ type Section struct {
 //line common/common.w:40
 	Title string // starred-section title (text up to the first period)
 //line common/common.w:41
-	Tex string // commentary, raw TeX with in-text\.{@}-codes still embedded
+	Tex string // commentary, raw \TEX/ with in-text\.{@}-codes still embedded
 //line common/common.w:42
 	Formats []Format
 //line common/common.w:43
@@ -861,7 +861,7 @@ func parse(src string) *Web {
 		}
 
 //line common/common.w:524
-		// TeX part: from here to the next structural control.
+		// \TEX/ part: from here to the next structural control.
 //line common/common.w:525
 		ct := scanStruct(src, i)
 //line common/common.w:526
@@ -882,7 +882,7 @@ func parse(src string) *Web {
 //line common/common.w:534
 			seg := src[ct.end:nx.pos]
 //line common/common.w:535
-			// \.{@d} has no Go analogue (Go has no preprocessor), so it never tangles
+			// \.{@d} has no \GO/ analogue (\GO/ has no preprocessor), so it never tangles
 //line common/common.w:536
 			// to code; gweave uses it only to set the named identifier in
 //line common/common.w:537
@@ -1231,13 +1231,13 @@ type AtomKind int
 //line common/common.w:739
 const (
 //line common/common.w:740
-	AText AtomKind = iota // ordinary Go source text
+	AText AtomKind = iota // ordinary \GO/ source text
 //line common/common.w:741
 	ARef // \.{@<name@>} reference to a named section
 //line common/common.w:742
 	AVerbatim // \.{@=text@>} passed verbatim to tangled output
 //line common/common.w:743
-	ATeX // \.{@t text@>} TeX text for the woven output
+	ATeX // \.{@t text@>} \TEX/ text for the woven output
 //line common/common.w:744
 	AIndex // \.{@\^/@./@}: index entry
 //line common/common.w:745
