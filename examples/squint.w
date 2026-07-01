@@ -1,5 +1,6 @@
-@i types.w
 @s T int
+@s Rat int
+@s Context int
 
 \def\title{Squinting at Power Series}
 
@@ -306,7 +307,7 @@ func Deriv(F PS) PS {
 
 @ @<Test |Deriv| routine@>=
 func TestDeriv(t *testing.T) {
-	// d/dx 1/(1-x) = 1/(1-x)^2 = 1 + 2x + 3x^2 + ...
+	// ${d\over dx} 1/(1-x) = 1/(1-x)^2 = 1 + 2x + 3x^2 +\ldots$
 	checkTerms(t, "deriv(Ones)", Deriv(Ones(newCtx(t))),
 		[]string{"1", "2", "3", "4", "5", "6"})
 }
@@ -385,10 +386,10 @@ still needs. To |serve| branch~|i| is to hand it |buf[pos[i]-base]| and advance 
 trimming the buffer when the slowest branch moves.
 @<Run the buffering server@>=
 go func() {
-	var buf []*big.Rat // F's coefficients from index base onward
+	var buf []*big.Rat // $F$'s coefficients from index base onward
 	base := 0
 	pos := make([]int, n) // next index each branch will read
-	var waiting []int     // branches blocked on F's next term
+	var waiting []int     // branches blocked on $F$'s next term
 	pulling := false
 	pulled := make(chan *big.Rat)
 	serve := func(i int) bool {
@@ -473,7 +474,7 @@ func Mul(F, G PS) PS {
 		if !P.awaitReq() {
 			return
 		}
-		f, ok := F.get() // F, G now carry their tails
+		f, ok := F.get() // $F$, $G$ now carry their tails
 		if !ok {
 			return
 		}
@@ -481,7 +482,7 @@ func Mul(F, G PS) PS {
 		if !ok {
 			return
 		}
-		if !P.send(rmul(f, g)) { // the F0*G0 term
+		if !P.send(rmul(f, g)) { // the $F0\cdot G0$ term
 			return
 		}
 		FF := Split(F, 2)
@@ -539,7 +540,7 @@ func Subst(F, G PS) PS {
 		if !S.send(f) {
 			return
 		}
-		if _, ok := GG[0].get(); !ok { // drop G0 (must be 0)
+		if _, ok := GG[0].get(); !ok { // drop $G0$ (must be 0)
 			return
 		}
 		copyPS(Mul(GG[0], Subst(F, GG[1])), S)
@@ -620,7 +621,7 @@ func Recip(F PS) PS {
 		if !R.awaitReq() {
 			return
 		}
-		f, ok := F.get() // F now carries Fbar
+		f, ok := F.get() // $F$ now carries $\bar F$
 		if !ok {
 			return
 		}
@@ -635,7 +636,7 @@ func Recip(F PS) PS {
 
 @ @<Test |Recip| routine@>=
 func TestRecip(t *testing.T) {
-	// 1/(1/(1-x)) = 1 - x
+	// $1/(1/(1-x)) = 1 - x$
 	checkTerms(t, "recip(Ones)", Recip(Ones(newCtx(t))),
 		[]string{"1", "-1", "0", "0", "0", "0"})
 }
@@ -651,24 +652,24 @@ func Rev(F PS) PS {
 	R := mkPS(F.ctx)
 	RR := Split(R, 4)
 	go func() {
-		if !R.put(rat(0, 1)) { // R0 = 0
+		if !R.put(rat(0, 1)) { // $R0 = 0$
 			return
 		}
 		if !R.awaitReq() {
 			return
 		}
-		if _, ok := F.get(); !ok { // drop F0 (must be 0)
+		if _, ok := F.get(); !ok { // drop $F0$ (must be 0)
 			return
 		}
-		v, ok := F.get() // F now carries Fbarbar
+		v, ok := F.get() // $F$ now carries $\bar{\bar F}$
 		if !ok {
 			return
 		}
 		f1 := rinv(v)
-		if !R.send(f1) { // R1 = 1/F1
+		if !R.send(f1) { // $R1 = 1/F1$
 			return
 		}
-		W := Mul(Mul(tail(RR[0]), tail(RR[1])), Subst(F, RR[2])) // Rbar^2 * Fbarbar(R)
+		W := Mul(Mul(tail(RR[0]), tail(RR[1])), Subst(F, RR[2])) // ${\bar R}^2 \cdot \bar{\bar F}(R)$
 		c := rneg(f1)
 		@<Emit the remaining coefficients of |R|@>@;
 	}()
@@ -715,17 +716,18 @@ func tail(F PS) PS {
 	return T
 }
 
-@ @<Test Helpers@>=
-// newCtx returns a context cancelled at the end of the test, so each
-// test's process network is torn down.
+@ |newCtx| returns a context cancelled at the end of the test, so each
+test's process network is torn down.
+@<Test Helpers@>=
 func newCtx(t *testing.T) context.Context {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 	return ctx
 }
 
-// checkTerms compares the first coefficients of F with the expected
-// rationals, given as strings like "1", "-1/3".
+@ |checkTerms| compares the first coefficients of F with the expected
+rationals, given as strings like "1", "-1/3".
+@<Test Helpers@>=
 func checkTerms(t *testing.T, name string, F PS, want []string) {
 	t.Helper()
 	for i, w := range want {
