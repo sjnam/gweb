@@ -1,11 +1,10 @@
-.TH GTANGLE 1 "2026-06-22" "GWEB" "GWEB Manual"
+.TH GTANGLE 1 "2026-07-01" "GWEB" "GWEB Manual"
 .SH NAME
 gtangle \- extract compilable Go source from a GWEB literate program
 .SH SYNOPSIS
 .B gtangle
 .RB [ \-o
 .IR dir ]
-.RB [ \-line=false ]
 .IR file [ .w ]
 .RI [ change [ .ch ]]
 .SH DESCRIPTION
@@ -20,6 +19,20 @@ expands the named\-section references in program order, runs
 on the result, and writes the Go source the compiler needs. It is the Go
 analogue of CWEB's
 .BR ctangle (1).
+.PP
+The tangled Go always carries
+.B //line
+directives (as CWEB's
+.B ctangle
+always emits
+.BR #line ),
+so the Go compiler,
+.BR "go vet" ,
+and panic traces report errors at
+.B .w
+source positions instead of
+.B .go
+positions.
 .PP
 The unnamed
 .B @c
@@ -55,22 +68,6 @@ instead of the input file's directory. The directory (and any subdirectories
 named by
 .BI @( file @>=
 targets) is created if necessary.
-.TP
-.B \-line
-Emit
-.B //line
-directives in the tangled Go so that the Go compiler,
-.BR "go vet" ,
-and panic traces report errors at
-.B .w
-source positions instead of
-.B .go
-positions \(em the Go counterpart of CWEB's
-.BR #line .
-On by default; pass
-.B \-line=false
-to omit the directives (as GWEB does when tangling its own sources, to keep the
-committed Go and the self\-hosting fixpoint clean).
 .TP
 .B \-version
 Print the version and exit.
