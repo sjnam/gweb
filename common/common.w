@@ -1,5 +1,7 @@
+@d Version
+
 @* The \.{common} package.
-This package is the shared front end of \.{GWEB}. It reads a |.w| source file,
+This package is the shared front end of \.{GWEB}. It reads a \.{.w} source file,
 expands \.{@@i} includes, optionally applies a change file, and splits the
 result into a sequence of {\it sections\/}. Both \.{gtangle} and \.{gweave}
 are built on top of it, so it plays the role of \.{CWEB}'s \.{common.w}.
@@ -241,7 +243,7 @@ used. All are warnings; \.{gtangle} still fails hard if it actually meets an
 undefined reference while expanding.
 @(common/common.go@>=
 func (w *Web) checkNames() []string {
-	// "defined" is the set of sections that actually have a definition (not just
+	// |defined| is the set of sections that actually have a definition (not just
 	// the full names known for abbreviation resolution, which include references).
 	defined := map[string]bool{}
 	for _, s := range w.Sections {
@@ -253,27 +255,7 @@ func (w *Web) checkNames() []string {
 	var warns []string
 
 	for _, s := range w.Sections {
-		scan := func(raw string) {
-			for _, a := range ScanCode(raw) {
-				if a.Kind != ARef {
-					continue
-				}
-				canon := w.Resolve(a.Text)
-				if strings.HasSuffix(a.Text, "...") && canon == a.Text {
-					prefix := strings.TrimSpace(strings.TrimSuffix(a.Text, "..."))
-					if m := w.prefixMatches(prefix); m == 0 {
-						warns = append(warns, fmt.Sprintf("%s: no section name matches <%s>", w.at(s.Line), a.Text))
-					} else {
-						warns = append(warns, fmt.Sprintf("%s: ambiguous prefix <%s> matches %d section names", w.at(s.Line), a.Text, m))
-					}
-					continue
-				}
-				if !defined[canon] {
-					warns = append(warns, fmt.Sprintf("%s: reference to undefined section <%s>", w.at(s.Line), a.Text))
-				}
-				used[canon] = true
-			}
-		}
+		@<Scan raw string@>
 		scan(s.Code)
 		scan(s.Tex)
 	}
@@ -292,6 +274,29 @@ func (w *Web) checkNames() []string {
 	return warns
 }
 
+@ @<Scan raw string@>=
+scan := func(raw string) {
+	for _, a := range ScanCode(raw) {
+		if a.Kind != ARef {
+			continue
+		}
+		canon := w.Resolve(a.Text)
+		if strings.HasSuffix(a.Text, "...") && canon == a.Text {
+			prefix := strings.TrimSpace(strings.TrimSuffix(a.Text, "..."))
+			if m := w.prefixMatches(prefix); m == 0 {
+				warns = append(warns, fmt.Sprintf("%s: no section name matches <%s>", w.at(s.Line), a.Text))
+			} else {
+				warns = append(warns, fmt.Sprintf("%s: ambiguous prefix <%s> matches %d section names", w.at(s.Line), a.Text, m))
+			}
+			continue
+		}
+		if !defined[canon] {
+			warns = append(warns, fmt.Sprintf("%s: reference to undefined section <%s>", w.at(s.Line), a.Text))
+		}
+		used[canon] = true
+	}
+}
+
 @ A few small helpers: |lineAt| converts a byte offset to a line number,
 |canonName| normalizes a name by collapsing each run of whitespace to a single
 space, |Resolve| maps a possibly abbreviated name to its canonical form, and
@@ -308,6 +313,7 @@ func canonName(name string) string {
 	return strings.Join(strings.Fields(name), " ")
 }
 
+@ @(common/common.go@>=
 func (w *Web) Resolve(name string) string {
 	name = canonName(name)
 	if !strings.HasSuffix(name, "...") {
@@ -357,7 +363,7 @@ const (
 
 type ctrl struct {
 	kind    ctrlKind
-	pos     int    // index of the leading '\.{@@}'
+	pos     int    // index of the leading `\.{@@}'
 	end     int    // index just past the control token
 	depth   int    // for cSection: -1 unstarred (or \.{@@**} top level), else starred depth
 	starred bool   // for cSection (distinguishes \.{@@**} from an unstarred section)
@@ -391,7 +397,7 @@ func scanStruct(src string, i int) ctrl {
 			depth := 0
 			if j < n && src[j] == '*' {
 				j++
-				depth = -1 // "@@**" is the top level: bold in the contents, as cweb
+				depth = -1 // ``\.{@@**}" is the top level: bold in the contents, as \.{CWEB}
 			} else {
 				for j < n && src[j] >= '0' && src[j] <= '9' {
 					depth = depth*10 + int(src[j]-'0')
@@ -861,7 +867,7 @@ func ScanCode(code string) []Atom {
 }
 
 @* Change files.
-A change file (\.{CWEB}'s |.ch| mechanism) patches the master source without
+A change file (\.{CWEB}'s .{.ch} mechanism) patches the master source without
 editing it. It is a sequence of changes, each finding a block of lines in the
 master and substituting a replacement block.
 
@@ -895,7 +901,7 @@ func (l srcLoc) String() string {
 }
 
 @ Recognizing a change control line and comparing source lines (ignoring
-trailing whitespace, as WEB does), with a line splitter that normalizes CRLF.
+trailing whitespace, as \.{CWEB} does), with a line splitter that normalizes \.{CRLF}.
 @(common/common.go@>=
 func isChangeCtrl(line string, c byte) bool {
 	return len(line) >= 2 && line[0] == '@@' && line[1] == c
@@ -933,7 +939,7 @@ func parseChangeFile(src string) ([]change, error) {
 		if i >= n {
 			return nil, fmt.Errorf("change file line %d: @@x without a matching @@y", c.line)
 		}
-		i++ // skip @@y
+		i++ // skip \.{@@y}
 		c.replLine = i + 1
 		for i < n && !isChangeCtrl(lines[i], 'z') {
 			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'y') {
@@ -945,7 +951,7 @@ func parseChangeFile(src string) ([]change, error) {
 		if i >= n {
 			return nil, fmt.Errorf("change file line %d: change has no @@z", c.line)
 		}
-		i++ // skip @@z
+		i++ // skip \.{@@z}
 		if len(c.match) == 0 {
 			return nil, fmt.Errorf("change file line %d: the @@x match part is empty", c.line)
 		}

@@ -3,13 +3,13 @@
 % it is meant for gweave only (the components are what `make tangle' builds).
 
 @* Introduction.
-This is \.{GWEB}, a literate-programming system for the Go language, modeled
+This is \.{GWEB}, a literate-programming system for the \GO/ language, modeled
 closely on Knuth and Levy's \.{CWEB}. You write a single |.w| source that
-interleaves \TeX\ documentation with Go code; \.{gtangle} extracts the Go a
+interleaves \TeX\ documentation with \GO/ code; \.{gtangle} extracts the \GO/ a
 compiler needs, and \.{gweave} produces a typeset document for people.
 
 \.{GWEB} is itself written this way, and this document is the proof: the very
-sources printed here are what \.{gtangle} turns into the Go of the program, and
+sources printed here are what \.{gtangle} turns into the \GO/ of the program, and
 what \.{gweave} turns into the pages you are reading. The system is organized as
 three short webs, presented in turn:
 
@@ -17,9 +17,9 @@ three short webs, presented in turn:
 \item{$\bullet$} the \.{common} package -- the shared front end that parses a |.w|
 file into sections (the analogue of \.{CWEB}'s \.{common.w});
 \item{$\bullet$} \.{gtangle} -- its command-line driver together with the tangle
-engine that extracts the Go a compiler needs;
+engine that extracts the \GO/ a compiler needs;
 \item{$\bullet$} \.{gweave} -- its command-line driver together with the weave
-engine: a small Go lexer, the pretty-printer, and the cross-reference machinery.
+engine: a small \GO/ lexer, the pretty-printer, and the cross-reference machinery.
 \smallskip
 
 \noindent Every section is numbered; a named-section reference is a link to the
