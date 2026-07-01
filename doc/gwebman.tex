@@ -239,11 +239,11 @@ The \cw{.w} extension --- and a change file's \cw{.ch} --- may be omitted.
 As each tool runs it prints a one-line banner and then a \cw{*}{\it n\/} progress
 marker for every starred section, as CWEB's tools do.
 
-By default \cw{gtangle} emits \cw{//line} directives in the tangled Go --- the Go
-counterpart of CWEB's \cw{\#line} --- so the compiler, \cw{go vet}, and panic
-traces report errors at \cw{.w} positions rather than \cw{.go} ones. Pass
-\cw{-line=false} to omit them; GWEB tangles its own sources that way, keeping the
-committed Go and the self-hosting fixpoint clean.
+\cw{gtangle} always emits \cw{//line} directives in the tangled Go --- as CWEB's
+\cw{ctangle} always emits \cw{\#line} --- so the compiler, \cw{go vet}, and panic
+traces report errors at \cw{.w} positions rather than \cw{.go} ones. GWEB tangles
+its own sources this way too, so editing a \cw{.w} reshuffles those line numbers
+in the committed Go.
 
 To make a PDF, either go straight through \cw{pdftex}, or through DVI and
 \cw{dvipdfmx} for the same hyperlinks:
