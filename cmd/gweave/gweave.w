@@ -553,8 +553,8 @@ func renderToken(t token) string {
 		return "\\GID{" + escIdent(t.text) + "}"
 	case tkMacro:
 		if t.text == "nil" {
-			// nil is \GO/'s null value; show it with a symbol (\.{\\Gnil}, a capital
-			// lambda) as cweave shows C's NULL, rather than in typewriter.
+			// \.{nil} is \GO/'s null value; show it with a symbol (\.{\\Gnil}, a capital
+			// lambda) as cweave shows \CEE/'s \.{NULL}, rather than in typewriter.
 			return "\\Gnil "
 		}
 		// Typewriter, like a \.{CWEB} @d macro (an @d name or a predeclared constant).
@@ -568,7 +568,7 @@ func renderToken(t token) string {
 	case tkComment:
 		// Comments are set in roman (\.{\\GCM}); escape them for roman text mode (not
 		// the typewriter \.{\\charNN} codes escTT emits), but let $...$ math through.
-		// Tighten the leading "//" marker with a small kern (\.{\\Gcommentkern}), whose
+		// Tighten the leading ``\.{//}" marker with a small kern (\.{\\Gcommentkern}), whose
 		// two slashes are otherwise set rather far apart in roman.
 		if rest, ok := strings.CutPrefix(t.text, "//"); ok {
 			return "\\GCM{/\\kern\\Gcommentkern/" + escComment(rest) + "}"
