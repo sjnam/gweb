@@ -39,3 +39,6 @@ texput.log
 
 # VS Code extension package
 *.vsix
+
+.markdownlint.jsonc
+
