@@ -142,6 +142,10 @@ make -C examples NAME=wc     # just one example
   `Filter`, `Take` over infinite Fibonacci numbers), showing off the Go features
   C has no answer to: first-class functions and closures, anonymous functions,
   generics, and Go 1.23 range-over-func iterators.
+* [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
+  channel networks (sum, product, composition, reciprocal, functional inverse,
+  and differential equations like `exp`), after McIlroy's *Squinting at Power
+  Series*.
 * [examples/sham.w](examples/sham.w) — a GWEB port of Knuth's Stanford GraphBase
   demo `sham`: count the symmetric Hamiltonian cycles of the knight's graph on an
   8×9 board, by folding the graph in half and backtracking with `goto` labels. It
