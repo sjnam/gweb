@@ -1742,8 +1742,11 @@ for _, n := range names {
 }
 
 @ |bookmarkTitle| reduces a starred-section title to plain text safe for a PDF
-outline: a |...| span keeps its inner text, \.{@@@@} becomes an at-sign, and the
-(rare) \TEX/-special characters are dropped.
+outline: a |...| span keeps its inner text, \.{@@@@} becomes an at-sign, the
+\TEX/-special characters are dropped, and a known text-logo control sequence is
+replaced by its plain form --- as \.{CWEB}'s outline sanitizer does --- so that a
+title like \.{\\TEX/ escaping} shows ``TeX escaping'' in the bookmark list, not a
+stray ``/ escaping''.
 @<Reduce a title for the outline@>=
 func bookmarkTitle(raw string) string {
 	var b strings.Builder
@@ -1760,7 +1763,7 @@ func bookmarkTitle(raw string) string {
 		case c == '|':
 			// drop the bar; keep the inline code's text
 		case c == '\\':
-			@<Drop a \TEX/ control sequence from the title@>
+			@<Substitute or drop a control sequence@>
 		case c == '{' || c == '}' || c == '$' || c == '&' ||
 			c == '#' || c == '%' || c == '^' || c == '_' || c == '~':
 			// \TEX/-special: drop
@@ -1771,22 +1774,38 @@ func bookmarkTitle(raw string) string {
 	return strings.TrimSpace(b.String())
 }
 
-@ A \TEX/ control sequence --- a backslash followed by a run of letters, or by a
-single symbol --- is dropped, so, e.g., \.{\\web} reduces to ``web''.
-@<Drop a \TEX/ control sequence from the title@>=
+@ A control word --- a backslash and a run of letters --- that names one of the
+known text logos is replaced by its plain form, swallowing the \.{/} that
+terminates the (slash-delimited) macro; \.{CWEB} sanitizes its outline the same
+way. Any other control word (\.{\\web} reduces to ``web'', dropping the \.{\\web}
+control sequence) or a control symbol like \.{\\\&} is simply dropped.
+@<Substitute or drop a control sequence@>=
 if i+1 < n {
 	if d := raw[i+1]; (d >= 'a' && d <= 'z') || (d >= 'A' && d <= 'Z') {
-		i++
-		for i+1 < n {
-			if e := raw[i+1]; (e >= 'a' && e <= 'z') || (e >= 'A' && e <= 'Z') {
-				i++
-			} else {
-				break
+		j := i + 2
+		for j < n && ((raw[j] >= 'a' && raw[j] <= 'z') || (raw[j] >= 'A' && raw[j] <= 'Z')) {
+			j++
+		}
+		word := raw[i+1 : j]
+		i = j - 1 // the outer loop's i++ steps past the last letter
+		if text, ok := bookmarkLogos[word]; ok {
+			b.WriteString(text)
+			if i+1 < n && raw[i+1] == '/' {
+				i++ // swallow the logo's slash delimiter
 			}
 		}
 	} else {
-		i++
+		i++ // a control symbol: drop the backslash and the symbol
 	}
+}
+
+@ The text logos \.{gweave} may meet in a title, each with the plain-text form
+\.{CWEB} gives it in an outline. They are the slash-delimited macros of
+\.{gwebmac.tex} (\.{\\CEE/}, \.{\\GO/}, \.{\\UNIX/}, \.{\\TEX/}), so the
+terminating \.{/} is swallowed after the substitution.
+@<Reduce a title for the outline@>=
+var bookmarkLogos = map[string]string{
+	"CEE": "C", "GO": "Go", "UNIX": "UNIX", "TEX": "TeX",
 }
 
 @ The index. Each |indexItem| collects the sections where an entry appears (the
@@ -2472,13 +2491,20 @@ var _ = 0
 	}
 }
 
-@ @(gweave_test.go@>=
+@ A known text logo keeps its plain form in the outline (with the slash-delimited
+macro's trailing \.{/} swallowed), so \.{\\TEX/ escaping} does not degrade to a
+stray ``/ escaping''; an unknown control sequence is still dropped.
+@(gweave_test.go@>=
 func TestBookmarkTitle(t *testing.T) {
 	cases := map[string]string{
-		"The scanner":        "The scanner",
-		"Update for |b| now": "Update for b now",
-		"Foo \\& Bar":        "Foo  Bar",
-		"a @@@@ b":             "a @@ b",
+		"The scanner":         "The scanner",
+		"Update for |b| now":  "Update for b now",
+		"Foo \\& Bar":         "Foo  Bar",
+		"a @@@@ b":              "a @@ b",
+		"\\TEX/ escaping":      "TeX escaping",
+		"The \\GO/ way":        "The Go way",
+		"\\CEE/ and \\UNIX/":   "C and UNIX",
+		"drop \\unknown macro": "drop  macro",
 	}
 	for in, want := range cases {
 		if got := bookmarkTitle(in); got != want {
