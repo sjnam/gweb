@@ -1014,7 +1014,7 @@ func indentLevel(s string) int {
 	return level
 }
 
-@* A \GO/ lexer for the woven output.
+@* A Go lexer for the woven output.
 Unlike \.{go/scanner} this lexer tolerates the partial fragments found in web
 sections and reports whitespace, newlines, and comments as tokens so the
 pretty-printer can preserve layout. State (an open block comment or raw string)
