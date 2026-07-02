@@ -309,16 +309,47 @@ func scanDeclGroup(toks []token, i int, add func(string)) int {
 }
 
 @ |effKind| returns the token class to typeset a token in, honoring \.{@@f}/\.{@@s}
-overrides for identifiers, keywords, and builtins.
+overrides for identifiers, keywords, and builtins. A directive may be {\it
+qualified\/}: \.{@@s foo.Bar int} sets only the |Bar| written as |foo.Bar|, while
+the unqualified \.{@@s Bar int} sets every |Bar|. |lookupFormat| therefore tries
+the qualified key |qual.name| first (|qual| is the identifier just before the
+|.|, supplied by the caller) and falls back to the bare name; |noIndexed|
+resolves the index-suppression flag the same way.
 @<The effective token class@>=
-func (wv *Weaver) effKind(t token) tokKind {
+func (wv *Weaver) effKind(t token, qual string) tokKind {
 	switch t.kind {
 	case tkIdent, tkKeyword, tkBuiltin:
-		if k, ok := wv.format[t.text]; ok {
+		if k, ok := wv.lookupFormat(t.text, qual); ok {
 			return k
 		}
 	}
 	return t.kind
+}
+
+func (wv *Weaver) lookupFormat(name, qual string) (tokKind, bool) {
+	if qual != "" {
+		if k, ok := wv.format[qual+"."+name]; ok {
+			return k, true
+		}
+	}
+	k, ok := wv.format[name]
+	return k, ok
+}
+
+func (wv *Weaver) noIndexed(name, qual string) bool {
+	return (qual != "" && wv.noIndex[qual+"."+name]) || wv.noIndex[name]
+}
+
+@ |qualifierOf| gives the qualifier of the token now being typeset: the text of
+the significant token two back, when the one immediately before it is a |.| ---
+so in |foo.Bar| the |Bar| sees |foo|. Anything else (|x[i].Bar|, a bare name)
+yields no qualifier.
+@<The effective token class@>=
+func qualifierOf(prevKind tokKind, prevText, prevPrevText string) string {
+	if prevKind == tkOp && prevText == "." {
+		return prevPrevText
+	}
+	return ""
 }
 
 @ |Weave| writes the whole document. It runs two passes: the first is discarded
@@ -438,7 +469,9 @@ between chunks. Because |gofmt| already encodes the grammar in its spacing, this
 reproduces it exactly (pointer |*T| vs.\ |a * b|, slice |[]T| vs.\ index |a[i]|)
 and lets long lines wrap at \.{\\GS}. Among the state variables, |prevSigKind|
 and |prevSigText| track the most recent significant token, so an identifier
-following |func|/|var|/|const|/|type| can be flagged as a definition.
+following |func|/|var|/|const|/|type| can be flagged as a definition, and
+|prevPrevSigText| keeps the one before that, so a qualifier like |foo| in
+|foo.Bar| can be recovered.
 @<Render a code part@>=
 func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	var out strings.Builder
@@ -454,6 +487,7 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 
 	prevSigKind := tkNewline
 	prevSigText := ""
+	prevPrevSigText := ""
 
 	@<Accumulate a chunk into the current line@>
 	@<Emit the current line@>
@@ -596,10 +630,11 @@ or a following |:=|, marks a definition), gets a \.{\\Gthin} thin space before a
 as cweave does), and is emitted in its effective class --- a comment through
 |renderComment|, everything else through |renderToken|.
 @<Typeset a significant token@>=
+qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if t.kind == tkIdent || t.kind == tkBuiltin {
 	def := forceDef || isDefinition(prevSigKind, prevSigText, toks, k)
 	forceDef = false
-	if indexable(t.text) && !wv.noIndex[t.text] {
+	if indexable(t.text) && !wv.noIndexed(t.text, qual) {
 		if def {
 			wv.xref.addIdentDef(t.text, secNum)
 		} else {
@@ -614,8 +649,9 @@ if t.kind == tkOp && t.text == "(" && !pendingSpace && !atLineStart &&
 if t.kind == tkComment {
 	emit(wv.renderComment(secNum, t.text))
 } else {
-	emit(renderToken(token{kind: wv.effKind(t), text: t.text}))
+	emit(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
 }
+prevPrevSigText = prevSigText
 prevSigKind, prevSigText = t.kind, t.text
 
 @ |renderToken| renders a single \GO/ token as a \TEX/ fragment, used inside
@@ -791,6 +827,9 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	b.WriteString("$")
 	pendingSpace := false
 	started := false
+	prevSigKind := tkNewline
+	prevSigText := ""
+	prevPrevSigText := ""
 	for _, t := range lexGo(code, &st) {
 		switch t.kind {
 		case tkSpace, tkNewline:
@@ -802,11 +841,14 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 				b.WriteString("\\ ")
 				pendingSpace = false
 			}
-			if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndex[t.text] {
+			qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
+			if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndexed(t.text, qual) {
 				wv.xref.addIdentUse(t.text, secNum)
 			}
-			b.WriteString(renderToken(token{kind: wv.effKind(t), text: t.text}))
+			b.WriteString(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
 			started = true
+			prevPrevSigText = prevSigText
+			prevSigKind, prevSigText = t.kind, t.text
 		}
 	}
 	b.WriteString("$")
@@ -2215,6 +2257,24 @@ var hidden int
 	}
 	if strings.Contains(out, `\GII{\GID{hidden}}`) {
 		t.Errorf("@@s should omit the identifier from the index:\n%s", out)
+	}
+}
+
+@ A {\it qualified\/} format directive (\.{@@s foo.Bar int}) sets only the |Bar|
+written as |foo.Bar|, leaving the |Bar| of |abc.Bar| (or a bare |Bar|) alone; the
+unqualified \.{@@s Bar int} sets every |Bar|.
+@(gweave_test.go@>=
+func TestWeaveQualifiedFormat(t *testing.T) {
+	q := weaveString(t, "\\input gwebmac\n@@s foo.Bar int\n@@ x\n@@c\nvar a = foo.Bar\nvar b = abc.Bar\n")
+	if !strings.Contains(q, `\GID{foo}\mathord{.}\GKW{Bar}`) {
+		t.Errorf("foo.Bar should typeset Bar bold:\n%s", q)
+	}
+	if !strings.Contains(q, `\GID{abc}\mathord{.}\GID{Bar}`) {
+		t.Errorf("abc.Bar should leave Bar italic under a qualified directive:\n%s", q)
+	}
+	all := weaveString(t, "\\input gwebmac\n@@s Bar int\n@@ x\n@@c\nvar b = abc.Bar\n")
+	if !strings.Contains(all, `\GID{abc}\mathord{.}\GKW{Bar}`) {
+		t.Errorf("unqualified @@s Bar should bold every Bar:\n%s", all)
 	}
 }
 

@@ -162,6 +162,13 @@ override any automatic class with \cw{@f}/\cw{@s} --- e.g.\ \cw{@f Name int}
 forces \cw{Name} bold, or \cw{@f Name x} (any ordinary identifier) restores plain
 italic.
 
+Such a directive may be {\it qualified\/} to a package or receiver. \cw{@s
+foo.Bar int} sets only the \cw{Bar} written as \cw{foo.Bar}, so a coincidental
+\cw{abc.Bar} (a \cw{Bar} field of some \cw{abc}) --- or a bare \cw{Bar} --- is
+left alone; the unqualified \cw{@s Bar int} sets every \cw{Bar}. The qualifier is
+just the identifier written before the \cw{.}, so it need not name a real
+package.
+
 \section{GWEB is written in itself}
 Like CWEB, GWEB is a literate program: each tool is tangled from a \cw{.w} web
 kept beside its Go. The committed Go is byte-for-byte reproducible from those
