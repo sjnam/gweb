@@ -1,10 +1,11 @@
 @* Command \.{gtangle}.
 This is the command-line front end of \.{gtangle}; the tangle engine it drives is
 defined in the second half of this web. The input may be named with or without
-its \.{.w} extension (|gtangle wc| reads \.{wc.w}, as in cweb). The unnamed \.{@@c} sections are written to the input's base name with a
-\.{.go} extension (in the |-o| directory, default the input's directory);
-\.{@@(file@@>=} sections are written to their named files.
-@(cmd/gtangle/gtangle.go@>=
+its \.{.w} extension (|gtangle wc| reads \.{wc.w}, as in cweb). The unnamed \.{@@c}
+sections are written to the input's base name with a \.{.go} extension (in the
+|-o| directory, default the input's directory); \.{@@(file@@>=} sections are
+written to their named files.
+@c
 package main
 
 import (
@@ -20,10 +21,15 @@ import (
 	"github.com/sjnam/gweb/common"
 )
 
+@<The command's entry point@>
+@<Print a usage message@>
+@<Report a progress line@>
+@<Tangle the web and write its files@>
+
 @ The entry point parses the flags and arguments and dispatches to |run|. With
 \.{-version} it just prints the version; otherwise it prints a one-line banner
 to the standard error, in the style of \.{CWEB}, before processing.
-@(cmd/gtangle/gtangle.go@>=
+@<The command's entry point@>=
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -45,7 +51,7 @@ func main() {
 }
 
 @ Usage.
-@(cmd/gtangle/gtangle.go@>=
+@<Print a usage message@>=
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file[.w] [change[.ch]]")
 	flag.PrintDefaults()
@@ -54,7 +60,7 @@ func usage() {
 @ A brief progress report in the style of \.{CWEB}: one |*N| on the standard error
 for each starred (chapter) section, giving a sense of the web's structure as it
 is processed.
-@(cmd/gtangle/gtangle.go@>=
+@<Report a progress line@>=
 func reportProgress(w *common.Web) {
 	for _, s := range w.Sections {
 		if s.Starred {
@@ -68,7 +74,7 @@ func reportProgress(w *common.Web) {
 (applying a change file if given), prints any warnings and a short progress
 report, tangles (always with \.{//line} directives), and writes each output
 file, creating its directory if necessary.
-@(cmd/gtangle/gtangle.go@>=
+@<Tangle the web and write its files@>=
 func run(input, changeFile, outDir string) error {
 	input = common.DefaultExt(input, ".w")
 	changeFile = common.DefaultExt(changeFile, ".ch")
@@ -92,23 +98,28 @@ func run(input, changeFile, outDir string) error {
 	if err != nil {
 		return err
 	}
-
-	for _, out := range outs {
-		path := filepath.Join(outDir, out.File)
-		if dir := filepath.Dir(path); dir != "." {
-			if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
-				return mkErr
-			}
-		}
-		if writeErr := os.WriteFile(path, out.Content, 0o644); writeErr != nil {
-			return writeErr
-		}
-		if out.Warning != "" {
-			fmt.Fprintf(os.Stderr, "gtangle: warning: %s: %s\n", path, out.Warning)
-		}
-		fmt.Printf("gtangle: wrote %s (%d bytes)\n", path, len(out.Content))
-	}
+	@<Write the tangled output files@>
 	return nil
+}
+
+@ Each tangled output is written under |outDir| (its subdirectories created as
+needed); a |gofmt| warning is reported if one was attached, and a one-line
+confirmation is printed for each file.
+@<Write the tangled output files@>=
+for _, out := range outs {
+	path := filepath.Join(outDir, out.File)
+	if dir := filepath.Dir(path); dir != "." {
+		if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
+			return mkErr
+		}
+	}
+	if writeErr := os.WriteFile(path, out.Content, 0o644); writeErr != nil {
+		return writeErr
+	}
+	if out.Warning != "" {
+		fmt.Fprintf(os.Stderr, "gtangle: warning: %s: %s\n", path, out.Warning)
+	}
+	fmt.Printf("gtangle: wrote %s (%d bytes)\n", path, len(out.Content))
 }
 
 @* The tangle engine.
@@ -117,10 +128,19 @@ extracts compilable \GO/ source from a parsed web, expanding named-section
 references in program order, the \GO/ analogue of \.{CWEB}'s \.{ctangle}. It is part of
 the command's \.{main} package, tangled together with the front end into the
 single file \.{gtangle.go}.
+@c
+@<An output file@>
+@<The tangler and its code pieces@>
+@<Classify a web's code sections@>
+@<Produce all output files@>
+@<Skip an all-blank destination@>
+@<Render and gofmt one output@>
+@<Expand code pieces and references@>
+@<The output buffer@>
 
 @ An |Output| is one tangled file: its target name and \GO/ contents. |Warning|
 is set (non-fatally) when |gofmt| could not format the assembled program.
-@(cmd/gtangle/gtangle.go@>=
+@<An output file@>=
 type Output struct {
 	File    string
 	Content []byte
@@ -135,7 +155,7 @@ the \.{//line} directives. As in \.{CWEB}'s \.{ctangle}, those directives are al
 emitted (there is no switch to suppress them), so the \GO/ compiler, \.{go vet},
 and panic traces report positions in the literate \.{.w} source rather than in
 the generated \.{.go}.
-@(cmd/gtangle/gtangle.go@>=
+@<The tangler and its code pieces@>=
 type Tangler struct {
 	w     *common.Web
 	defs  map[string][]codePiece // canonical named-section -> code pieces
@@ -151,7 +171,7 @@ type codePiece struct {
 @ |New| classifies every code section into the unnamed program, an output file,
 or a named refinement, appending each section's code -- with the source line it
 began on -- to the pieces for that destination.
-@(cmd/gtangle/gtangle.go@>=
+@<Classify a web's code sections@>=
 func New(w *common.Web) *Tangler {
 	t := &Tangler{
 		w:     w,
@@ -178,7 +198,7 @@ func New(w *common.Web) *Tangler {
 
 @ |Tangle| produces all output files: first the unnamed program (written to
 |defaultFile|), then each \.{@@(file@@>=} target in sorted order.
-@(cmd/gtangle/gtangle.go@>=
+@<Produce all output files@>=
 func (t *Tangler) Tangle(defaultFile string) ([]Output, error) {
 	var outs []Output
 
@@ -211,7 +231,7 @@ func (t *Tangler) Tangle(defaultFile string) ([]Output, error) {
 
 @ |nonEmpty| reports whether any piece carries non-blank code, so a destination
 made only of whitespace does not produce an empty output file.
-@(cmd/gtangle/gtangle.go@>=
+@<Skip an all-blank destination@>=
 func nonEmpty(pieces []codePiece) bool {
 	for _, p := range pieces {
 		if strings.TrimSpace(p.code) != "" {
@@ -225,7 +245,7 @@ func nonEmpty(pieces []codePiece) bool {
 result. A genuine web error (an undefined or circular reference) is fatal; a
 |gofmt| failure is not -- the unformatted \GO/ is kept and reported via
 |Output.Warning|.
-@(cmd/gtangle/gtangle.go@>=
+@<Render and gofmt one output@>=
 func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) {
 	o := &buffer{t: t, atLineStart: true}
 	if err := t.expandPieces(pieces, o, nil); err != nil {
@@ -240,11 +260,8 @@ func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) 
 	}
 }
 
-@ |expandPieces| expands a list of code pieces in order. |expand| expands one
-piece, threading the combined-source line through the text so \.{//line}
-directives stay accurate, and following \.{@@<...@@>} references recursively
-(guarding against cycles).
-@(cmd/gtangle/gtangle.go@>=
+@ |expandPieces| expands a list of code pieces in order.
+@<Expand code pieces and references@>=
 func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) error {
 	for _, p := range pieces {
 		if err := t.expand(p.code, p.line, o, stack); err != nil {
@@ -254,6 +271,11 @@ func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) er
 	return nil
 }
 
+@ |expand| expands one code piece, threading the combined-source line through
+the text so \.{//line} directives stay accurate. Verbatim text tangles like
+ordinary text; a paste deletes the preceding whitespace; a reference is followed
+recursively; and the woven-output-only atoms are ignored.
+@<Expand code pieces and references@>=
 func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error {
 	for _, a := range common.ScanCode(code) {
 		switch a.Kind {
@@ -264,21 +286,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 			o.pasteNext = true
 			o.atLineStart = false
 		case common.ARef:
-			name := t.w.Resolve(a.Text)
-			def, ok := t.defs[name]
-			if !ok {
-				return fmt.Errorf("undefined section <%s>", a.Text)
-			}
-			if slices.Contains(stack, name) {
-				return fmt.Errorf("circular reference through <%s>", name)
-			}
-			// Surround an expanded reference with newlines so adjacent
-			// statements stay on separate lines; gofmt collapses the rest.
-			o.newline()
-			if err := t.expandPieces(def, o, append(stack, name)); err != nil {
-				return err
-			}
-			o.newline()
+			@<Expand a section reference@>
 		case common.ATeX, common.AIndex, common.ALayout, common.AIndexDef:
 			// woven-output only; ignored by tangle
 		}
@@ -286,10 +294,28 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 	return nil
 }
 
+@ A reference is resolved to its canonical name, checked against the recursion
+stack for a cycle, and expanded in place. The surrounding newlines keep adjacent
+statements on separate lines; |gofmt| collapses the rest.
+@<Expand a section reference@>=
+name := t.w.Resolve(a.Text)
+def, ok := t.defs[name]
+if !ok {
+	return fmt.Errorf("undefined section <%s>", a.Text)
+}
+if slices.Contains(stack, name) {
+	return fmt.Errorf("circular reference through <%s>", name)
+}
+o.newline()
+if err := t.expandPieces(def, o, append(stack, name)); err != nil {
+	return err
+}
+o.newline()
+
 @ The output |buffer| accumulates bytes. It tracks whether it is at the start of
 a line so it can prefix each line with a \.{//line} directive, and it supports
 the \.{@@\&} paste operation, which deletes the whitespace surrounding it.
-@(cmd/gtangle/gtangle.go@>=
+@<The output buffer@>=
 type buffer struct {
 	t           *Tangler
 	b           []byte
@@ -297,6 +323,10 @@ type buffer struct {
 	atLineStart bool
 }
 
+@ |writeText| copies a run of text, emitting a \.{//line} directive at the start
+of each non-blank line and honoring a pending paste (which trims the leading
+whitespace of the next text). It returns the updated combined-source line.
+@<The output buffer@>=
 func (o *buffer) writeText(s string, line int) int {
 	if o.pasteNext {
 		s = strings.TrimLeft(s, " \t\n\r")
@@ -317,6 +347,11 @@ func (o *buffer) writeText(s string, line int) int {
 	return line
 }
 
+@ The small mutators: |lineMark| writes a \.{//line} directive for the given
+combined-source line (mapped back to its origin), |newline| starts a fresh
+line, |trimRight| removes trailing whitespace (for a paste), and |bytes| returns
+the accumulated output.
+@<The output buffer@>=
 func (o *buffer) lineMark(line int) {
 	file, ln := o.t.w.Origin(line)
 	o.b = append(o.b, fmt.Sprintf("//line %s:%d\n", file, ln)...)
@@ -342,7 +377,7 @@ func (o *buffer) bytes() []byte { return o.b }
 
 @* Tests.
 The tangle engine's tests, one section per case.
-@(cmd/gtangle/gtangle_test.go@>=
+@(gtangle_test.go@>=
 package main
 
 import (
@@ -358,7 +393,7 @@ import (
 	"github.com/sjnam/gweb/common"
 )
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func TestTangleExpandsAndConcatenates(t *testing.T) {
 	const src = `@@ main
 @@c
@@ -394,7 +429,7 @@ func greet() { println("hi") }
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func TestTangleFileSections(t *testing.T) {
 	const src = `@@ first
 @@(extra.go@@>=
@@ -417,7 +452,7 @@ package main
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func TestTangleUndefinedReference(t *testing.T) {
 	const src = `@@ x
 @@c
@@ -430,7 +465,7 @@ var _ = @@<missing@@>
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func TestTangleCircularReference(t *testing.T) {
 	const src = `@@ a
 @@<a@@>=
@@ -449,7 +484,11 @@ var _ = @@<a@@>
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ A name containing a |...| code span still resolves for tangling. Because the
+\.{//line} directives \.{gtangle} always emits put the expanded refinement on its
+own line, the test checks that both the host line and the value appear rather
+than that they sit on one line.
+@(gtangle_test.go@>=
 func TestTangleCodeInName(t *testing.T) {
 	const src = `@@ root
 @@c
@@ -465,16 +504,13 @@ var area = @@<the |x| value@@>
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The //line directives gtangle always emits put the expanded refinement on
-	// its own line, so check that the name resolved (the host line and the value
-	// both appear) rather than that they sit on one line.
 	got := string(outs[0].Content)
 	if !strings.Contains(got, "var area =") || !strings.Contains(got, "42") {
 		t.Errorf("name containing |x| should still match for tangling:\n%s", got)
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func TestTangleIgnoresLayoutCodes(t *testing.T) {
 	const src = "@@ x\n@@c\npackage main\n\nvar n = 1@@,@@/@@|@@#@@+@@[@@]@@;2\n"
 	outs, err := New(common.ParseString(src)).Tangle("p.go")
@@ -487,10 +523,10 @@ func TestTangleIgnoresLayoutCodes(t *testing.T) {
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ An unknown \.{@@x} must drop exactly its two characters, not corrupt the rest
+--- a guard against a former double-skip bug.
+@(gtangle_test.go@>=
 func TestTangleDropsUnknownCode(t *testing.T) {
-	// An unknown @@x must drop exactly its two characters, not corrupt the rest
-	// (guards against a former double-skip bug).
 	const src = "@@ x\n@@c\npackage main\n\nvar a@@?bc = 1\n"
 	outs, err := New(common.ParseString(src)).Tangle("p.go")
 	if err != nil {
@@ -501,16 +537,17 @@ func TestTangleDropsUnknownCode(t *testing.T) {
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ An abbreviated definition (\.{@@<the val...@@>=}) resolves against a reference
+that carries the full name. As above, the always-on \.{//line} directives break
+the expansion onto its own line, so the test checks that both halves are present
+rather than adjacent.
+@(gtangle_test.go@>=
 func TestTangleAbbrevAtDefinition(t *testing.T) {
-	// The reference carries the full name; the definition is abbreviated.
 	const src = "@@ x\n@@c\npackage main\n\nvar v = @@<the value@@>\n\n@@ d\n@@<the val...@@>=\n42\n"
 	outs, err := New(common.ParseString(src)).Tangle("p.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	// As above, the always-on //line directives break the expansion onto its own
-	// line, so check both halves are present rather than that they are adjacent.
 	if got := string(outs[0].Content); !strings.Contains(got, "var v =") || !strings.Contains(got, "42") {
 		t.Errorf("abbreviated definition should resolve:\n%s", got)
 	}
@@ -519,7 +556,7 @@ func TestTangleAbbrevAtDefinition(t *testing.T) {
 @* Integration tests.
 The tangle engine's integration tests: every example tangles to compilable \GO/.
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func importsThirdParty(content []byte) bool {
 	f, err := parser.ParseFile(token.NewFileSet(), "", content, parser.ImportsOnly)
 	if err != nil {
@@ -540,7 +577,7 @@ func importsThirdParty(content []byte) bool {
 	return false
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func TestExamplesBuild(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping go build of examples in -short mode")
@@ -565,7 +602,7 @@ func TestExamplesBuild(t *testing.T) {
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func buildExample(t *testing.T, path string) {
 	t.Helper()
 
@@ -612,7 +649,7 @@ func buildExample(t *testing.T, path string) {
 	}
 }
 
-@ @(cmd/gtangle/gtangle_test.go@>=
+@ @(gtangle_test.go@>=
 func TestChangeFileBuilds(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping go build in -short mode")

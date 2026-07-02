@@ -6,12 +6,11 @@ expands \.{@@i} includes, optionally applies a change file, and splits the
 result into a sequence of {\it sections\/}. Both \.{gtangle} and \.{gweave}
 are built on top of it, so it plays the role of \.{CWEB}'s \.{common.w}.
 
-We start with the package declaration, the imports, the |Version| constant (the
-\.{GWEB} release, shared by \.{gtangle} and \.{gweave} for their startup banner and
-their \.{-version} output), and the |Format| record, which captures one \.{@@f}
-or \.{@@s} directive: typeset identifier |Original| the way identifier or keyword
-|Like| is typeset; |NoIndex| is true for \.{@@s}.
-@(common/common.go@>=
+The skeleton is the package declaration, the imports, and the |Version| constant
+(the \.{GWEB} release, shared by \.{gtangle} and \.{gweave} for their startup
+banner and their \.{-version} output). The named sections that follow supply the
+records and the parsing machinery, in reading order.
+@c
 package common
 
 import (
@@ -23,6 +22,18 @@ import (
 
 const Version = "0.3.0"
 
+@<Records shared across the web@>
+@<Parse a web from a file@>
+@<Map a combined-source line back to its origin@>
+@<Supply a default file extension@>
+@<Expand include files@>
+@<Collect and resolve section names@>
+@<Small parser helpers@>
+
+@ The |Format| record captures one \.{@@f} or \.{@@s} directive: it asks that
+identifier |Original| be typeset the way identifier or keyword |Like| is.
+|NoIndex| is true for \.{@@s}, and |Macro| is true for a \.{@@d} constant.
+@<Records shared across the web@>=
 type Format struct {
 	Original string
 	Like     string
@@ -33,7 +44,7 @@ type Format struct {
 @ A |Section| is one numbered section of the web. Its three optional parts --
 commentary, definitions, and code -- are stored as raw text with the in-text
 and in-code \.{@@}-codes still embedded; the consumers interpret them later.
-@(common/common.go@>=
+@<Records shared across the web@>=
 type Section struct {
 	Number  int    // 1-based section number
 	Line    int    // 1-based source line where the section begins
@@ -53,7 +64,7 @@ type Section struct {
 directives, the sections, and the diagnostics gathered while parsing. The
 unexported fields support diagnostics (mapping a combined-source line back to
 its original file) and name-abbreviation resolution.
-@(common/common.go@>=
+@<Records shared across the web@>=
 type Web struct {
 	Limbo    string
 	Formats  []Format // \.{@@f}/\.{@@s} directives found in limbo (apply globally)
@@ -64,11 +75,11 @@ type Web struct {
 	full     []string // canonical (non-abbreviated) section names
 }
 
-@ The parsing entry points. |Parse| handles the common case; |ParseWithChange|
-adds \.{CWEB}'s change-file mechanism; |ParseString| is for tests. All three end by
-calling |finish|, which runs the post-parse bookkeeping. |at| formats a
-combined-source line for a diagnostic, mapping it back to the user's file.
-@(common/common.go@>=
+@ The file-based entry points. |Parse| handles the common case; |ParseWithChange|
+adds \.{CWEB}'s change-file mechanism. Each expands \.{@@i} includes, joins the
+result into one combined source string, parses it, and records where it came
+from before running the shared bookkeeping.
+@<Parse a web from a file@>=
 func Parse(filename string) (*Web, error) {
 	return ParseWithChange(filename, "")
 }
@@ -78,20 +89,7 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 	if err != nil {
 		return nil, err
 	}
-	if changeFile != "" {
-		chData, err := os.ReadFile(changeFile)
-		if err != nil {
-			return nil, err
-		}
-		changes, err := parseChangeFile(string(chData))
-		if err != nil {
-			return nil, err
-		}
-		lines, locs, err = applyChangesMapped(lines, locs, changes, changeFile)
-		if err != nil {
-			return nil, err
-		}
-	}
+	@<Apply the change file, if any@>
 	src := strings.Join(lines, "\n")
 	w := parse(src)
 	w.file = filename
@@ -100,7 +98,29 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 	return w, nil
 }
 
-@ @(common/common.go@>=
+@ The change file (\.{CWEB}'s \.{.ch} mechanism) is optional. When one is named
+we read it, parse it into an ordered list of changes, and splice them into the
+included source in step with the origin map. Any failure aborts the parse.
+@<Apply the change file, if any@>=
+if changeFile != "" {
+	chData, err := os.ReadFile(changeFile)
+	if err != nil {
+		return nil, err
+	}
+	changes, err := parseChangeFile(string(chData))
+	if err != nil {
+		return nil, err
+	}
+	lines, locs, err = applyChangesMapped(lines, locs, changes, changeFile)
+	if err != nil {
+		return nil, err
+	}
+}
+
+@ |ParseString| is the string entry point used by the tests. It and the
+file-based entries all end in |finish|, the post-parse bookkeeping that resolves
+section names and gathers the parse-time diagnostics.
+@<Parse a web from a file@>=
 func ParseString(src string) *Web {
 	w := parse(src)
 	w.finish(src)
@@ -113,6 +133,19 @@ func (w *Web) finish(src string) {
 	w.Warnings = append(w.Warnings, w.checkNames()...)
 }
 
+@ Two views of the origin map. |Origin| maps a combined-source line back to the
+file and line the user wrote, returning the two parts separately; \.{gtangle}
+uses it to emit \.{//line} directives so the \GO/ compiler reports errors at
+\.{.w} positions. |at| formats the same information as a string for a
+diagnostic, falling back to the source filename or a bare line number.
+@<Map a combined-source line back to its origin@>=
+func (w *Web) Origin(line int) (file string, ln int) {
+	if i := line - 1; i >= 0 && i < len(w.locs) {
+		return w.locs[i].file, w.locs[i].line
+	}
+	return w.file, line
+}
+
 func (w *Web) at(line int) string {
 	if i := line - 1; i >= 0 && i < len(w.locs) {
 		return w.locs[i].String()
@@ -123,22 +156,10 @@ func (w *Web) at(line int) string {
 	return fmt.Sprintf("line %d", line)
 }
 
-@ |Origin| maps a combined-source line back to the file and line the user wrote,
-returning the two parts separately (|at| formats the same information as a
-string). \.{gtangle} uses it to emit \.{//line} directives so the \GO/ compiler
-reports errors at \.{.w} positions.
-@(common/common.go@>=
-func (w *Web) Origin(line int) (file string, ln int) {
-	if i := line - 1; i >= 0 && i < len(w.locs) {
-		return w.locs[i].file, w.locs[i].line
-	}
-	return w.file, line
-}
-
 @ |DefaultExt| supplies a default extension when the user omits one, so the
 commands accept a bare web name as \.{CWEB} does (\.{gtangle wc} reads \.{wc.w}). A
 name that already has an extension, or is empty, is returned unchanged.
-@(common/common.go@>=
+@<Supply a default file extension@>=
 func DefaultExt(name, ext string) string {
 	if name == "" || filepath.Ext(name) != "" {
 		return name
@@ -149,7 +170,7 @@ func DefaultExt(name, ext string) string {
 @ Include expansion. As in \.{CWEB}, \.{@@i} is line-oriented: a line whose first
 non-blank text is \.{@@i} names a file whose expansion replaces that line. We
 keep a parallel origin map so diagnostics can cite the file the user wrote.
-@(common/common.go@>=
+@<Expand include files@>=
 func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 	if depth > 25 {
 		return nil, nil, fmt.Errorf("gweb: @@i include nesting too deep at %q", file)
@@ -186,7 +207,7 @@ func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 	return lines, locs, nil
 }
 
-@ @(common/common.go@>=
+@ @<Expand include files@>=
 func includeDirective(line string) (name string, ok bool) {
 	t := strings.TrimLeft(line, " \t")
 	if !strings.HasPrefix(t, "@@i") {
@@ -204,7 +225,7 @@ func includeDirective(line string) (name string, ok bool) {
 the set of canonical (non-abbreviated) names. A full name may appear at a
 definition or at any reference, in code or in commentary, so all of those are
 scanned.
-@(common/common.go@>=
+@<Collect and resolve section names@>=
 func (w *Web) collectNames() {
 	seen := map[string]bool{}
 	add := func(name string) {
@@ -227,6 +248,9 @@ func (w *Web) collectNames() {
 	}
 }
 
+@ |prefixMatches| counts how many canonical names begin with a given prefix, so
+|checkNames| can tell an unmatched abbreviation from an ambiguous one.
+@<Collect and resolve section names@>=
 func (w *Web) prefixMatches(prefix string) int {
 	n := 0
 	for _, full := range w.full {
@@ -241,10 +265,12 @@ func (w *Web) prefixMatches(prefix string) int {
 references to undefined sections, and named sections that are defined but never
 used. All are warnings; \.{gtangle} still fails hard if it actually meets an
 undefined reference while expanding.
-@(common/common.go@>=
+
+The |defined| set holds only the sections that actually have a definition ---
+not the full names known for abbreviation resolution, which also include names
+that appear only at references.
+@<Collect and resolve section names@>=
 func (w *Web) checkNames() []string {
-	// |defined| is the set of sections that actually have a definition (not just
-	// the full names known for abbreviation resolution, which include references).
 	defined := map[string]bool{}
 	for _, s := range w.Sections {
 		if s.Name != "" && !s.IsFile {
@@ -297,11 +323,11 @@ scan := func(raw string) {
 	}
 }
 
-@ A few small helpers: |lineAt| converts a byte offset to a line number,
-|canonName| normalizes a name by collapsing each run of whitespace to a single
-space, |Resolve| maps a possibly abbreviated name to its canonical form, and
-|indexFrom| is a bounded |strings.Index|.
-@(common/common.go@>=
+@ A few small helpers used throughout the parser: |lineAt| converts a byte
+offset to a line number, |canonName| normalizes a section name by collapsing
+each run of whitespace to a single space, and |indexFrom| is a bounded
+|strings.Index| that searches only from a given offset.
+@<Small parser helpers@>=
 func lineAt(src string, off int) int {
 	if off > len(src) {
 		off = len(src)
@@ -313,7 +339,22 @@ func canonName(name string) string {
 	return strings.Join(strings.Fields(name), " ")
 }
 
-@ @(common/common.go@>=
+func indexFrom(s, sub string, from int) int {
+	if from >= len(s) {
+		return -1
+	}
+	idx := strings.Index(s[from:], sub)
+	if idx < 0 {
+		return -1
+	}
+	return from + idx
+}
+
+@ |Resolve| maps a possibly abbreviated name to its canonical form. A name that
+does not end in \.{...} is already canonical (bar whitespace); otherwise its
+prefix must match exactly one full name, and a zero or ambiguous match is left
+unresolved for the caller to report.
+@<Collect and resolve section names@>=
 func (w *Web) Resolve(name string) string {
 	name = canonName(name)
 	if !strings.HasSuffix(name, "...") {
@@ -334,22 +375,21 @@ func (w *Web) Resolve(name string) string {
 	return name // unresolved or ambiguous; leave as-is for caller to report
 }
 
-func indexFrom(s, sub string, from int) int {
-	if from >= len(s) {
-		return -1
-	}
-	idx := strings.Index(s[from:], sub)
-	if idx < 0 {
-		return -1
-	}
-	return from + idx
-}
-
 @* Scanning structural controls.
-The parser works directly on the source text. A |ctrl| value describes the next
-structural control code -- a section break, a code part, a named definition, or
-a definition-part directive -- together with the byte range it occupies.
-@(common/common.go@>=
+The parser works directly on the source text. The pieces below describe the
+structural \.{@@}-codes, scan the source for them, run the main loop that splits
+it into sections, and parse the definition-part directives.
+@c
+@<Structural-control descriptors@>
+@<Scan forward to a control code@>
+@<The main parse loop@>
+@<Scan for malformed control codes@>
+@<Parse the definition-part directives@>
+
+@ A |ctrl| value describes the next structural control code -- a section break, a
+code part, a named definition, or a definition-part directive -- together with
+the byte range it occupies.
+@<Structural-control descriptors@>=
 type ctrlKind int
 
 const (
@@ -376,7 +416,7 @@ type ctrl struct {
 literal \.{@@@@} and argument-terminated codes (\.{@@<...@@>}, \.{@@=...@@>}, and so
 on) so their contents never trigger a false section break. A \.{@@<...@@>} not
 followed by |=| is a reference, not a definition, and is skipped.
-@(common/common.go@>=
+@<Scan forward to a control code@>=
 func scanStruct(src string, i int) ctrl {
 	n := len(src)
 	for i < n {
@@ -393,18 +433,7 @@ func scanStruct(src string, i int) ctrl {
 		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
 			return ctrl{kind: cSection, pos: i, end: i + 2, depth: -1}
 		case c == '*':
-			j := i + 2
-			depth := 0
-			if j < n && src[j] == '*' {
-				j++
-				depth = -1 // ``\.{@@**}" is the top level: bold in the contents, as \.{CWEB}
-			} else {
-				for j < n && src[j] >= '0' && src[j] <= '9' {
-					depth = depth*10 + int(src[j]-'0')
-					j++
-				}
-			}
-			return ctrl{kind: cSection, pos: i, end: j, depth: depth, starred: true}
+			@<Read a starred-section break@>
 		case c == 'c' || c == 'p':
 			return ctrl{kind: cCode, pos: i, end: i + 2}
 		case c == 'd':
@@ -414,20 +443,7 @@ func scanStruct(src string, i int) ctrl {
 		case c == 's':
 			return ctrl{kind: cFormat, pos: i, end: i + 2, noIndex: true}
 		case c == '<' || c == '(':
-			end := indexFrom(src, "@@>", i+2)
-			if end < 0 {
-				return ctrl{kind: cEOF, pos: n, end: n}
-			}
-			after := end + 2
-			k := after
-			for k < n && (src[k] == ' ' || src[k] == '\t') {
-				k++
-			}
-			if k < n && src[k] == '=' {
-				return ctrl{kind: cNamed, pos: i, end: k + 1,
-					name: canonName(src[i+2 : end]), isFile: c == '('}
-			}
-			i = after // a reference, not a definition
+			@<Classify a named-section definition@>
 		case c == '=' || c == 't' || c == '^' || c == '.' || c == ':' || c == 'q':
 			end := indexFrom(src, "@@>", i+2)
 			if end < 0 {
@@ -450,7 +466,7 @@ func scanStruct(src string, i int) ctrl {
 @ |findNextSection| scans forward to the next section break (\.{@@ } or \.{@@*}),
 skipping everything else. It is used inside code parts, where \.{@@c}, \.{@@d}, and
 \.{@@f} never legitimately appear.
-@(common/common.go@>=
+@<Scan forward to a control code@>=
 func findNextSection(src string, i int) ctrl {
 	n := len(src)
 	for i < n {
@@ -467,18 +483,7 @@ func findNextSection(src string, i int) ctrl {
 		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
 			return ctrl{kind: cSection, pos: i, end: i + 2, depth: -1}
 		case c == '*':
-			j := i + 2
-			depth := 0
-			if j < n && src[j] == '*' {
-				j++
-				depth = -1 // "\.{@@**}" is the top level: bold in the contents, as \.{CWEB}
-			} else {
-				for j < n && src[j] >= '0' && src[j] <= '9' {
-					depth = depth*10 + int(src[j]-'0')
-					j++
-				}
-			}
-			return ctrl{kind: cSection, pos: i, end: j, depth: depth, starred: true}
+			@<Read a starred-section break@>
 		case c == '<' || c == '(' || c == '=' || c == 't' || c == '^' || c == '.' || c == ':' || c == 'q':
 			end := indexFrom(src, "@@>", i+2)
 			if end < 0 {
@@ -498,12 +503,49 @@ func findNextSection(src string, i int) ctrl {
 	return ctrl{kind: cEOF, pos: n, end: n}
 }
 
+@ A starred section may be \.{@@**} (the top level, depth $-1$, set bold in the
+contents as \.{CWEB} does), \.{@@*} (depth 0), or \.{@@*n} (depth |n|). Both
+scanners read past the stars and any digits and return the break; the shared
+code keeps the two in step.
+@<Read a starred-section break@>=
+j := i + 2
+depth := 0
+if j < n && src[j] == '*' {
+	j++
+	depth = -1
+} else {
+	for j < n && src[j] >= '0' && src[j] <= '9' {
+		depth = depth*10 + int(src[j]-'0')
+		j++
+	}
+}
+return ctrl{kind: cSection, pos: i, end: j, depth: depth, starred: true}
+
+@ A \.{@@<...@@>} or \.{@@(...@@>} begins a definition only when it is followed
+(after optional blanks) by |=|; otherwise it is a reference, whose contents are
+skipped so they cannot trigger a false section break.
+@<Classify a named-section definition@>=
+end := indexFrom(src, "@@>", i+2)
+if end < 0 {
+	return ctrl{kind: cEOF, pos: n, end: n}
+}
+after := end + 2
+k := after
+for k < n && (src[k] == ' ' || src[k] == '\t') {
+	k++
+}
+if k < n && src[k] == '=' {
+	return ctrl{kind: cNamed, pos: i, end: k + 1,
+		name: canonName(src[i+2 : end]), isFile: c == '('}
+}
+i = after // a reference, not a definition
+
 @ The main loop. |parse| splits the source into limbo and sections, and for
 each section into its \TEX/, definition, and code parts.
 Limbo runs until the first section break. Format directiveas placed there
 (\.{@@f}/\.{@@s}, a common \.{CWEB} idiom) are extracted and removed from the copied
 \TEX/ so they apply globally rather than printing literally.
-@(common/common.go@>=
+@<The main parse loop@>=
 func parse(src string) *Web {
 	w := &Web{}
 	n := len(src)
@@ -534,41 +576,8 @@ func parse(src string) *Web {
 			sec.Title = extractTitle(sec.Tex)
 		}
 
-		// Definition part: a run of \.{@@d} / \.{@@f} / \.{@@s}.
-		for ct.kind == cDefn || ct.kind == cFormat {
-			nx := scanStruct(src, ct.end)
-			seg := src[ct.end:nx.pos]
-			// \.{@@d} has no \GO/ analogue (\GO/ has no preprocessor), so it never tangles
-			// to code; gweave uses it only to set the named identifier in
-			// typewriter, as cweave sets a macro. \.{@@f}/\.{@@s} format like another word.
-			if ct.kind == cDefn {
-				if f, ok := parseMacro(seg); ok {
-					sec.Formats = append(sec.Formats, f)
-				}
-			} else if f, ok := parseFormat(seg, ct.noIndex); ok {
-				sec.Formats = append(sec.Formats, f)
-			}
-			ct = nx
-		}
-
-		switch ct.kind {
-		case cCode:
-			sec.HasCode = true
-			sec.CodeLine = lineAt(src, ct.end)
-			nx := findNextSection(src, ct.end)
-			sec.Code = src[ct.end:nx.pos]
-			i = nx.pos
-		case cNamed:
-			sec.HasCode = true
-			sec.Name = ct.name
-			sec.IsFile = ct.isFile
-			sec.CodeLine = lineAt(src, ct.end)
-			nx := findNextSection(src, ct.end)
-			sec.Code = src[ct.end:nx.pos]
-			i = nx.pos
-		default: // cSection or cEOF: a documentation-only section
-			i = ct.pos
-		}
+		@<Collect the section's definition part@>
+		@<Collect the section's code part@>
 
 		w.Sections = append(w.Sections, sec)
 		if ct.kind == cEOF && sec.Code == "" {
@@ -581,8 +590,48 @@ func parse(src string) *Web {
 	return w
 }
 
+@ The definition part is a run of \.{@@d} / \.{@@f} / \.{@@s} directives. Each only
+registers a format hint on the section; none of them tangles to code (see the
+definition-part directive sections above).
+@<Collect the section's definition part@>=
+for ct.kind == cDefn || ct.kind == cFormat {
+	nx := scanStruct(src, ct.end)
+	seg := src[ct.end:nx.pos]
+	if ct.kind == cDefn {
+		if f, ok := parseMacro(seg); ok {
+			sec.Formats = append(sec.Formats, f)
+		}
+	} else if f, ok := parseFormat(seg, ct.noIndex); ok {
+		sec.Formats = append(sec.Formats, f)
+	}
+	ct = nx
+}
+
+@ The code part, if any, runs to the next section break: an unnamed \.{@@c}
+section feeds the program text, while \.{@@<name@@>=} or \.{@@(file@@>=} names its
+destination. Anything else is a documentation-only section.
+@<Collect the section's code part@>=
+switch ct.kind {
+case cCode:
+	sec.HasCode = true
+	sec.CodeLine = lineAt(src, ct.end)
+	nx := findNextSection(src, ct.end)
+	sec.Code = src[ct.end:nx.pos]
+	i = nx.pos
+case cNamed:
+	sec.HasCode = true
+	sec.Name = ct.name
+	sec.IsFile = ct.isFile
+	sec.CodeLine = lineAt(src, ct.end)
+	nx := findNextSection(src, ct.end)
+	sec.Code = src[ct.end:nx.pos]
+	i = nx.pos
+default: // cSection or cEOF: a documentation-only section
+	i = ct.pos
+}
+
 @ |findSectionHeaderEnd| locates the end of a \.{@@*} header and its depth.
-@(common/common.go@>=
+@<The main parse loop@>=
 func findSectionHeaderEnd(src string, i int) ctrl {
 	n := len(src)
 	j := i + 2
@@ -601,7 +650,7 @@ func findSectionHeaderEnd(src string, i int) ctrl {
 
 @ |extractTitle| returns the text of a starred section up to its first period,
 with whitespace collapsed, for the table of contents.
-@(common/common.go@>=
+@<The main parse loop@>=
 func extractTitle(tex string) string {
 	t := strings.TrimLeft(tex, " \t\n")
 	if i := titleEnd(t); i >= 0 {
@@ -622,7 +671,7 @@ func titleEnd(s string) int {
 
 @ |scanDiagnostics| walks the source looking for malformed control codes --
 currently argument-terminated codes missing their closing \.{@@>}.
-@(common/common.go@>=
+@<Scan for malformed control codes@>=
 func (w *Web) scanDiagnostics(src string) []string {
 	var warns []string
 	n := len(src)
@@ -650,7 +699,7 @@ func (w *Web) scanDiagnostics(src string) []string {
 }
 
 @ |parseFormat| parses the body of an \.{@@f} or \.{@@s} directive: two identifiers.
-@(common/common.go@>=
+@<Parse the definition-part directives@>=
 func parseFormat(seg string, noIndex bool) (Format, bool) {
 	fields := strings.Fields(seg)
 	if len(fields) < 2 {
@@ -664,7 +713,7 @@ constant to set in typewriter (like a \.{CWEB} macro); any value after it is ign
 since \GO/ has no preprocessor and \.{@@d} never tangles to code. A qualified name
 keeps its final component, so \.{@@d http.StatusOK} and \.{@@d StatusOK} both
 register the identifier \.{StatusOK}.
-@(common/common.go@>=
+@<Parse the definition-part directives@>=
 func parseMacro(seg string) (Format, bool) {
 	fields := strings.Fields(seg)
 	if len(fields) == 0 {
@@ -683,7 +732,7 @@ func parseMacro(seg string) (Format, bool) {
 @ |extractLimboFormats| pulls \.{@@d}/\.{@@f}/\.{@@s} directives out of the limbo text and
 returns the cleaned text together with the formats. Other control codes and
 argument-terminated groups are copied through unchanged.
-@(common/common.go@>=
+@<Parse the definition-part directives@>=
 func extractLimboFormats(src string) (string, []Format) {
 	var b strings.Builder
 	var formats []Format
@@ -700,24 +749,7 @@ func extractLimboFormats(src string) (string, []Format) {
 			b.WriteString("@@@@")
 			i += 2
 		case 'd', 'f', 's':
-			j := i + 2
-			for j < n && src[j] != '\n' {
-				j++
-			}
-			var f Format
-			var ok bool
-			if c == 'd' {
-				f, ok = parseMacro(src[i+2 : j])
-			} else {
-				f, ok = parseFormat(src[i+2:j], c == 's')
-			}
-			if ok {
-				formats = append(formats, f)
-			}
-			if j < n {
-				j++ // also drop the newline that ended the directive
-			}
-			i = j
+			@<Extract one limbo directive@>
 		case '<', '(', '=', 't', '^', '.', ':', 'q':
 			end := indexFrom(src, "@@>", i+2)
 			if end < 0 {
@@ -735,11 +767,38 @@ func extractLimboFormats(src string) (string, []Format) {
 	return b.String(), formats
 }
 
+@ A limbo \.{@@d}/\.{@@f}/\.{@@s} directive runs to the end of its line. We parse
+it into a |Format| (a \.{@@d} macro or an \.{@@f}/\.{@@s} format word) and drop
+both the directive and its terminating newline from the copied \TEX/.
+@<Extract one limbo directive@>=
+j := i + 2
+for j < n && src[j] != '\n' {
+	j++
+}
+var f Format
+var ok bool
+if c == 'd' {
+	f, ok = parseMacro(src[i+2 : j])
+} else {
+	f, ok = parseFormat(src[i+2:j], c == 's')
+}
+if ok {
+	formats = append(formats, f)
+}
+if j < n {
+	j++ // also drop the newline that ended the directive
+}
+i = j
+
 @* Scanning a code part into atoms.
 A code part is a mix of ordinary \GO/ text and in-code control codes. |ScanCode|
 turns it into a slice of |Atom|s; the kind of each atom tells \.{gtangle} and
 \.{gweave} how to treat it.
-@(common/common.go@>=
+@c
+@<Code-part atom descriptors@>
+@<Scan a code part into atoms@>
+
+@ @<Code-part atom descriptors@>=
 type AtomKind int
 
 const (
@@ -762,7 +821,7 @@ type Atom struct {
 @ The scanner itself. \.{@@@@} becomes a literal \.{@@} folded into the surrounding
 text; every other control code flushes the pending text and appends its own
 atom.
-@(common/common.go@>=
+@<Scan a code part into atoms@>=
 func ScanCode(code string) []Atom {
 	var atoms []Atom
 	var buf strings.Builder
@@ -781,89 +840,98 @@ func ScanCode(code string) []Atom {
 			i++
 			continue
 		}
-		switch d := code[i+1]; d {
-		case '@@':
-			buf.WriteByte('@@')
-			i += 2
-		case '&':
-			flush()
-			atoms = append(atoms, Atom{Kind: APaste})
-			i += 2
-		case '<':
-			end := indexFrom(code, "@@>", i+2)
-			if end < 0 {
-				buf.WriteString(code[i:])
-				i = n
-				continue
-			}
-			flush()
-			atoms = append(atoms, Atom{Kind: ARef, Text: canonName(code[i+2 : end])})
-			i = end + 2
-		case '=':
-			end := indexFrom(code, "@@>", i+2)
-			if end < 0 {
-				i = n
-				continue
-			}
-			flush()
-			atoms = append(atoms, Atom{Kind: AVerbatim, Text: code[i+2 : end]})
-			i = end + 2
-		case 't':
-			end := indexFrom(code, "@@>", i+2)
-			if end < 0 {
-				i = n
-				continue
-			}
-			flush()
-			atoms = append(atoms, Atom{Kind: ATeX, Text: code[i+2 : end]})
-			i = end + 2
-		case '^', '.', ':':
-			end := indexFrom(code, "@@>", i+2)
-			if end < 0 {
-				i = n
-				continue
-			}
-			flush()
-			atoms = append(atoms, Atom{Kind: AIndex, Text: code[i+2 : end], Index: d})
-			i = end + 2
-		case 'q':
-			end := indexFrom(code, "@@>", i+2)
-			if end < 0 {
-				i = n
-				continue
-			}
-			i = end + 2 // ignored material
-		case '%':
-			j := i + 2
-			for j < n && code[j] != '\n' {
-				j++
-			}
-			i = j
-		case '>':
-			i += 2 // stray terminator
-		case ',', '/', '|', '#':
-			// Woven-output layout hints: thin space, line break, optional line
-			// break, and break-plus-blank-line. Ignored by gtangle.
-			flush()
-			atoms = append(atoms, Atom{Kind: ALayout, Index: d})
-			i += 2
-		case '!':
-			// Force the next identifier's index entry to be a definition,
-			// overriding the heuristic. Produces no output by itself.
-			flush()
-			atoms = append(atoms, Atom{Kind: AIndexDef})
-			i += 2
-		case '+', '[', ']', ';':
-			// \.{CWEB} prettyprinter hints (cancel break, expression brackets,
-			// invisible semicolon). \.{GWEB} mirrors the source instead of reflowing
-			// it, so these have no effect; accept and drop them for portability.
-			i += 2
-		default:
-			i += 2 // unknown \.{@@x}: drop it rather than corrupt the output
-		}
+		@<Scan one in-code control code@>
 	}
 	flush()
 	return atoms
+}
+
+@ Each in-code \.{@@}-code flushes the pending text and appends its own atom (or,
+for the layout and prettyprinter hints, is simply recorded or dropped). The
+argument-terminated forms (\.{@@<...@@>}, \.{@@=...@@>}, and so on) read up to their
+closing \.{@@>}; an unterminated one ends the scan.
+
+The layout hints \.{@@,} \.{@@/} \.{@@\|} \.{@@\#} (a thin space, a line break, an
+optional line break, and a break preceded by a blank line) become |ALayout|
+atoms for \.{gweave} and are ignored by \.{gtangle}. \.{@@!} forces the next
+identifier to index as a definition, overriding the heuristic, and produces no
+output by itself. The \.{CWEB} prettyprinter hints \.{@@+} \.{@@[} \.{@@]} \.{@@;}
+(cancel break, expression brackets, invisible semicolon) have no effect here ---
+\.{GWEB} mirrors the source rather than reflowing it --- so they are accepted and
+dropped for portability.
+@<Scan one in-code control code@>=
+switch d := code[i+1]; d {
+case '@@':
+	buf.WriteByte('@@')
+	i += 2
+case '&':
+	flush()
+	atoms = append(atoms, Atom{Kind: APaste})
+	i += 2
+case '<':
+	end := indexFrom(code, "@@>", i+2)
+	if end < 0 {
+		buf.WriteString(code[i:])
+		i = n
+		continue
+	}
+	flush()
+	atoms = append(atoms, Atom{Kind: ARef, Text: canonName(code[i+2 : end])})
+	i = end + 2
+case '=':
+	end := indexFrom(code, "@@>", i+2)
+	if end < 0 {
+		i = n
+		continue
+	}
+	flush()
+	atoms = append(atoms, Atom{Kind: AVerbatim, Text: code[i+2 : end]})
+	i = end + 2
+case 't':
+	end := indexFrom(code, "@@>", i+2)
+	if end < 0 {
+		i = n
+		continue
+	}
+	flush()
+	atoms = append(atoms, Atom{Kind: ATeX, Text: code[i+2 : end]})
+	i = end + 2
+case '^', '.', ':':
+	end := indexFrom(code, "@@>", i+2)
+	if end < 0 {
+		i = n
+		continue
+	}
+	flush()
+	atoms = append(atoms, Atom{Kind: AIndex, Text: code[i+2 : end], Index: d})
+	i = end + 2
+case 'q':
+	end := indexFrom(code, "@@>", i+2)
+	if end < 0 {
+		i = n
+		continue
+	}
+	i = end + 2 // ignored material
+case '%':
+	j := i + 2
+	for j < n && code[j] != '\n' {
+		j++
+	}
+	i = j
+case '>':
+	i += 2 // stray terminator
+case ',', '/', '|', '#':
+	flush()
+	atoms = append(atoms, Atom{Kind: ALayout, Index: d})
+	i += 2
+case '!':
+	flush()
+	atoms = append(atoms, Atom{Kind: AIndexDef})
+	i += 2
+case '+', '[', ']', ';':
+	i += 2 // \.{CWEB} prettyprinter hints, dropped
+default:
+	i += 2 // unknown \.{@@x}: drop it rather than corrupt the output
 }
 
 @* Change files.
@@ -876,11 +944,16 @@ are matched against the master source â€” after \.{@@i} includes are expanded â€
 the order they appear: \.{GWEB} scans the master line by line, and at the first
 line equal to a change's first match line it requires the whole match block
 to match, then substitutes the replacement lines.
+@c
+@<Change-file records@>
+@<Recognize and compare change lines@>
+@<Parse a change file@>
+@<Apply changes to the master source@>
 
 @ A |change| records the lines to find and the lines to substitute, plus
 change-file line numbers for diagnostics. A |srcLoc| identifies the origin of a
 line of the expanded, change-applied source.
-@(common/common.go@>=
+@<Change-file records@>=
 type change struct {
 	match    []string // lines to find in the master source
 	repl     []string // lines to substitute for them
@@ -902,7 +975,7 @@ func (l srcLoc) String() string {
 
 @ Recognizing a change control line and comparing source lines (ignoring
 trailing whitespace, as \.{CWEB} does), with a line splitter that normalizes \.{CRLF}.
-@(common/common.go@>=
+@<Recognize and compare change lines@>=
 func isChangeCtrl(line string, c byte) bool {
 	return len(line) >= 2 && line[0] == '@@' && line[1] == c
 }
@@ -917,7 +990,7 @@ func sameLine(a, b string) bool {
 
 @ |parseChangeFile| parses change-file text into an ordered list of changes,
 reporting the malformed-change errors precisely.
-@(common/common.go@>=
+@<Parse a change file@>=
 func parseChangeFile(src string) ([]change, error) {
 	lines := splitLines(src)
 	var changes []change
@@ -929,29 +1002,8 @@ func parseChangeFile(src string) ([]change, error) {
 		}
 		c := change{line: i + 1}
 		i++
-		for i < n && !isChangeCtrl(lines[i], 'y') {
-			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'z') {
-				return nil, fmt.Errorf("change file line %d: expected @@y to close the @@x match part", c.line)
-			}
-			c.match = append(c.match, lines[i])
-			i++
-		}
-		if i >= n {
-			return nil, fmt.Errorf("change file line %d: @@x without a matching @@y", c.line)
-		}
-		i++ // skip \.{@@y}
-		c.replLine = i + 1
-		for i < n && !isChangeCtrl(lines[i], 'z') {
-			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'y') {
-				return nil, fmt.Errorf("change file line %d: expected @@z to close the change", c.line)
-			}
-			c.repl = append(c.repl, lines[i])
-			i++
-		}
-		if i >= n {
-			return nil, fmt.Errorf("change file line %d: change has no @@z", c.line)
-		}
-		i++ // skip \.{@@z}
+		@<Collect the match part up to \.{@@y}@>
+		@<Collect the replacement part up to \.{@@z}@>
 		if len(c.match) == 0 {
 			return nil, fmt.Errorf("change file line %d: the @@x match part is empty", c.line)
 		}
@@ -960,8 +1012,40 @@ func parseChangeFile(src string) ([]change, error) {
 	return changes, nil
 }
 
+@ The match part runs from after the \.{@@x} to the \.{@@y}; a stray \.{@@x} or
+\.{@@z} inside it, or the end of file, is an error. After the \.{@@y} we record
+where the replacement lines begin, for diagnostics.
+@<Collect the match part up to \.{@@y}@>=
+for i < n && !isChangeCtrl(lines[i], 'y') {
+	if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'z') {
+		return nil, fmt.Errorf("change file line %d: expected @@y to close the @@x match part", c.line)
+	}
+	c.match = append(c.match, lines[i])
+	i++
+}
+if i >= n {
+	return nil, fmt.Errorf("change file line %d: @@x without a matching @@y", c.line)
+}
+i++ // skip \.{@@y}
+c.replLine = i + 1
+
+@ The replacement part runs from after the \.{@@y} to the \.{@@z}, with the same
+guard against a stray \.{@@x} or \.{@@y} and against running off the end.
+@<Collect the replacement part up to \.{@@z}@>=
+for i < n && !isChangeCtrl(lines[i], 'z') {
+	if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'y') {
+		return nil, fmt.Errorf("change file line %d: expected @@z to close the change", c.line)
+	}
+	c.repl = append(c.repl, lines[i])
+	i++
+}
+if i >= n {
+	return nil, fmt.Errorf("change file line %d: change has no @@z", c.line)
+}
+i++ // skip \.{@@z}
+
 @ |applyChanges| is the string convenience form used by tests.
-@(common/common.go@>=
+@<Apply changes to the master source@>=
 func applyChanges(src string, changes []change, chFile string) (string, error) {
 	out, _, err := applyChangesMapped(splitLines(src), nil, changes, chFile)
 	if err != nil {
@@ -974,7 +1058,7 @@ func applyChanges(src string, changes []change, chFile string) (string, error) {
 step: passed-through lines keep their origin, replacement lines are attributed
 to the change file. It is an error if a change is never matched, or matches its
 first line but not the rest.
-@(common/common.go@>=
+@<Apply changes to the master source@>=
 func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) ([]string, []srcLoc, error) {
 	loc := func(i int) srcLoc {
 		if locs != nil && i < len(locs) {
@@ -1012,7 +1096,7 @@ func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile
 
 @ |blockMatches| reports whether a match block lines up with the master source
 at a given index.
-@(common/common.go@>=
+@<Apply changes to the master source@>=
 func blockMatches(master []string, at int, match []string) bool {
 	if at+len(match) > len(master) {
 		return false
@@ -1026,7 +1110,7 @@ func blockMatches(master []string, at int, match []string) bool {
 }
 
 @* Tests. The \.{common} package's tests, one section per case.
-@(common/common_test.go@>=
+@(common_test.go@>=
 package common
 
 import (
@@ -1035,7 +1119,7 @@ import (
 	"testing"
 )
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 const sample = `\input gwebmac
 This is limbo text.
 
@@ -1062,7 +1146,7 @@ println("hello, world")
 println("again")
 `
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestParseStructure(t *testing.T) {
 	w := ParseString(sample)
 
@@ -1110,7 +1194,7 @@ func TestParseStructure(t *testing.T) {
 
 @ \.{@@**} is the top-level group (depth -1), printed bold in the contents, as
  \.{CWEB} does; \.{@@*} stays depth 0 and @@*n stays depth n.
-@(common/common_test.go@>=
+@(common_test.go@>=
 func TestDoubleStarDepth(t *testing.T) {
 	w := ParseString("@@** Top.\n@@c\npackage main\n@@* Ordinary.\n@@ x\n@@*2 Deep.\n@@ y\n")
 	want := []int{-1, 0, 2}
@@ -1130,7 +1214,7 @@ func TestDoubleStarDepth(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestResolveAbbrev(t *testing.T) {
 	w := ParseString(sample)
 	if got := w.Resolve("Print the..."); got != "Print the greeting" {
@@ -1138,7 +1222,7 @@ func TestResolveAbbrev(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestCodePragmaP(t *testing.T) {
 	// \.{@@p} is a synonym for @@c (\.{CWEB} compatibility).
 	w := ParseString("@@ x\n@@p\npackage main\n")
@@ -1153,7 +1237,7 @@ func TestCodePragmaP(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestDefaultExt(t *testing.T) {
 	cases := []struct{ name, ext, want string }{
 		{"wc", ".w", "wc.w"},         // bare name gets the extension
@@ -1169,12 +1253,12 @@ func TestDefaultExt(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func contains(s, sub string) bool {
 	return len(s) >= len(sub) && indexFrom(s, sub, 0) >= 0
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestLimboFormats(t *testing.T) {
 	w := ParseString(`\input gwebmac
 @@f Counts int
@@ -1200,7 +1284,7 @@ package main
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func hasWarning(ws []string, sub string) bool {
 	for _, w := range ws {
 		if indexFrom(w, sub, 0) >= 0 {
@@ -1210,7 +1294,7 @@ func hasWarning(ws []string, sub string) bool {
 	return false
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestSectionLines(t *testing.T) {
 	w := ParseString("limbo\n\n@@ first\n@@c\nx\n\n@@ second\n@@c\ny\n")
 	if w.Sections[0].Line != 3 {
@@ -1221,7 +1305,7 @@ func TestSectionLines(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestDiagnostics(t *testing.T) {
 	cases := []struct {
 		name, src, want string
@@ -1245,7 +1329,7 @@ func TestDiagnostics(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestChangeFileApply(t *testing.T) {
 	master := "@@ greet\n@@c\npackage main\n\nfunc main() {\n\tprintln(\"hello\")\n}\n"
 	chSrc := "Ignored commentary.\n@@x\n\tprintln(\"hello\")\n@@y\n\tprintln(\"goodbye\")\n@@z\n"
@@ -1265,7 +1349,7 @@ func TestChangeFileApply(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestChangeFileNoMatch(t *testing.T) {
 	master := "@@ x\n@@c\npackage main\n"
 	changes, _ := parseChangeFile("@@x\nnonexistent line\n@@y\nwhatever\n@@z\n")
@@ -1275,7 +1359,7 @@ func TestChangeFileNoMatch(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestChangeFilePartialMismatch(t *testing.T) {
 	master := "alpha\nbeta\ngamma\n"
 	changes, _ := parseChangeFile("@@x\nbeta\nWRONG\n@@y\nx\n@@z\n")
@@ -1285,14 +1369,17 @@ func TestChangeFilePartialMismatch(t *testing.T) {
 	}
 }
 
-@ @(common/common_test.go@>=
+@ @(common_test.go@>=
 func TestChangeFileMalformed(t *testing.T) {
 	if _, err := parseChangeFile("@@x\nfind\n@@z\n"); err == nil {
 		t.Error("want error for @@x without @@y")
 	}
 }
 
-@ @(common/common_test.go@>=
+@ Include-line mapping. An undefined reference living in an included file must be
+reported against that file (here \.{part.w}), not against a line number in the
+includes-expanded master, and a section's origin must map back the same way.
+@(common_test.go@>=
 func TestIncludeLineMapping(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite := func(name, content string) string {
@@ -1309,8 +1396,6 @@ func TestIncludeLineMapping(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The undefined reference lives in part.w; the diagnostic must cite it
-	// (not a line number in the includes-expanded master).
 	if !hasWarning(w.Warnings, "part.w:1") {
 		t.Errorf("want a warning citing part.w:1, got %v", w.Warnings)
 	}
@@ -1322,7 +1407,7 @@ func TestIncludeLineMapping(t *testing.T) {
 
 @ The full name may appear only at a reference, with the definition
 abbreviated -- and vice versa. Neither should warn.
-@(common/common_test.go@>=
+@(common_test.go@>=
 func TestResolveAbbrevEitherSide(t *testing.T) {
 	srcs := []string{
 		"@@ x\n@@c\nvar _ = @@<The parallel-map function@@>\n@@ d\n@@<The parallel...@@>=\n1\n",

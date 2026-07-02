@@ -39,7 +39,7 @@ build: generate
 # reshuffles those line numbers. `tangle' is a synonym.
 generate tangle:
 	$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
-	@for w in $(WEBS); do $(BIN)/gtangle -o . "$$w"; done
+	@for w in $(WEBS); do $(BIN)/gtangle "$$w"; done
 
 # Prove the bootstrap reproduces itself: tangle every web into a scratch tree
 # and check the committed Go is byte-identical (the fixpoint). Only the committed
@@ -48,7 +48,7 @@ generate tangle:
 bootstrap:
 	@$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
 	@rm -rf .bootstrap
-	@for w in $(WEBS); do $(BIN)/gtangle -o .bootstrap "$$w" >/dev/null; done
+	@for w in $(WEBS); do $(BIN)/gtangle -o ".bootstrap/$$(dirname "$$w")" "$$w" >/dev/null; done
 	@ok=1; for d in common cmd/gtangle; do \
 		diff -r "$$d" ".bootstrap/$$d" --exclude='*_test.go' --exclude='*.w' >/dev/null || { echo "DIFF in $$d"; ok=0; }; \
 	done; \
