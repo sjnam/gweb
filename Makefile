@@ -93,27 +93,11 @@ install-tools: generate
 # Tangle and weave the bundled examples (needs a TeX engine for the PDFs).
 example: build
 	$(MAKE) -C examples NAME=wc
-	$(MAKE) -C examples NAME=pmap
 	$(MAKE) -C examples NAME=seq
 	$(MAKE) -C examples NAME=floyd
 	$(MAKE) -C examples NAME=sham
-	$(MAKE) -C examples NAME=fast_cancel
-	$(MAKE) -C examples NAME=prjeuler152
-	$(MAKE) -C examples NAME=topswops
-	$(MAKE) -C examples NAME=topswops_fwd
 	$(MAKE) -C examples NAME=squint
-	$(MAKE) -C examples NAME=pairsums
-	$(MAKE) -C examples NAME=pipeline
 	$(MAKE) -C examples NAME=hangul TEXENGINE=luatex
-	$(MAKE) -C examples NAME=slidingmax TEXENGINE=luatex
-	$(MAKE) -C examples NAME=waiter TEXENGINE=luatex
-	$(MAKE) -C examples NAME=trucktour TEXENGINE=luatex
-	$(MAKE) -C examples NAME=poison TEXENGINE=luatex
-	$(MAKE) -C examples NAME=runningmedian TEXENGINE=luatex
-	$(MAKE) -C examples NAME=convmod TEXENGINE=luatex
-	$(MAKE) -C examples NAME=intersect TEXENGINE=luatex
-	$(MAKE) -C examples NAME=suffixautomaton TEXENGINE=luatex
-	$(MAKE) -C examples NAME=pqundo TEXENGINE=luatex
 
 clean:
 	rm -rf $(BIN) build $(GEN_GO)

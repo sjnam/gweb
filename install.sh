@@ -73,7 +73,7 @@ mkdir -p "$BINDIR"
 "$GO" build -o "$BINDIR/gtangle" ./cmd/gtangle
 # gweave's Go is not committed (cweb tradition); tangle it with the gtangle just
 # built, then compile it.
-"$BINDIR/gtangle" -o . cmd/gweave/gweave.w >/dev/null
+"$BINDIR/gtangle" cmd/gweave/gweave.w >/dev/null
 "$GO" build -o "$BINDIR/gweave" ./cmd/gweave
 
 echo "Installing TeX macros into $GWEBMACDIR ..."
