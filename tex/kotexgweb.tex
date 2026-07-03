@@ -147,9 +147,24 @@
 \font\tentex=cmtex10
 
 \font\inchhigh=cminch
-% Contents-page title: a sans hangul at the size English gweb uses for it
-% (cmr7 scaled\magstep4 is about 14.5pt), so it is not oversized.
-\font\titlefont="Noto Serif CJK KR Medium" at 14.5pt
+% Contents-page title (\Gcon) and the typewriter title for limbo: keep gwebmac's
+% Latin title fonts for Latin and punctuation, and pair a Hangul companion via
+% luatexko's \sethangulfont so only Korean characters take the CJK face -- the
+% same "\latinfont\hangulfont" idiom this file uses for \rm above. gwebmac set
+% \titlefont=cmr7 scaled\magstep4 (~14.5pt) and \ttitlefont=cmtt10 scaled\magstep2
+% (~14.4pt); the companions match those sizes.
+\let\Glatintitlefont=\titlefont
+\sethangulfont\Ghangultitlefont="Noto Serif CJK KR Medium:%
+  language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
+  charraise=-0.06em;+compresspunctuations" at 14.5pt
+\def\titlefont{\Glatintitlefont\Ghangultitlefont}
+
+\let\Glattitlefont=\ttitlefont
+\sethangulfont\Ghantitlefont="Noto Sans Mono CJK KR:%
+  language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
+  charraise=-0.06em;+compresspunctuations" at 14.4pt
+\def\ttitlefont{\Glattitlefont\Ghantitlefont}
+
 \font\sectionfont="Noto Sans CJK KR Light" at 18pt
 
 \font\ninerm=cmr9
