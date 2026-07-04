@@ -1,6 +1,7 @@
 # GWEB — Literate programming for Go
 
 [![CI](https://github.com/sjnam/gweb/actions/workflows/ci.yml/badge.svg)](https://github.com/sjnam/gweb/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 GWEB is a [literate programming](https://www-cs-faculty.stanford.edu/~knuth/lp.html)
 system for the Go programming language, modeled closely on Donald Knuth and Silvio Levy's
@@ -299,3 +300,7 @@ make manual       # -> build/gwebman.pdf
   route emits `\special{pdf:…}` commands for `dvipdfmx` when you ask for them with
   `\let\pdf+` (the same convention as CWEB). With a plain DVI engine and no
   `\let\pdf+`, the links and bookmarks are simply omitted.
+
+## License
+
+GWEB is released under the [MIT License](LICENSE).
