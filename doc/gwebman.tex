@@ -194,6 +194,14 @@ keyword before \cw{(}, so \cw{f (x)} does not jam together; and a comment's
 \cw{//} is kerned a little tighter. \TeX\ mathematics written between dollar
 signs inside a comment is typeset as mathematics.
 
+Indentation is {\it structural\/}, not copied from the source. \cw{gweave} tracks
+the block nesting of each code part --- braces, parentheses, and brackets, with the
+special cases \cw{gofmt} makes for \cw{switch} case bodies and for labels --- and
+lays every line out the way \cw{gofmt} would, so a carelessly indented section still
+reads cleanly. (This is like \cw{cweave}, which reindents from the \CEE/ grammar;
+horizontal spacing within a line, on the other hand, does follow the source, which
+for \cw{gofmt}'d code already encodes the grammar.)
+
 \section{Index and formatting codes}
 The hand-index codes \cw{@\char94 text@>} (roman), \cw{@.text@>} (typewriter),
 and \cw{@:text@>} (formatted by \cw{\bs9}) work as in CWEB, as do \cw{@!} to

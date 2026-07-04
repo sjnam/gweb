@@ -130,7 +130,7 @@ tangled together with the front end into the single file \.{gweave.go}.
 @<Render a section name@>
 @<Index predicates and declaration keywords@>
 @<Decide whether an identifier is a definition@>
-@<Measure the indentation level@>
+@<Track structural indentation@>
 
 @ A |Weaver| carries the per-document state: the map from a named section to its
 first defining section, the \.{@@f}/\.{@@s} format overrides, and the
@@ -569,17 +569,21 @@ spacing mirrors the source: a run of tokens with no source whitespace becomes
 one tight math ``chunk'' ($\ldots$), and a gap becomes a breakable \.{\\GS} space
 between chunks. Because |gofmt| already encodes the grammar in its spacing, this
 reproduces it exactly (pointer |*T| vs.\ |a * b|, slice |[]T| vs.\ index |a[i]|)
-and lets long lines wrap at \.{\\GS}. Among the state variables, |prevSigKind|
-and |prevSigText| track the most recent significant token, so an identifier
-following |func|/|var|/|const|/|type| can be flagged as a definition, and
-|prevPrevSigText| keeps the one before that, so a qualifier like |foo| in
-|foo.Bar| can be recovered.
+and lets long lines wrap at \.{\\GS}. The horizontal spacing thus mirrors the
+source, but each line's indentation does not: the |indenter| derives it from the
+block structure (the |indenter|, in the \.{Structural indentation} section below),
+so even carelessly indented source is laid out the way |gofmt| would. Among the
+other state variables, |prevSigKind| and
+|prevSigText| track the most recent significant token, so an identifier following
+|func|/|var|/|const|/|type| can be flagged as a definition, and |prevPrevSigText|
+keeps the one before that, so a qualifier like |foo| in |foo.Bar| can be recovered.
 @<Render a code part@>=
 func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	var out strings.Builder
 	var line strings.Builder // the current source line: chunks joined by \.{\\GS}
 	var run strings.Builder  // the current tight chunk (one \TEX/ math group)
 	var st lexState
+	var in indenter
 	indent := 0
 	atLineStart := true
 	pendingSpace := false
@@ -678,11 +682,19 @@ case common.AText:
 	toks := lexGo(a.Text, &st)
 	@<Render the tokens of a text atom@>
 case common.ARef:
+	if atLineStart {
+		indent = in.beginGeneric()
+	}
 	name := wv.w.Resolve(a.Text)
 	wv.xref.addSectionUse(name, secNum)
 	emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
+	in.advanceGeneric()
 case common.AVerbatim:
+	if atLineStart {
+		indent = in.beginGeneric()
+	}
 	emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)))
+	in.advanceGeneric()
 case common.ATeX:
 	emit(a.Text)
 case common.AIndex:
@@ -707,18 +719,18 @@ case common.AIndexDef:
 	forceDef = true // @@!: the next identifier is a definition
 }
 
-@ Within a text atom, a newline flushes the woven line, a whitespace run either
-adds to the indent (at line start) or marks a pending source gap, and anything
-else is a significant token.
+@ Within a text atom, a newline flushes the woven line and closes the
+|indenter|'s view of it; leading whitespace is ignored, since the indentation is
+now structural, while an interior whitespace run marks a pending source gap;
+anything else is a significant token.
 @<Render the tokens of a text atom@>=
 for k, t := range toks {
 	switch t.kind {
 	case tkNewline:
 		flushLine()
+		in.endLine()
 	case tkSpace:
-		if atLineStart {
-			indent += indentLevel(t.text)
-		} else {
+		if !atLineStart {
 			pendingSpace = true
 		}
 	default:
@@ -732,6 +744,9 @@ or a following |:=|, marks a definition), gets a \.{\\Gthin} thin space before a
 as cweave does), and is emitted in its effective class --- a comment through
 |renderComment|, everything else through |renderToken|.
 @<Typeset a significant token@>=
+if atLineStart {
+	indent = in.beginLine(t, toks, k)
+}
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if t.kind == tkIdent || t.kind == tkBuiltin {
 	def := forceDef || isDefinition(prevSigKind, prevSigText, toks, k)
@@ -753,6 +768,7 @@ if t.kind == tkComment {
 } else {
 	emit(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
 }
+in.advance(t)
 prevPrevSigText = prevSigText
 prevSigKind, prevSigText = t.kind, t.text
 
@@ -1137,25 +1153,312 @@ func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
 	return false
 }
 
-@ |indentLevel| measures a leading-whitespace run: one level per tab, plus one
-per four spaces.
-@<Measure the indentation level@>=
-func indentLevel(s string) int {
-	level, spaces := 0, 0
-	for i := 0; i < len(s); i++ {
-		switch s[i] {
-		case '\t':
-			level++
-			spaces = 0
-		case ' ':
-			spaces++
-			if spaces == 4 {
-				level++
-				spaces = 0
-			}
+@* Structural indentation.
+Unlike \.{cweave}, which parses \CEE/ and lays out each construct by its grammar,
+\.{gweave} once copied the woven indentation straight from the source whitespace.
+That is exact for |gofmt|'d code but reproduces sloppy code just as sloppily.
+Instead we derive each line's indentation from the block structure, the way
+|gofmt| does: a running stack of open brackets, with the special cases a plain
+brace-counter would miss --- |switch|/|select| case bodies, dedented labels and
+closers, and a statement continued across a line by a trailing operator.
+
+@ An |indentFrame| is one open bracket. |openerIndent| is the level its content is
+measured from: the body sits one past it and the closing bracket returns to it. For
+a composite literal or parentheses that is the physical line the bracket opened on,
+but for a statement block it is the {\it statement's\/} own indentation, so the body
+of a |func| whose signature wrapped across lines still lines up under the |func|,
+not under the wrapped parameters. A |switch| or |select| body is the exception
+|gofmt| makes: its |case|/|default| labels sit at |openerIndent|, not one deeper,
+and only the statements beneath a label indent a further level.
+@<Track structural indentation@>=
+type indentFrame struct {
+	openerIndent int  // the indentation this bracket's content is measured from
+	isBlock      bool // a statement block, not a composite literal or parentheses
+	isSwitch     bool // a switch/select body: its cases sit at openerIndent
+	sawCase      bool // a case/default label has been seen in this body
+}
+
+@ The |indenter| carries the bracket stack and the little look-behind the special
+cases need: |parenDepth| (open parentheses and brackets), a note that a
+block-opening keyword (|func|, |if|, |for|, |switch|, \dots) is waiting for its
+brace so the brace can be told from a composite literal's, whether a multi-line raw
+string or block comment is still open (its continuation lines are verbatim, never
+re-indented), and enough about the previous line to tell whether the current one
+continues its statement.
+@<Track structural indentation@>=
+type indenter struct {
+	stack           []indentFrame
+	parenDepth      int
+	pendingBlock    bool // a block-opening keyword awaits its brace
+	pendingSwitch   bool // ...and that block is a switch/select
+	blockParenDepth int  // the parenDepth at which that brace is expected
+	rawOpen, cmtOpen bool
+	prevContinues   bool  // the previous line ended without closing its statement
+	stmtDepth       int   // bracket depth where the current statement began
+	curLineIndent   int   // indentation chosen for the line now being built
+	lineHadToken    bool
+	lastToken       token // last significant token of the current line
+}
+
+@ |top| is the innermost open frame, or a synthetic base frame (|openerIndent|
+$-1$, so its content sits at column zero) when nothing is open.
+@<Track structural indentation@>=
+func (in *indenter) top() indentFrame {
+	if len(in.stack) == 0 {
+		return indentFrame{openerIndent: -1}
+	}
+	return in.stack[len(in.stack)-1]
+}
+
+@ |beginLine| chooses the indentation for a line whose first significant token is
+|t|. A continuation line of an open literal is emitted verbatim at column zero. A
+fresh statement --- one the previous line did not continue --- resets |stmtDepth| to
+the current bracket depth, so |contExtra| only fires while the statement stays at
+that depth.
+@<Track structural indentation@>=
+func (in *indenter) beginLine(t token, toks []token, k int) int {
+	if in.rawOpen || in.cmtOpen {
+		in.curLineIndent = 0
+		return 0
+	}
+	if !in.prevContinues {
+		in.stmtDepth = len(in.stack)
+	}
+	in.curLineIndent = in.lineIndent(t, toks, k)
+	return in.curLineIndent
+}
+
+@ |lineIndent| applies the layout rules in priority order: a leading closer aligns
+with its opener; a bare label is pulled one level in; a |case|/|default| sits at the
+switch body's level; and any other line takes its frame's content level, plus one
+more if it continues the previous line's statement. |contentOf| is that content
+level --- one past |openerIndent|, except that a |switch| body's own level (where a
+stray comment before the first case sits) is |openerIndent| itself.
+@<Track structural indentation@>=
+func (in *indenter) lineIndent(t token, toks []token, k int) int {
+	top := in.top()
+	switch {
+	case isCloser(t), isLabel(toks, k):
+		return clampIndent(top.openerIndent)
+	case top.isSwitch && isCaseLabel(t):
+		return clampIndent(top.openerIndent)
+	}
+	return contentOf(top) + in.contExtra()
+}
+
+func contentOf(f indentFrame) int {
+	if f.isSwitch && !f.sawCase {
+		return f.openerIndent
+	}
+	return f.openerIndent + 1
+}
+
+@ |contExtra| grants the extra level a continued statement gets, but only while the
+line is still at the bracket depth where the statement began; once a bracket has
+opened, that bracket's own indentation takes over.
+@<Track structural indentation@>=
+func (in *indenter) contExtra() int {
+	if in.prevContinues && len(in.stack) == in.stmtDepth {
+		return 1
+	}
+	return 0
+}
+
+@ |advance| updates the stack and the look-behind after a significant token |t| is
+emitted. A block-opening keyword arms |pendingBlock| so the next brace at its
+parenthesis depth is recognized as a block rather than a composite literal; a
+|case|/|default| marks its switch body; brackets push and pop frames; and an open
+raw string or block comment is tracked so its continuation lines are left verbatim.
+@<Track structural indentation@>=
+func (in *indenter) advance(t token) {
+	in.lineHadToken = true
+	switch t.kind {
+	case tkString:
+		in.trackRawString(t.text)
+		in.lastToken = t
+		return
+	case tkComment:
+		in.trackBlockComment(t.text)
+		return
+	}
+	if in.rawOpen || in.cmtOpen {
+		return
+	}
+	@<Update the bracket stack for a token@>
+	in.lastToken = t
+}
+
+@ A brace opens a block when a keyword armed |pendingBlock| at this parenthesis
+depth, and a composite literal (or struct/interface type) otherwise. Only a block's
+indentation follows the statement; a composite's follows its own line, so the two
+push |openerIndent| from different sources. Parentheses and brackets are never
+blocks. (A composite literal inside a |for \dots range| header could be mistaken for
+the block, but only |for| allows one unparenthesized, and only when it spans lines
+would the misread show --- a corner rare enough to leave be.)
+@<Update the bracket stack for a token@>=
+switch t.kind {
+case tkKeyword:
+	switch t.text {
+	case "func", "if", "for", "else", "switch", "select":
+		in.pendingBlock = true
+		in.pendingSwitch = t.text == "switch" || t.text == "select"
+		in.blockParenDepth = in.parenDepth
+	case "case", "default":
+		if n := len(in.stack); n > 0 && in.stack[n-1].isSwitch {
+			in.stack[n-1].sawCase = true
 		}
 	}
-	return level
+case tkOp:
+	switch t.text {
+	case "{":
+		if in.pendingBlock && in.parenDepth == in.blockParenDepth {
+			in.stack = append(in.stack, indentFrame{
+				openerIndent: in.blockOpenerIndent(), isBlock: true, isSwitch: in.pendingSwitch})
+			in.pendingBlock = false
+		} else {
+			in.stack = append(in.stack, indentFrame{openerIndent: in.curLineIndent})
+		}
+	case "(", "[":
+		in.parenDepth++
+		in.stack = append(in.stack, indentFrame{openerIndent: in.curLineIndent})
+	case "}":
+		in.popFrame()
+	case ")", "]":
+		in.popFrame()
+		if in.parenDepth > 0 {
+			in.parenDepth--
+		}
+	}
+}
+
+@ A block's body is indented from the enclosing block's content level when the brace
+sits at statement level, but from the current line when it opens inside an open
+expression --- a function literal passed as an argument, say, whose body should not
+also pay for the enclosing parentheses.
+@<Track structural indentation@>=
+func (in *indenter) blockOpenerIndent() int {
+	if n := len(in.stack); n > 0 && !in.stack[n-1].isBlock {
+		return in.curLineIndent
+	}
+	return contentOf(in.top())
+}
+
+@ Multi-line literals are lexed one physical line at a time, so the renderer sees a
+raw string or block comment as a token per line. |trackRawString| and
+|trackBlockComment| follow the open/close of each so |beginLine| can leave the
+continuation lines untouched.
+@<Track structural indentation@>=
+func (in *indenter) trackRawString(text string) {
+	if in.rawOpen {
+		if strings.Contains(text, "`") {
+			in.rawOpen = false
+		}
+	} else if strings.HasPrefix(text, "`") && !strings.Contains(text[1:], "`") {
+		in.rawOpen = true
+	}
+}
+
+func (in *indenter) trackBlockComment(text string) {
+	if in.cmtOpen {
+		if strings.Contains(text, "*/") {
+			in.cmtOpen = false
+		}
+	} else if strings.HasPrefix(text, "/*") && !strings.Contains(text, "*/") {
+		in.cmtOpen = true
+	}
+}
+
+func (in *indenter) popFrame() {
+	if n := len(in.stack); n > 0 {
+		in.stack = in.stack[:n-1]
+	}
+}
+
+@ A line that carried at least one token continues its statement when that token was
+an operator that cannot end one --- \GO/'s own automatic-semicolon rule. |endLine|
+records the verdict for the next line. |beginGeneric| and |advanceGeneric| are the
+section-reference and verbatim counterparts of |beginLine| and |advance|, treating
+that material as an ordinary statement token.
+@<Track structural indentation@>=
+func (in *indenter) endLine() {
+	if in.lineHadToken {
+		in.prevContinues = continuesStmt(in.lastToken)
+		if !in.prevContinues && in.parenDepth <= in.blockParenDepth {
+			in.pendingBlock = false // a func type, say, that never opened a block
+		}
+	}
+	in.lineHadToken = false
+}
+
+func (in *indenter) beginGeneric() int {
+	if in.rawOpen || in.cmtOpen {
+		in.curLineIndent = 0
+		return 0
+	}
+	if !in.prevContinues {
+		in.stmtDepth = len(in.stack)
+	}
+	in.curLineIndent = contentOf(in.top()) + in.contExtra()
+	return in.curLineIndent
+}
+
+func (in *indenter) advanceGeneric() {
+	in.lineHadToken = true
+	in.lastToken = token{kind: tkIdent}
+}
+
+@ The remaining predicates are small enough to read at a glance. |isLabel| spots a
+statement label |Name:| alone on its line --- an identifier, a colon, then the
+line's end --- so it can be pulled in a level; requiring the colon to end the line
+keeps a composite-literal key (|Name: value|, value and all) from being mistaken
+for one. |continuesStmt| lists the operators that, at a line's end, leave its
+statement open.
+@<Track structural indentation@>=
+func isCloser(t token) bool {
+	return t.kind == tkOp && (t.text == "}" || t.text == ")" || t.text == "]")
+}
+
+func isCaseLabel(t token) bool {
+	return t.kind == tkKeyword && (t.text == "case" || t.text == "default")
+}
+
+func clampIndent(n int) int {
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+func isLabel(toks []token, k int) bool {
+	if toks[k].kind != tkIdent {
+		return false
+	}
+	j := skipSpace(toks, k+1)
+	if j < 0 || toks[j].kind != tkOp || toks[j].text != ":" {
+		return false
+	}
+	j = skipSpace(toks, j+1)
+	return j < 0 || toks[j].kind == tkNewline
+}
+
+func skipSpace(toks []token, i int) int {
+	for ; i < len(toks); i++ {
+		if toks[i].kind != tkSpace {
+			return i
+		}
+	}
+	return -1
+}
+
+func continuesStmt(t token) bool {
+	if t.kind != tkOp {
+		return false
+	}
+	switch t.text {
+	case "(", "[", "{", ")", "]", "}", "[]", "{}", ",", ":", "++", "--":
+		return false
+	}
+	return true
 }
 
 @* A Go lexer for the woven output.
@@ -2081,6 +2384,7 @@ The weave engine's tests, one section per case. %'
 package main
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -2418,6 +2722,40 @@ func TestWeaveIotaConst(t *testing.T) {
 		if !strings.Contains(out, `\GID{`+name+`}`) {
 			t.Errorf("%s should stay italic:\n%s", name, out)
 		}
+	}
+}
+
+@ Indentation is derived from the block structure, not the source whitespace, so
+this deliberately flush-left fragment --- a range loop with a nested |if| --- is
+laid out the way |gofmt| would, each \.{\\GL} carrying its structural level.
+@(gweave_test.go@>=
+func TestWeaveStructuralIndent(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@<b@@>=\n"+
+		"for v := range s {\nif i >= n || !yield(v) {\nreturn\n}\ni++\n}\n")
+	var got []string
+	for _, m := range regexp.MustCompile(`\\GL\{(\d+)\}`).FindAllStringSubmatch(out, -1) {
+		got = append(got, m[1])
+	}
+	want := []string{"0", "1", "2", "1", "1", "0"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("structural indent levels = %v, want %v\n%s", got, want, out)
+	}
+}
+
+@ A \.{switch} is the case a plain brace-counter gets wrong: |gofmt| keeps the
+|case| labels at the \.{switch}'s own level and indents only the bodies, and so
+does the woven output.
+@(gweave_test.go@>=
+func TestWeaveSwitchIndent(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@<b@@>=\n"+
+		"switch x {\ncase 1:\nf()\ndefault:\ng()\n}\n")
+	var got []string
+	for _, m := range regexp.MustCompile(`\\GL\{(\d+)\}`).FindAllStringSubmatch(out, -1) {
+		got = append(got, m[1])
+	}
+	want := []string{"0", "0", "1", "0", "1", "0"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("switch indent levels = %v, want %v\n%s", got, want, out)
 	}
 }
 
