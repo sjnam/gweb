@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-const Version = "0.3.1"
+const Version = "0.3.2"
 
 @<Records shared across the web@>
 @<Parse a web from a file@>
