@@ -116,6 +116,7 @@ tangled together with the front end into the single file \.{gweave.go}.
 @<Create a weaver@>
 @<Detect type declarations@>
 @<Scan a declaration group@>
+@<Detect iota constant declarations@>
 @<The effective token class@>
 @<Weave the document in two passes@>
 @<Drop a stray gwebmac input@>
@@ -182,8 +183,9 @@ for _, s := range w.Sections {
 @ Format directives apply globally, then per section, with later definitions
 winning: the display class of identifier |a| in \.{@@f a b} is the class |b|
 would be typeset in, while \.{@@d} asks for typewriter. Finally, as in cweave, a
-name declared with \.{\|type\|} is set bold like the predeclared types (an
-explicit \.{@@f}/\.{@@s} above still wins).
+name declared with \.{\|type\|} is set bold like the predeclared types, and a
+constant declared in an |iota| enumeration is set in typewriter like a \.{@@d}
+macro; an explicit \.{@@f}/\.{@@s} above still wins for either.
 @<Install the format directives@>=
 apply := func(fs []common.Format) {
 	for _, f := range fs {
@@ -202,24 +204,40 @@ for _, s := range w.Sections {
 	apply(s.Formats)
 }
 wv.detectDecls("type", tkBuiltin)
+wv.detectIotaConsts()
 
-@ \.{cweave} sets names declared with \.{\|type\|} in bold, like the predeclared types, and
-\.{GWEB} does the same. |detectDecls| scans the code for declarations introduced by
-|keyword| --- both \.{keyword NAME ...} and the block form \.{keyword (...)} --- and
-records each declared name with |kind| (unless an \.{@@f}/\.{@@s} directive already
-classified it). This is a heuristic scan, not a full \GO/ parse, but it covers the
-forms that occur in practice; a type name you want left in italic can be reset
-with \.{@@f NAME int}, and any name can be set in typewriter with \.{@@d}.
+@ \.{cweave} sets names declared with \.{\|type\|} in bold, like the predeclared
+types, and \.{GWEB} does the same. |detectDecls| scans the code for declarations
+introduced by |keyword| --- both \.{keyword NAME ...} and the block form
+\.{keyword (...)} --- and records each declared name with |kind|. This is a
+heuristic scan, not a full \GO/ parse, but it covers the forms that occur in
+practice; a type name you want left in italic can be reset with \.{@@f NAME int},
+and any name can be set in typewriter with \.{@@d}.
 @<Detect type declarations@>=
 func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
-	add := func(name string) {
-		if name == "" || name == "_" {
-			return
-		}
-		if _, ok := wv.format[name]; !ok {
-			wv.format[name] = kind
-		}
+	wv.scanAllCode(func(toks []token) {
+		scanDecls(toks, keyword, func(name string) { wv.noteFormat(name, kind) })
+	})
+}
+
+@ |noteFormat| files a detected name under its display |kind|, but never overrides
+an explicit \.{@@f}/\.{@@s}/\.{@@d} directive --- those are installed first --- and
+the blank identifier |_| names nothing.
+@<Detect type declarations@>=
+func (wv *Weaver) noteFormat(name string, kind tokKind) {
+	if name == "" || name == "_" {
+		return
 	}
+	if _, ok := wv.format[name]; !ok {
+		wv.format[name] = kind
+	}
+}
+
+@ |scanAllCode| is the traversal the detectors share: it re-lexes every code part
+of every section --- a scan independent of the rendering pass --- and hands each
+token list to |visit|.
+@<Detect type declarations@>=
+func (wv *Weaver) scanAllCode(visit func([]token)) {
 	for _, s := range wv.w.Sections {
 		if !s.HasCode {
 			continue
@@ -227,7 +245,7 @@ func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
 		var st lexState
 		for _, a := range common.ScanCode(s.Code) {
 			if a.Kind == common.AText {
-				scanDecls(lexGo(a.Text, &st), keyword, add)
+				visit(lexGo(a.Text, &st))
 			}
 		}
 	}
@@ -306,6 +324,90 @@ func scanDeclGroup(toks []token, i int, add func(string)) int {
 		}
 	}
 	return i
+}
+
+@ A \GO/ program's manifest integer constants are written as an |iota|
+enumeration: a parenthesized |const| group whose first entry seeds the counter
+with |iota|, the following ones inheriting the expression as it advances.
+$$\vbox{\halign{\.{#}\hfil\cr
+const (\cr
+\qquad tkIdent tokKind = iota\cr
+\qquad tkKeyword\cr
+\qquad \dots\cr
+)\cr}}$$
+These read like \CEE/'s |enum| members, or \.{CWEB}'s \.{@@d} macros, so \.{GWEB}
+sets them in typewriter --- the same class as |nil|, |true|, and |false|.
+|detectIotaConsts| registers each such name as a typewriter macro, everywhere it
+is used, just as |detectDecls| registers |type| names as bold.
+@<Detect iota constant declarations@>=
+func (wv *Weaver) detectIotaConsts() {
+	wv.scanAllCode(func(toks []token) {
+		scanIotaConsts(toks, func(name string) { wv.noteFormat(name, tkMacro) })
+	})
+}
+
+@ |scanIotaConsts| finds each |const (...)| group and, when it is an |iota|
+enumeration, collects its declared names with the shared |scanDeclGroup|. A plain
+|const| block with no |iota|, and a one-line |const|, match neither arm and are
+left exactly as before; only the enumerations change.
+@<Detect iota constant declarations@>=
+func scanIotaConsts(toks []token, add func(string)) {
+	for i := 0; i < len(toks); i++ {
+		if toks[i].kind != tkKeyword || toks[i].text != "const" {
+			continue
+		}
+		j := nextSignificant(toks, i+1)
+		if j < 0 || toks[j].kind != tkOp || toks[j].text != "(" {
+			continue
+		}
+		names := add
+		if !constGroupUsesIota(toks, j+1) {
+			names = func(string) {}
+		}
+		i = scanDeclGroup(toks, j+1, names)
+	}
+}
+
+@ |constGroupUsesIota| judges a group by its first spec line alone: if |iota|
+appears there, before the line ends at the group's own nesting level, the group
+is an enumeration. Blank and comment lines ahead of the first spec are skipped,
+and brace and bracket nesting is tracked so a composite value cannot end the line
+early.
+@<Detect iota constant declarations@>=
+func constGroupUsesIota(toks []token, i int) bool {
+	depth := 0
+	seen := false // a significant token seen on the current spec line
+	for ; i < len(toks); i++ {
+		switch t := toks[i]; t.kind {
+		case tkNewline:
+			if depth == 0 && seen {
+				return false
+			}
+		case tkSpace, tkComment:
+			// not part of the spec proper
+		case tkOp:
+			switch t.text {
+			case "(", "{", "[":
+				depth++
+			case ")":
+				if depth == 0 {
+					return false
+				}
+				depth--
+			case "}", "]":
+				if depth > 0 {
+					depth--
+				}
+			}
+			seen = true
+		default:
+			if t.text == "iota" {
+				return true
+			}
+			seen = true
+		}
+	}
+	return false
 }
 
 @ |effKind| returns the token class to typeset a token in, honoring \.{@@f}/\.{@@s}
@@ -2294,6 +2396,28 @@ func TestWeaveQualifiedFormat(t *testing.T) {
 	all := weaveString(t, "\\input gwebmac\n@@s Bar int\n@@ x\n@@c\nvar b = abc.Bar\n")
 	if !strings.Contains(all, `\GID{abc}\mathord{.}\GKW{Bar}`) {
 		t.Errorf("unqualified @@s Bar should bold every Bar:\n%s", all)
+	}
+}
+
+@ Constants declared in an |iota| enumeration are set in typewriter (\.{\\GMAC}),
+everywhere they are used, while a plain \.{const} block and a one-line \.{const}
+stay italic (\.{\\GID}), and the |iota| line's type stays whatever it was.
+@(gweave_test.go@>=
+func TestWeaveIotaConst(t *testing.T) {
+	out := weaveString(t, "\\input gwebmac\n@@ x\n@@c\n"+
+		"const (\n\tRed Color = iota\n\tGreen\n)\n"+
+		"const (\n\tPi = 3.14\n)\n"+
+		"const Limit = 1\n"+
+		"var _ = Red + Green\n")
+	for _, name := range []string{"Red", "Green"} {
+		if !strings.Contains(out, `\GMAC{`+name+`}`) {
+			t.Errorf("iota constant %s should be typewriter:\n%s", name, out)
+		}
+	}
+	for _, name := range []string{"Pi", "Limit", "Color"} {
+		if !strings.Contains(out, `\GID{`+name+`}`) {
+			t.Errorf("%s should stay italic:\n%s", name, out)
+		}
 	}
 }
 

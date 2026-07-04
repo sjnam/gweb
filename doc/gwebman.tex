@@ -150,17 +150,19 @@ canonically formatted Go. If the assembled text is not valid Go, \cw{gtangle}
 keeps the unformatted output and prints a warning instead of failing.
 
 \section{Types and constants are classified automatically}
-\cw{gweave} scans for \cw{type} and \cw{const} declarations --- both the single
-form (\cw{type Name ...}, \cw{const Name ...}) and the parenthesized block form
---- and gives each declared name a CWEB-style class wherever it appears: a
-\cw{type} is set {\bf bold}, like a predeclared type, and a \cw{const} is set in
-typewriter, the way \cw{cweave} sets a name defined by \cw{@d} (a Go \cw{const}
-is the closest analogue). For names you do {\it not\/} declare in this web ---
-another package's constants, say --- mark them yourself with \cw{@d}: \cw{@d
-http.StatusOK} sets \cw{StatusOK} in typewriter everywhere it appears. You can
-override any automatic class with \cw{@f}/\cw{@s} --- e.g.\ \cw{@f Name int}
-forces \cw{Name} bold, or \cw{@f Name x} (any ordinary identifier) restores plain
-italic.
+\cw{gweave} scans for \cw{type} declarations --- both the single form (\cw{type
+Name ...}) and the parenthesized block --- and sets each declared name {\bf bold}
+wherever it appears, like a predeclared type. It also recognizes an \cw{iota}
+{\it enumeration}: a \cw{const (...)} block whose first entry seeds the counter
+with \cw{iota}. Because these are Go's manifest constants, the closest analogue of
+a name defined by \cw{@d}, each is set in typewriter everywhere it appears, the
+way \cw{cweave} sets a \cw{@d} macro. A plain \cw{const} --- a one-line \cw{const
+Name = ...}, or a block with no \cw{iota} --- is left an ordinary italic
+identifier; mark it \cw{@d} yourself if you want it in typewriter. The same goes
+for names you do {\it not\/} declare in this web: \cw{@d http.StatusOK} sets
+\cw{StatusOK} in typewriter everywhere it appears. You can override any automatic
+class with \cw{@f}/\cw{@s} --- e.g.\ \cw{@f Name int} forces \cw{Name} bold, or
+\cw{@f Name x} (any ordinary identifier) restores plain italic.
 
 Such a directive may be {\it qualified\/} to a package or receiver. \cw{@s
 foo.Bar int} sets only the \cw{Bar} written as \cw{foo.Bar}, so a coincidental
