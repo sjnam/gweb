@@ -15,6 +15,7 @@
 \abovedisplayshortskip=.5\abovedisplayshortskip
 \belowdisplayshortskip=.5\belowdisplayshortskip
 
+\font\eighttt=cmtt8
 \font\ninett=cmtt9
 \font\twelvett=cmtt12
 \font\authorfont=cmr12
@@ -42,7 +43,7 @@
 \def\endcode{\endgroup\medskip\noindent}
 
 % --- running heads, in the manner of cwebman ---
-\def\runninghead{{\ninett GWEB} USER MANUAL (VERSION 0.1.5)}
+\def\runninghead{{\ninett GWEB} USER MANUAL (VERSION 0.3.2)}
 \def\lheader{\mainfont\folio\hfil{\sc\runninghead}\hfil}
 \def\rheader{\hfil{\sc\runninghead}\hfil\mainfont\folio}
 
@@ -54,26 +55,26 @@
 \vskip 6pt
 \centerline{\sectionfont A Literate Programming System for Go}
 \vskip 18pt
-\centerline{(Version 0.1.5)}
+\centerline{(Version 0.3.2)}
 \vskip 24pt
 \centerline{\authorfont modeled on Knuth and Levy's {\ttitlefont CWEB}}
 \vfill
 \noindent
-This is a guide to {\bf GWEB} for readers who already know {\bf CWEB}, or
+This is a guide to \.{GWEB} for readers who already know \.{CWEB}, or
 literate programming generally. It does not re-explain what literate programming
-is; it concentrates on how GWEB differs from CWEB and on the features and
-commands you will actually use. To a first approximation GWEB is ``CWEB with C
-replaced by Go,'' so most of your CWEB knowledge transfers intact --- the
-interesting parts are where Go, and \cw{gofmt}, change the picture.
+is; it concentrates on how \.{GWEB} differs from \.{CWEB} and on the features and
+commands you will actually use. To a first approximation \.{GWEB} is ``\.{CWEB} with \CEE/
+replaced by \GO/,'' so most of your \.{CWEB} knowledge transfers intact --- the
+interesting parts are where \GO/, and \cw{gofmt}, change the picture.
 \vfil\eject
 
 % Running heads from the second page on.
 \headline={\ifodd\pageno\rheader\else\lheader\fi}
 
-\chapter{GWEB at a glance}
-GWEB mirrors CWEB tool for tool:
+\chapter{\.{GWEB} at a glance}
+\noindent\.{GWEB} mirrors \.{CWEB} tool for tool:
 
-\bull \cw{gtangle} $\approx$ \cw{ctangle} --- extracts the compilable Go source;
+\bull \cw{gtangle} $\approx$ \cw{ctangle} --- extracts the compilable \GO/ source;
 
 \bull \cw{gweave} $\approx$ \cw{cweave} --- typesets the documentation;
 
@@ -82,11 +83,12 @@ output uses.
 
 \noindent A web is a single file, conventionally \cw{foo.w}. \cw{gtangle foo}
 writes \cw{foo.go} (plus any extra files); \cw{gweave foo} writes \cw{foo.tex},
-which \cw{pdftex} turns into \cw{foo.pdf}. As in CWEB, the \cw{.w} may be left
+which \cw{pdftex} turns into \cw{foo.pdf}. As in \.{CWEB}, the \cw{.w} may be left
 off the command line.
 
-\chapter{What carries over from CWEB}
-If you know CWEB you already know most of GWEB. A web is a sequence of numbered
+\chapter{What carries over from \.{CWEB}}
+\noindent
+If you know \.{CWEB} you already know most of \.{GWEB}. A web is a sequence of numbered
 {\it sections}, each with up to three parts in order --- a \TeX\ commentary
 part, a definition part (\cw{@d}/\cw{@f}/\cw{@s}), and a code part --- preceded
 by {\it limbo}. The control codes keep their familiar meanings:
@@ -111,42 +113,42 @@ comments.
 \bull \cw{@,} \cw{@/} \cw{@|} \cw{@\#} fine-tune the woven layout.
 
 \bull change files (\cw{@x}/\cw{@y}/\cw{@z}) and inline code \cw{|...|} in
-commentary work exactly as in CWEB.
+commentary work exactly as in \.{CWEB}.
 
 \noindent Two small conveniences: \cw{@p} is accepted as a synonym for \cw{@c}
-(as in CWEB), and you never write \cw{\bs input gwebmac} --- \cw{gweave} emits it
+(as in \.{CWEB}), and you never write \cw{\bs input gwebmac} --- \cw{gweave} emits it
 for you, and removes a stray copy if you include one.
 
-\chapter{What makes GWEB different}
-The differences all follow from typesetting Go instead of C.
+\chapter{What makes \.{GWEB} different}
+\noindent The differences all follow from typesetting \GO/ instead of \CEE/.
 
 \section{No preprocessor}
-Go has no preprocessor, so \cw{@d} never generates code: \cw{gtangle} ignores it
-(use Go \cw{const} and \cw{func} for real definitions). It is not useless,
+\GO/ has no preprocessor, so \cw{@d} never generates code: \cw{gtangle} ignores it
+(use \GO/ \cw{const} and \cw{func} for real definitions). It is not useless,
 though --- \cw{gweave} reads \cw{@d Name} as a request to set \cw{Name} in
-typewriter, like a CWEB macro (see below). The formatting directives \cw{@f} and
+typewriter, like a \.{CWEB} macro (see below). The formatting directives \cw{@f} and
 \cw{@s} also remain --- for example \cw{@f Stack int} sets the user type
 \cw{Stack} in bold, the way predeclared types are set.
 
 \section{Pretty-printing mirrors gofmt, not a grammar}
 This is the central design choice, and the largest departure from \cw{cweave}.
-\cw{cweave} parses C and re-derives every space and break from the grammar.
-\cw{gweave} does not parse Go at all: it reproduces the spacing that \cw{gofmt}
-has already imposed. Because gofmt-formatted Go encodes the grammar {\it in\/}
+\cw{cweave} parses \CEE/ and re-derives every space and break from the grammar.
+\cw{gweave} does not parse \GO/ at all: it reproduces the spacing that \cw{gofmt}
+has already imposed. Because gofmt-formatted \GO/ encodes the grammar {\it in\/}
 its spacing, this gets the hard cases right for free --- the pointer \cw{*T}
 versus the product \cw{a * b}, the slice \cw{[]T} versus the index \cw{a[i]},
 precedence spacing such as \cw{a*b + c} --- with no parser to maintain and no
 trouble with generics or future syntax. The practical rule is simply: {\it write
 the code in your sections the way \cw{gofmt} would.}
 
-A consequence is that CWEB's prettyprinter hints \cw{@+}, \cw{@[}\thinspace
+A consequence is that \.{CWEB}'s prettyprinter hints \cw{@+}, \cw{@[}\thinspace
 $\ldots$\thinspace\cw{@]}, and \cw{@;} have nothing to do, and are accepted and
 ignored. The explicit layout codes \cw{@,} \cw{@/} \cw{@|} \cw{@\#} still work
 for the occasional manual touch-up.
 
 \section{gtangle runs gofmt}
 The tangled output is passed through \cw{gofmt}, so a correct web always yields
-canonically formatted Go. If the assembled text is not valid Go, \cw{gtangle}
+canonically formatted \GO/. If the assembled text is not valid \GO/, \cw{gtangle}
 keeps the unformatted output and prints a warning instead of failing.
 
 \section{Types and constants are classified automatically}
@@ -154,7 +156,7 @@ keeps the unformatted output and prints a warning instead of failing.
 Name ...}) and the parenthesized block --- and sets each declared name {\bf bold}
 wherever it appears, like a predeclared type. It also recognizes an \cw{iota}
 {\it enumeration}: a \cw{const (...)} block whose first entry seeds the counter
-with \cw{iota}. Because these are Go's manifest constants, the closest analogue of
+with \cw{iota}. Because these are \GO/'s manifest constants, the closest analogue of
 a name defined by \cw{@d}, each is set in typewriter everywhere it appears, the
 way \cw{cweave} sets a \cw{@d} macro. A plain \cw{const} --- a one-line \cw{const
 Name = ...}, or a block with no \cw{iota} --- is left an ordinary italic
@@ -171,13 +173,14 @@ left alone; the unqualified \cw{@s Bar int} sets every \cw{Bar}. The qualifier i
 just the identifier written before the \cw{.}, so it need not name a real
 package.
 
-\section{GWEB is written in itself}
-Like CWEB, GWEB is a literate program: each tool is tangled from a \cw{.w} web
-kept beside its Go. The committed Go is byte-for-byte reproducible from those
+\section{\.{GWEB} is written in itself}
+Like \.{CWEB}, \.{GWEB} is a literate program: each tool is tangled from a \cw{.w} web
+kept beside its \GO/. The committed \GO/ is byte-for-byte reproducible from those
 sources --- a fixpoint the test suite checks on every change --- so the program
 you read and the program that runs cannot drift apart.
 
 \chapter{The woven document}
+\noindent
 \cw{gweave} produces the same furniture as \cw{cweave}: run-in bold section
 headings (with a page break before each major starred section), a two-column
 index, a {\it Names of the Sections\/} list, a contents page, and section-number
@@ -187,12 +190,21 @@ boundary unless it is itself taller than a page.
 
 \section{How code is set}
 Reserved words and user-defined types are bold, other identifiers italic, string
-and rune literals typewriter (in \cw{cmtex10}, as in CWEB), numbers and comments
-roman. A few Go-specific touches: the shift operators \cw{<<} and \cw{>>} are set
+and rune literals typewriter (in \cw{cmtex10}, as in \.{CWEB}), numbers and comments
+roman. A few \GO/-specific touches: the shift operators \cw{<<} and \cw{>>} are set
 as the tight symbols $\ll$ and $\gg$; a thin space follows a function name or a
 keyword before \cw{(}, so \cw{f (x)} does not jam together; and a comment's
-\cw{//} is kerned a little tighter. \TeX\ mathematics written between dollar
-signs inside a comment is typeset as mathematics.
+\cw{//} is kerned a little tighter.
+
+A code comment's text is copied through as \TeX, exactly as in \.{CWEB}: \TeX\
+mathematics between dollar signs is typeset as mathematics, an inline-code span
+\cw{|...|} is set as the \GO/ it stands for, \cw{\bs.\char123...\char125} gives
+typewriter, and ordinary control sequences work. The price is the same as
+\.{CWEB}'s --- the \TeX\ specials are live, so a literal \cw{\char123}, \cw{\$},
+\cw{\%}, \cw{\char38}, or backslash in a comment must be escaped or balanced (write
+\cw{\bs\char123}, \cw{\bs\$}, a literal bar as \cw{\bs\char124}), and a stray
+\cw{\%} comments out the rest of the line. Keep prose that needs much of this in
+the \TeX\ part, not the code.
 
 Indentation is {\it structural\/}, not copied from the source. \cw{gweave} tracks
 the block nesting of each code part --- braces, parentheses, and brackets, with the
@@ -204,7 +216,7 @@ for \cw{gofmt}'d code already encodes the grammar.)
 
 \section{Index and formatting codes}
 The hand-index codes \cw{@\char94 text@>} (roman), \cw{@.text@>} (typewriter),
-and \cw{@:text@>} (formatted by \cw{\bs9}) work as in CWEB, as do \cw{@!} to
+and \cw{@:text@>} (formatted by \cw{\bs9}) work as in \.{CWEB}, as do \cw{@!} to
 force a definition entry and \cw{@f}/\cw{@s} to reclassify a name. An identifier
 is marked as ``defined'' (its index number underlined) when it follows \cw{func},
 \cw{var}, \cw{const}, or \cw{type}, or sits just left of \cw{:=}; this is a
@@ -213,7 +225,7 @@ heuristic, not a type analysis, and \cw{@!} overrides it.
 \section{Hyperlinks and bookmarks}
 Section numbers shown as references, in the index, in cross-reference notes, and
 on the contents page become links, and the starred sections form a PDF outline.
-Two back ends produce them, exactly as in CWEB:
+Two back ends produce them, exactly as in \.{CWEB}:
 
 \bull with \cw{pdftex} in PDF mode, the engine's own primitives;
 
@@ -227,7 +239,7 @@ Two back ends produce them, exactly as in CWEB:
 sets typewriter text (with \cw{\bs\bs}, \cw{\bs\char123}, $\ldots$ for literal
 specials), \cw{\bs\bs\char123 id\char125} sets an italic identifier, and the
 language tags \cw{\bs CEE/}, \cw{\bs GO/}, \cw{\bs UNIX/}, \cw{\bs TEX/} are
-available. \cw{\bs,} is a thin space in math or text. The GWEB idiom for inline
+available. \cw{\bs,} is a thin space in math or text. The \.{GWEB} idiom for inline
 code, though, remains simply \cw{|...|}.
 
 \section{Customizing the page}
@@ -246,6 +258,35 @@ header);
 \cw{\bs Gcommentkern} (the \cw{//} tightening), and \cw{\bs Gthinmuskip} (the
 thin space before \cw{(}, \cw{2mu} by default) are registers you may tune.
 
+\noindent And \cw{\bs datethis} in limbo prints the date and time of the run
+beneath section~1, as in \.{CWEB}.
+
+\chapter{Weaving in another language}
+\noindent Every fixed phrase \cw{gweave} writes into the woven output --- the
+cross-reference notes beneath a code part, the {\it Names of the Sections\/}
+heading, the \cw{Section} and \cw{Page} words on the contents page --- goes through
+a macro (\cw{\bs GU}, \cw{\bs GA}, \cw{\bs GNused}, \cw{\bs Gsectionword},
+\cw{\bs Gpageword}, $\ldots$), never as literal English. Redefine those in an
+\cw{\bs input} file and the document is localized to any language; pair the file
+with a Unicode-capable engine and suitable fonts, and the code and prose themselves
+may be non-ASCII too.
+
+Korean support ships ready-made. Put one line in your limbo,
+\begincode
+\input kotexgweb.tex
+|endcode
+weave as usual, and process the result with \cw{luatex} rather than \cw{pdftex}:
+\begincode
+gweave foo.w
+luatex foo.tex
+|endcode
+\cw{kotexgweb.tex} loads \cw{luatexko} and the Noto Serif/Sans CJK\thinspace KR
+fonts, translates \cw{gweave}'s wording into Korean, and supplies a LuaTeX PDF
+back end so the blue cross-reference links and the bookmark outline --- with
+Korean titles --- keep working; \cw{gweave} itself needs no special flag. The
+\cw{hangul} example is a complete web built this way, and \cw{kotexgweb.tex} is
+the file to copy as a model for a language of your own.
+
 \chapter{Running the programs}
 \begincode
 gtangle [-o dir] file[.w] [change[.ch]]
@@ -254,13 +295,13 @@ gweave  [-o dir] file[.w] [change[.ch]]
 The \cw{.w} extension --- and a change file's \cw{.ch} --- may be omitted.
 \cw{-o} chooses the output directory. \cw{-version} prints the version and exits.
 As each tool runs it prints a one-line banner and then a \cw{*}{\it n\/} progress
-marker for every starred section, as CWEB's tools do.
+marker for every starred section, as \.{CWEB}'s tools do.
 
-\cw{gtangle} always emits \cw{//line} directives in the tangled Go --- as CWEB's
+\cw{gtangle} always emits \cw{//line} directives in the tangled \GO/ --- as \.{CWEB}'s
 \cw{ctangle} always emits \cw{\#line} --- so the compiler, \cw{go vet}, and panic
-traces report errors at \cw{.w} positions rather than \cw{.go} ones. GWEB tangles
+traces report errors at \cw{.w} positions rather than \cw{.go} ones. \.{GWEB} tangles
 its own sources this way too, so editing a \cw{.w} reshuffles those line numbers
-in the committed Go.
+in the committed \GO/.
 
 To make a PDF, either go straight through \cw{pdftex}, or through DVI and
 \cw{dvipdfmx} for the same hyperlinks:
@@ -277,36 +318,49 @@ code, a reference to an undefined section, an ambiguous \cw{...} abbreviation, o
 a section defined but never used. These are warnings; \cw{gtangle} stops only if
 it must actually expand a reference that was never defined.
 
-\chapter{Installing GWEB}
-For the commands alone, the Go way:
+\chapter{Installing \.{GWEB}}
+\noindent Only \cw{gtangle} is committed as \GO/, so it alone installs the \GO/
+way:
 \begincode
 go install github.com/sjnam/gweb/cmd/gtangle@latest
-go install github.com/sjnam/gweb/cmd/gweave@latest
 |endcode
+\cw{gweave} is generated from its \cw{.w} source rather than committed, so the two
+commands are built together from a checkout: \cw{make install-tools} puts both
+binaries in your \cw{GOBIN}.
+
 For the full installation --- the commands, \cw{gwebmac.tex} placed in your \TeX\
 tree so \cw{pdftex foo.tex} just works, and the man pages --- run
-\cw{./install.sh} from a checkout (\cw{./install.sh --uninstall} removes it). The
-repository also includes a VS\thinspace Code syntax highlighter for \cw{.w} files
-under \cw{editors/vscode}, and this manual is built with \cw{make manual}.
+\cw{./install.sh} from a checkout (\cw{./install.sh --uninstall} removes it;
+\cw{make install} calls the script). The repository also includes a
+VS\thinspace Code syntax highlighter for \cw{.w} files under \cw{editors/vscode},
+and this manual is built with \cw{make manual}.
 
 \chapter{The bundled examples}
-The \cw{examples/} directory holds five worked webs, from simple to rich:
+The \cw{examples/} directory holds six worked webs, from simple to rich; \cw{make
+example} tangles and weaves them all, or \cw{make -C examples NAME=wc} just one:
 
-\bull \cw{wc.w} --- a word counter; shows \cw{@f} and a change file (\cw{wc.ch});
+\bull \cw{wc.w} --- a word counter whose tangled output matches the system
+\cw{wc}; shows \cw{@f} and a change file (\cw{wc.ch});
 
-\bull \cw{pmap.w} --- a generic concurrent map (goroutines, channels, a closure);
+\bull \cw{seq.w} --- composable lazy iterators over infinite Fibonacci numbers
+(generics, closures, range-over-func);
 
-\bull \cw{seq.w} --- composable lazy iterators (generics, range-over-func);
+\bull \cw{squint.w} --- lazy power series as demand-driven channel networks,
+after McIlroy's {\it Squinting at Power Series};
 
 \bull \cw{floyd.w} --- Floyd's partition problem, after Knuth's essay {\it Are
-Toy Problems Useful?};
+Toy Problems Useful?} (meet-in-the-middle search and a \cw{math/big} check);
 
 \bull \cw{sham.w} --- a port of Knuth's Stanford GraphBase demonstration program
-\cw{sham}, built on the \cw{go-sgb} module.
+\cw{sham}, built on the \cw{go-sgb} module ---\ an external dependency and \cw{goto}
+labels;
 
-\noindent GWEB also documents itself: \cw{make selfdoc} weaves the system's own
-\cw{.w} sources into a single PDF.
+\bull \cw{hangul.w} --- a short Fibonacci program written in Korean, woven with
+\cw{luatex} and \cw{kotexgweb.tex} (see {\it Weaving in another language\/}).
+
+\noindent \.{GWEB} also documents itself: \cw{make selfdoc} weaves the system's own
+\cw{.w} sources into a single PDF, and \cw{make manual} builds this document.
 
 \vfill
-\centerline{\eightrm GWEB --- a literate programming system for Go.}
+\centerline{\eightrm {\eighttt GWEB} --- a literate programming system for Go.}
 \bye
