@@ -1,4 +1,4 @@
-\input kotexgweb.tex
+\input kotexgweb
 \def\title{피보나치 수}
 \datethis
 
