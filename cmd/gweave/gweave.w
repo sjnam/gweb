@@ -792,8 +792,9 @@ author happened to leave a blank between them. The rules are the math-like ones
 \.{cweave} uses: a binary operator or a relation takes a space on each side, a
 unary prefix operator binds tight to its operand, the brackets and the selector dot
 are tight, a comma or semicolon takes a space only after it, and a keyword is
-followed by a space --- with |map| and |func| the exceptions that run straight into
-their bracket. Only the local context is needed: the previous significant token,
+followed by a space --- with |map| the exception that runs straight into its
+bracket, and |func| taking before its parenthesis the same hair space a call's
+name does. Only the local context is needed: the previous significant token,
 and whether it was itself unary. No parser and no precedence table is required ---
 the one thing this gives up against |gofmt|, which tightens spacing around
 higher-precedence operators, is that \.{gweave} spaces them all alike, as
@@ -837,10 +838,11 @@ func spaceBefore(pk tokKind, pt string, pUnary bool, cur token, blockBrace, inSl
 
 @ Most operators are handled by their text. An opening parenthesis or bracket
 clings to an operand it follows (a call or an index, the parenthesis getting a hair
-space as in \.{cweave}); after \.{func} it opens either a method's receiver ---
-spaced --- or a literal's parameters, told apart by |isMethodReceiver|. A lone
-\.{[]} takes a space after a name (\.{x []int}) but not after another bracket
-(\.{[][]int}). Anything left is a binary operator or relation, and gets a space.
+space as in \.{cweave}); after \.{func} its parameter list gets that same hair
+space (\.{func (x int)}), unless it is a method's receiver, which |isMethodReceiver|
+picks out for a full space (\.{func (r T) m()}). A lone \.{[]} takes a space after
+a name (\.{x []int}) but not after another bracket (\.{[][]int}). Anything left is
+a binary operator or relation, and gets a space.
 @<Return the gap before an operator@>=
 switch cur.text {
 case ",", ";", ".", ")", "]", ":", "++", "--", "}", "{}":
@@ -863,7 +865,7 @@ case "(", "[":
 		if isMethodReceiver(toks, k) {
 			return gWide
 		}
-		return gTight
+		return gThin // a literal's or type's ( gets the same hair space a call's does
 	}
 	if isOperandEnd(pk, pt) {
 		if cur.text == "(" {
@@ -2837,16 +2839,21 @@ func use() {
 }
 
 @ As in cweave, a call's ``\.{(}'' directly after a function name gets a thin
-space, so it does not jam against it. A func literal's \.{(} runs straight on
-(\.{func(n int)}), while a method receiver's takes a full space (\.{func (r T)}).
+space, so it does not jam against it; a func literal's or type's \.{(} gets that
+same thin space (\.{func (n int)}), while a method receiver's takes a full space
+(\.{func (r T) m()}).
 @(gweave_test.go@>=
 func TestWeaveThinSpaceBeforeParen(t *testing.T) {
-	out := weaveString(t, "@@ x\n@@c\nvar _ = f(a)\nfunc (r *T) m() {}\n")
-	if !strings.Contains(out, `\GID{f}\Gthin \mathord{(}`) {
-		t.Errorf("a call f( should get a thin space:\n%s", out)
+	out := weaveString(t, "@@ x\n@@c\nvar _ = f(a)\nvar cdq func(l, r int)\nfunc (r *T) m() {}\n")
+	checks := map[string]string{
+		`\GID{f}\Gthin \mathord{(}`:    "a call f( gets a thin space",
+		`\GKW{func}\Gthin \mathord{(}`: "a func literal/type func( gets the same thin space",
+		`\GKW{func}$\GS $\mathord{(}`:  "a method receiver func ( gets a full space",
 	}
-	if !strings.Contains(out, `\GKW{func}$\GS $\mathord{(}`) {
-		t.Errorf("a method receiver func ( should get a full space:\n%s", out)
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant %q in:\n%s", msg, sub, out)
+		}
 	}
 }
 
