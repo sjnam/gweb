@@ -92,7 +92,7 @@ The woven output can be written in Korean by processing it with **`luatex`**
 (not `pdftex`) and putting one line in the `.w` file's limbo:
 
 ```tex
-\input kotexgweb.tex
+\input kotexgweb
 ```
 
 [tex/kotexgweb.tex](tex/kotexgweb.tex) loads [luatexko](https://ctan.org/pkg/luatexko)
