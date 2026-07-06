@@ -130,21 +130,26 @@ typewriter, like a \.{CWEB} macro (see below). The formatting directives \cw{@f}
 \cw{@s} also remain --- for example \cw{@f Stack int} sets the user type
 \cw{Stack} in bold, the way predeclared types are set.
 
-\section{Pretty-printing mirrors gofmt, not a grammar}
-This is the central design choice, and the largest departure from \cw{cweave}.
-\cw{cweave} parses \CEE/ and re-derives every space and break from the grammar.
-\cw{gweave} does not parse \GO/ at all: it reproduces the spacing that \cw{gofmt}
-has already imposed. Because gofmt-formatted \GO/ encodes the grammar {\it in\/}
-its spacing, this gets the hard cases right for free --- the pointer \cw{*T}
-versus the product \cw{a * b}, the slice \cw{[]T} versus the index \cw{a[i]},
-precedence spacing such as \cw{a*b + c} --- with no parser to maintain and no
-trouble with generics or future syntax. The practical rule is simply: {\it write
-the code in your sections the way \cw{gofmt} would.}
+\section{Pretty-printing without a parser}
+\cw{cweave} parses \CEE/ and re-derives every space, break, and indent from the
+grammar. \cw{gweave} reaches the same math-like result --- a product \cw{a * b}
+spaced, a pointer \cw{*T} tight, relations set off, a keyword followed by a space
+--- but from {\it local\/} rules only: it looks at each token and its neighbour,
+never building a parse tree. The spacing is therefore \cw{cweave}'s, not
+\cw{gofmt}'s: where \cw{gofmt} tightens a higher-precedence factor (\cw{a*b + c}),
+\cw{gweave} spaces every operator alike, the way a formula is set. Indentation is
+likewise structural (see {\it The woven document\/}), so ragged or crammed source
+is laid out cleanly all the same --- you need not format your sections by hand.
 
-A consequence is that \.{CWEB}'s prettyprinter hints \cw{@+}, \cw{@[}\thinspace
-$\ldots$\thinspace\cw{@]}, and \cw{@;} have nothing to do, and are accepted and
-ignored. The explicit layout codes \cw{@,} \cw{@/} \cw{@|} \cw{@\#} still work
-for the occasional manual touch-up.
+Two ambiguities have no local answer, and \cw{gweave} leans on the one signal the
+author reliably gives, their own spacing, exactly as \cw{cweave} leans on
+\cw{@[}\thinspace$\ldots$\thinspace\cw{@]}: a \cw{*} between operands is a pointer
+type when the source runs it into what follows (\cw{p *T}) and a product otherwise
+(\cw{a * b}, \cw{a*b}); a brace opens a block, spaced, or a composite literal,
+tight, as its keyword or type says. \.{CWEB}'s prettyprinter hints \cw{@+},
+\cw{@[}\thinspace$\ldots$\thinspace\cw{@]}, and \cw{@;} have nothing to do here and
+are ignored; the explicit layout codes \cw{@,} \cw{@/} \cw{@|} \cw{@\#} still
+override the automatic spacing for a manual touch-up.
 
 \section{gtangle runs gofmt}
 The tangled output is passed through \cw{gofmt}, so a correct web always yields
@@ -206,13 +211,14 @@ typewriter, and ordinary control sequences work. The price is the same as
 \cw{\%} comments out the rest of the line. Keep prose that needs much of this in
 the \TeX\ part, not the code.
 
-Indentation is {\it structural\/}, not copied from the source. \cw{gweave} tracks
-the block nesting of each code part --- braces, parentheses, and brackets, with the
-special cases \cw{gofmt} makes for \cw{switch} case bodies and for labels --- and
-lays every line out the way \cw{gofmt} would, so a carelessly indented section still
-reads cleanly. (This is like \cw{cweave}, which reindents from the \CEE/ grammar;
-horizontal spacing within a line, on the other hand, does follow the source, which
-for \cw{gofmt}'d code already encodes the grammar.)
+Neither the indentation nor the spacing is copied from the source. Indentation is
+{\it structural\/}: \cw{gweave} tracks the block nesting of each code part ---
+braces, parentheses, and brackets, with the special cases \cw{gofmt} makes for
+\cw{switch} case bodies and for labels --- and lays every line out accordingly. The
+horizontal spacing is likewise derived from the grammar, math-like (see {\it
+Pretty-printing without a parser\/}). So a section typed with careless indentation,
+or crammed with no spaces at all, still reads cleanly --- much as \cw{cweave}
+reindents and re-spaces from the \CEE/ grammar.
 
 \section{Index and formatting codes}
 The hand-index codes \cw{@\char94 text@>} (roman), \cw{@.text@>} (typewriter),
