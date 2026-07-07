@@ -1,3 +1,7 @@
+\def\x#1{x_{#1}}
+@f x1 TeX
+@f x2 TeX
+
 @* Introduction.
 This program implements a {\sl 1-indexed Fenwick tree.\/} However, to test
 \.{gweave}, I intentionally made the code --- including the indentation and the
@@ -12,6 +16,8 @@ import "fmt"
 @<Subroutines@>
 
 func main() {
+    var x1, x2 int
+    x1, x2 = x2, x1
 fw:=NewFenwick(10)
 
 fw.Add(1,5)

@@ -183,16 +183,23 @@ for _, s := range w.Sections {
 
 @ Format directives apply globally, then per section, with later definitions
 winning: the display class of identifier |a| in \.{@@f a b} is the class |b|
-would be typeset in, while \.{@@d} asks for typewriter. Finally, as in cweave, a
-name declared with \.{\|type\|} is set bold like the predeclared types, and a
-constant declared in an |iota| enumeration is set in typewriter like a \.{@@d}
-macro; an explicit \.{@@f}/\.{@@s} above still wins for either.
+would be typeset in, while \.{@@d} asks for typewriter. One right-hand side is
+magic: \.{@@f a TeX} does not borrow a class but asks that |a| be set as a custom
+control sequence |\a| of your own devising, exactly as \.{cweave} does --- so
+after \.{\\def\\x\#1\{x\_\{\#1\}\}} the directive \.{@@f x1 TeX} makes the code
+identifier |x1| come out as $x_1$. Finally, as in cweave, a name declared with
+\.{\|type\|} is set bold like the predeclared types, and a constant declared in
+an |iota| enumeration is set in typewriter like a \.{@@d} macro; an explicit
+\.{@@f}/\.{@@s} above still wins for either.
 @<Install the format directives@>=
 apply := func(fs []common.Format) {
 	for _, f := range fs {
-		if f.Macro {
+		switch {
+		case f.Macro:
 			wv.format[f.Original] = tkMacro // \.{@d}: typewriter, like a \.{CWEB} macro
-		} else {
+		case f.Like == "TeX":
+			wv.format[f.Original] = tkTeXCS // \.{@f name TeX}: a custom control sequence
+		default:
 			wv.format[f.Original] = classifyWord(f.Like)
 		}
 		if f.NoIndex {
@@ -997,11 +1004,13 @@ math. Keywords and builtins are set bold (\.{\\GKW}), identifiers italic
 (\.{\\GID}). A typewriter macro --- an \.{@@d} name or a predeclared constant ---
 uses \.{\\GMAC}, which wraps \.{\\tentex} in an \.{\\hbox} so it works in the
 surrounding math mode; the sole exception is |nil|, \GO/'s null value, shown with
-a symbol (\.{\\Gnil}, a capital lambda) as cweave shows \CEE/'s \.{NULL}. A
-comment is set in roman with \.{\\GCM} (escaped for roman text mode, not the
-typewriter \.{\\charNN} codes, but letting $...$ math through), its leading
-\.{//} tightened by a small kern (\.{\\Gcommentkern}), whose two slashes are
-otherwise set rather far apart.
+a symbol (\.{\\Gnil}, a capital lambda) as cweave shows \CEE/'s \.{NULL}. An
+identifier reformatted by \.{@@f name TeX} is set as the control sequence
+|\name| (see |texControlSeq|), letting you dress a plain name up as any bit of
+mathematics you please. A comment is set in roman with \.{\\GCM} (escaped for
+roman text mode, not the typewriter \.{\\charNN} codes, but letting $...$ math
+through), its leading \.{//} tightened by a small kern (\.{\\Gcommentkern}),
+whose two slashes are otherwise set rather far apart.
 @<Render one token@>=
 func renderToken(t token) string {
 	switch t.kind {
@@ -1014,6 +1023,8 @@ func renderToken(t token) string {
 			return "\\Gnil "
 		}
 		return "\\GMAC{" + escTT(t.text) + "}"
+	case tkTeXCS:
+		return "\\" + texControlSeq(t.text) + " "
 	case tkNumber:
 		return renderNumber(t.text)
 	case tkString:
@@ -1027,6 +1038,28 @@ func renderToken(t token) string {
 		return renderOp(t.text)
 	}
 	return ""
+}
+
+@ |texControlSeq| turns an identifier into the name of the \TEX/ control sequence
+that \.{@@f name TeX} conjures for it. \TEX/ control words are made of letters
+only, so the two identifier characters that are not letters are transliterated,
+following \.{cweave}: an underscore becomes |x| and a dollar sign becomes |X|
+(thus |foo_bar| formats through \.{\\fooxbar}). A digit is left alone, which is
+why \.{\\def\\x\#1\{...\}} catches the |1| of |x1| as its argument.
+@<Render one token@>=
+func texControlSeq(name string) string {
+	var b strings.Builder
+	for _, c := range []byte(name) {
+		switch c {
+		case '_':
+			b.WriteByte('x')
+		case '$':
+			b.WriteByte('X')
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
 }
 
 @ |renderNumber| classifies a numeric literal the way cweave does. A hexadecimal
@@ -1717,6 +1750,7 @@ const (
 	tkSpace                  // a run of spaces/tabs
 	tkNewline                // a single '\.{\\.\{\\\\n\}}'
 	tkMacro                  // typewriter: an \.{@@d} name or a predeclared constant
+	tkTeXCS                  // \.{@@f name TeX}: set as a custom control sequence
 )
 
 @ A |token| pairs a kind with its text; |lexState| carries the cross-fragment
@@ -2470,12 +2504,16 @@ func (wv *Weaver) writeIndex(bw *bufio.Writer) {
 }
 
 @ An identifier's index head follows its display class: a typewriter name (a
-\.{@@d} macro or a predeclared constant) is set in typewriter, everything else
-italic. A use adds the section; a definition also flags it in |defs|.
+\.{@@d} macro or a predeclared constant) is set in typewriter, an \.{@@f name TeX}
+name as its own control sequence, everything else italic. A use adds the section;
+a definition also flags it in |defs|.
 @<Collect the identifier index entries@>=
 head := func(name string) string {
-	if wv.format[name] == tkMacro {
+	switch wv.format[name] {
+	case tkMacro:
 		return "\\GMAC{" + escTT(name) + "}"
+	case tkTeXCS:
+		return "$\\" + texControlSeq(name) + "$" // its macro assumes math mode
 	}
 	return "\\GID{" + escIdent(name) + "}"
 }
@@ -2915,6 +2953,23 @@ var hidden int
 	}
 	if strings.Contains(out, `\GII{\GID{hidden}}`) {
 		t.Errorf("@@s should omit the identifier from the index:\n%s", out)
+	}
+}
+
+@ The special right-hand side |TeX| makes \.{@@f name TeX} typeset the identifier
+as its own control sequence |\name|, with an underscore transliterated to |x| (so
+|two_words| goes through \.{\\twoxwords}).
+@(gweave_test.go@>=
+func TestWeaveTeXFormat(t *testing.T) {
+	out := weaveString(t, "\\input gwebmac\n@@f x1 TeX\n@@f two_words TeX\n@@ x\n@@c\nvar a = x1 + two_words\n")
+	if !strings.Contains(out, `\x1 `) {
+		t.Errorf("@@f x1 TeX should set x1 as the control sequence \\x1:\n%s", out)
+	}
+	if !strings.Contains(out, `\twoxwords `) {
+		t.Errorf("@@f two_words TeX should transliterate _ to x:\n%s", out)
+	}
+	if strings.Contains(out, `\GID{x1}`) {
+		t.Errorf("x1 should not fall back to an italic identifier:\n%s", out)
 	}
 }
 
