@@ -662,9 +662,12 @@ emitLine := func() {
 	line.Reset()
 }
 
-@ |flushLine| ends a source line, resetting the indent; |forceBreak| starts a
-fresh woven line at the same indent (\.{@@/}), optionally preceded by a blank
-line (\.{@@\#}).
+@ |flushLine| ends a source line, resetting the indent; |forceBreak| (\.{@@/}, or
+\.{@@\#} with a blank line first) ends the current woven line in the middle of a
+source line. It closes the |indenter|'s view of the line and leaves us at a line
+start, so the continuation's indentation is recomputed for the current nesting ---
+a break inside an open bracket steps its continuation in, rather than hanging at
+the statement's own margin.
 @<End or force-break a line@>=
 flushLine := func() {
 	emitLine()
@@ -677,8 +680,10 @@ forceBreak := func(blank bool) {
 	if blank {
 		out.WriteString("\\GBL\n")
 	}
-	atLineStart = false
+	in.endLine()
+	atLineStart = true
 	pendingSpace = false
+	manualGap = false
 }
 
 @ Each atom of the scanned code is rendered in turn: \GO/ text is tokenized and
@@ -712,15 +717,15 @@ case common.APaste:
 	pendingSpace = false // join: no space before the next token
 	manualGap = true     // ...and let no grammar space creep back in
 case common.ALayout:
-	manualGap = true // a hand-placed break or space overrides the grammar's
 	switch a.Index {
-	case ',': // thin space, stays within the current chunk
+	case ',': // an explicit thin space, added on top of the grammar's own
 		emit("\\,")
-	case '/': // force a line break at the same indent
+	case '/': // force a line break, re-indenting the continuation
 		forceBreak(false)
-	case '#': // force a line break preceded by a blank line
+	case '#': // force a line break, preceded by a blank line
 		forceBreak(true)
 	case '|': // optional (zero-width) line break between chunks
+		manualGap = true // this hand-placed break overrides the grammar's space
 		flushRun()
 		line.WriteString("\\GSO ")
 		pendingSpace = false
@@ -3197,15 +3202,30 @@ w * h
 func TestWeaveLayoutCodes(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar y = a@@,b\nvar z = c@@/d\nvar w = e@@|f\nvar v = g@@#h\n")
 	checks := map[string]string{
-		`\GID{a}\,\GID{b}`:  "@@, should insert a thin space within the chunk",
-		`\GL{0}{$\GID{d}$}`: "@@/ should force a new line",
-		`\GSO `:             "@@| should emit an optional break",
-		`\GBL`:              "@@# should emit a blank line",
+		`\GID{a}\,$\GS $\GID{b}`: "@@, should add a thin space on top of the grammar's",
+		`\GL{0}{$\GID{d}$}`:      "@@/ should force a new line",
+		`\GSO `:                  "@@| should emit an optional break",
+		`\GBL`:                   "@@# should emit a blank line",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
 			t.Errorf("%s\nwant substring %q in:\n%s", msg, sub, out)
 		}
+	}
+}
+
+@ A forced break (\.{@@/} or \.{@@\#}) inside an open bracket re-indents its
+continuation for the nesting rather than hanging it at the statement's own margin:
+here the break after the comma steps \.{2)} in one level (\.{\\GL\{2\}} beneath the
+statement's \.{\\GL\{1\}}).
+@(gweave_test.go@>=
+func TestWeaveForceBreakIndent(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nfunc f() {\n\tg(1,@@/2)\n}\n")
+	if !strings.Contains(out, `\GL{1}{$\GID{g}\Gthin \mathord{(}\GNU{1}\mathord{,}$}`) {
+		t.Errorf("statement line should be at indent 1:\n%s", out)
+	}
+	if !strings.Contains(out, `\GL{2}{$\GNU{2}\mathord{)}$}`) {
+		t.Errorf("@@/ continuation inside ( should step in to indent 2:\n%s", out)
 	}
 }
 

@@ -13,13 +13,13 @@ import "fmt"
 @<Type Definition@>
 @<Subroutines@>
 
-func main() {
-    var x1, x2 int
+func main() {var x1, x2 int
     x1, x2 = x2, x1
 fw:=NewFenwick(10)
 
 fw.Add(1,5)
-fw.Add(3,              2) 
+fw.Add(2,@,5)
+fw.Add(3,@/2) 
 fw.Add(5,7)
 fw.Add(8,                    4)
 
