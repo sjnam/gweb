@@ -1,8 +1,9 @@
-@s T int
 @s Rat int
 @s Context int
+@s testing.T int
 
 \def\title{Squinting at Power Series}
+\datethis
 
 @* Introduction.
 A power series
@@ -11,13 +12,13 @@ is an infinite object, but its coefficients $F_0,F_1,F_2,\ldots$ arrive one at a
 time, and almost every interesting operation on series --- sum, product,
 composition, reciprocal, functional inverse, even the solution of a differential
 equation --- can be computed coefficient by coefficient, never looking further
-ahead than it must. That is exactly the shape of a {\it lazy stream}, and this
+ahead than it must. That is exactly the shape of a {\it lazy stream,\/} and this
 package follows M.~Douglas McIlroy's lovely paper {\sl Squinting at Power Series\/}
 ({\sl Software---Practice and Experience\/} {\bf 20} (1990), 661--683) in
 realizing each series as a {\it stream of rational coefficients\/} and each
-algebraic operation as a small {\it concurrent process}.
+algebraic operation as a small {\it concurrent process.\/}
 
-The representation is a {\it demand channel}, McIlroy's central device. A series is
+The representation is a {\it demand channel,\/} McIlroy's central device. A series is
 a pair of channels: a consumer sends a token on the request channel, and only then
 does the producer compute and send the next coefficient on the data channel. No
 process ever runs ahead of demand, so even series defined in terms of themselves ---
@@ -26,7 +27,7 @@ without runaway. The whole arithmetic of series becomes a network of goroutines
 joined by channels, and writing each operator is mostly a matter of transcribing
 its defining equation.
 
-Coefficients are exact rationals (Go's |math/big.Rat|), so nothing is lost to
+Coefficients are exact rationals (\GO/'s |math/big.Rat|), so nothing is lost to
 rounding. Each running series is a network of goroutines whose lifetime is governed
 by a |context.Context|: generators take one, derived series inherit it, and
 cancelling it shuts the whole network down.
@@ -101,7 +102,7 @@ func (F PS) get() (v *big.Rat, ok bool) {
 @ A producer is the mirror image. |awaitReq| blocks until a demand arrives; |send|
 hands over one coefficient to a demand already received; and |put| does both in
 order --- wait, then deliver. The single most important fact about |put| is that a
-process can {\it produce a term before demanding any input}, which is what lets the
+process can {\it produce a term before demanding any input,\/} which is what lets the
 self-referential definitions later on get started instead of deadlocking.
 @<Private subroutines@>=
 func (F PS) awaitReq() bool {
@@ -315,7 +316,7 @@ func TestDeriv(t *testing.T) {
 @ Integration is the key to the self-referential definitions. $\int F\,dx$ has
 constant term~|c| (the constant of integration) and $n$th coefficient
 $F_{n-1}/n$. Crucially, |Integ| {\it emits |c| before demanding anything from
-|F|}; that one free term is what makes a feedback loop productive rather than
+|F|;\/} that one free term is what makes a feedback loop productive rather than
 deadlocked.
 @<Public subroutines@>=
 func Integ(c *big.Rat, F PS) PS {

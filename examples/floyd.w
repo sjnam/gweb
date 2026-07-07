@@ -4,8 +4,8 @@
 @* Introduction.
 In the fall of 1972, Bob Floyd posed the following ``toy problem'' to the
 first-year students in Stanford's Ph.D. program, and Donald~E. Knuth later
-discussed it in his essay {\it Are Toy Problems Useful?} (reprinted in {\sl
-Selected Papers on Computer Science}, 1996):
+discussed it in his essay {\it Are Toy Problems Useful?\/} (reprinted in {\sl
+Selected Papers on Computer Science,\/} 1996):
 
 \smallskip
 {\narrower\narrower\noindent
@@ -96,7 +96,7 @@ Aitems := nonSquares[:21]
 Bitems := nonSquares[21:]
 
 @ Even $2^{43}$ subsets of the non-squares is far too many to enumerate. The
-standard remedy is to {\it meet in the middle}: split the 43 numbers into two
+standard remedy is to {\it meet in the middle:\/} split the 43 numbers into two
 halves $A$ (the first 21) and $B$ (the last 22), and trade exponential time for
 exponential space on one side. We precompute and {\it sort\/} all $2^{21}\approx
 2$~million subset sums of~$A$; then, for each of the $2^{22}\approx4$~million
@@ -144,7 +144,7 @@ nA := len(Aents)
 
 @ We are about to add up millions of square roots, hunting for an answer that is
 correct in its {\it thirteenth\/} decimal place. Naive |float64| accumulation
-would drift well before then. The fix is {\it compensated summation}: alongside
+would drift well before then. The fix is {\it compensated summation:\/} alongside
 the running |sum| we carry a small correction term |c| that captures the
 low-order bits lost in each addition. This is the Neumaier (Kahan--Babu\v ska)
 refinement, which handles the case where the new value is larger in magnitude

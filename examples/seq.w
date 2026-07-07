@@ -50,7 +50,6 @@ kind of stateful function value C simply cannot express --- and offers each |a|
 to |yield| until the consumer asks it to stop. The loop condition {\it is\/} the
 yield call: |for yield(a)| runs until |yield| returns |false|.
 @<The Fibonacci generator@>=
-// fibs is the infinite sequence 0, 1, 1, 2, 3, 5, 8, ... as a lazy iterator.
 func fibs() iter.Seq[int] {
 	return func(yield func(int) bool) {
 		a, b := 0, 1
@@ -71,7 +70,6 @@ and built entirely from function values.
 a sequence of one type into a sequence of another; the returned closure ranges
 over the input and yields the transformed values.
 @<The |Map| combinator@>=
-// Map yields f(v) for each v in s.
 func Map[A, B any](s iter.Seq[A], f func(A) B) iter.Seq[B] {
 	return func(yield func(B) bool) {
 		for v := range s {
@@ -86,7 +84,6 @@ func Map[A, B any](s iter.Seq[A], f func(A) B) iter.Seq[B] {
 is supplied by the caller as an anonymous function, so the same |Filter| serves
 every purpose.
 @<The |Filter| combinator@>=
-// Filter yields the elements of s for which keep returns true.
 func Filter[V any](s iter.Seq[V], keep func(V) bool) iter.Seq[V] {
 	return func(yield func(V) bool) {
 		for v := range s {
@@ -101,7 +98,6 @@ func Filter[V any](s iter.Seq[V], keep func(V) bool) iter.Seq[V] {
 then returning, which breaks the producer's loop. Without it, ranging over
 |fibs| would never end.
 @<The |Take| combinator@>=
-// Take yields at most the first n elements of s.
 func Take[V any](s iter.Seq[V], n int) iter.Seq[V] {
 	return func(yield func(V) bool) {
 		i := 0

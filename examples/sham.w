@@ -8,9 +8,9 @@ vertex $v$ (numbered $0$ to $N-1$) to its mate $N-1-v$, and we want only the
 cycles that map to themselves under it.
 
 The graph here is the one whose vertices are the squares of an $8\times9$ board
-and whose edges are knight moves; it is built by |Board| from the Go port of
-Knuth's {\it Stanford GraphBase\/} (SGB). The program is itself a port to Go,
-and to GWEB, of Knuth's \.{SGB} demonstration program {\tt sham}; the commentary
+and whose edges are knight moves; it is built by |Board| from the \GO/ port of
+Knuth's {\it Stanford GraphBase\/} (SGB). The program is itself a port to \GO/,
+and to \.{GWEB}, of Knuth's SGB demonstration program \.{sham}; the commentary
 here is newly written.
 
 The search exploits the symmetry directly. Identify every vertex with its mate,
@@ -28,7 +28,7 @@ package main
 import (
 	"fmt"
 	"log"
-@#
+
 	gbbasic "github.com/sjnam/go-sgb/gb-basic"
 	gbgraph "github.com/sjnam/go-sgb/gb-graph"
 )
