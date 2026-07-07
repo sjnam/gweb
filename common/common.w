@@ -767,28 +767,56 @@ func extractLimboFormats(src string) (string, []Format) {
 	return b.String(), formats
 }
 
-@ A limbo \.{@@d}/\.{@@f}/\.{@@s} directive runs to the end of its line. We parse
-it into a |Format| (a \.{@@d} macro or an \.{@@f}/\.{@@s} format word) and drop
-both the directive and its terminating newline from the copied \TEX/.
+@ An \.{@@f}/\.{@@s} directive is exactly its control code and two identifiers, so
+several may share a line --- as \.{cweave}'s own manual does with \.{@@f x1 TeX
+@@f x2 TeX}. We therefore scan just those two words and let the loop pick up any
+directive that follows, rather than swallowing the rest of the line. A \.{@@d}
+macro, whose replacement is free text, still runs to the end of its line. Either
+way, once the directive is parsed, a newline with nothing but blanks before it is
+dropped, so a line given over to directives leaves no blank line in the copied
+\TEX/.
 @<Extract one limbo directive@>=
-j := i + 2
-for j < n && src[j] != '\n' {
-	j++
-}
 var f Format
 var ok bool
+var j int
 if c == 'd' {
+	j = i + 2
+	for j < n && src[j] != '\n' {
+		j++
+	}
 	f, ok = parseMacro(src[i+2 : j])
 } else {
+	j = endOfFormatArgs(src, i+2, n)
 	f, ok = parseFormat(src[i+2:j], c == 's')
 }
 if ok {
 	formats = append(formats, f)
 }
-if j < n {
-	j++ // also drop the newline that ended the directive
+if k := skipBlanks(src, j, n); k < n && src[k] == '\n' {
+	j = k + 1 // the directive ended its line; drop the blanks and the newline
 }
 i = j
+
+@ |endOfFormatArgs| returns the index just past the second whitespace-delimited
+word starting at |p| --- the |l| and |r| of an \.{@@f}/\.{@@s} directive. |skipBlanks|
+runs past spaces and tabs; a directive that ends its line meets a newline next.
+@<Parse the definition-part directives@>=
+func endOfFormatArgs(src string, p, n int) int {
+	for word := 0; word < 2; word++ {
+		p = skipBlanks(src, p, n)
+		for p < n && src[p] != ' ' && src[p] != '\t' && src[p] != '\n' {
+			p++
+		}
+	}
+	return p
+}
+
+func skipBlanks(src string, p, n int) int {
+	for p < n && (src[p] == ' ' || src[p] == '\t') {
+		p++
+	}
+	return p
+}
 
 @* Scanning a code part into atoms.
 A code part is a mix of ordinary \GO/ text and in-code control codes. |ScanCode|
@@ -1281,6 +1309,30 @@ package main
 	}
 	if !contains(w.Limbo, "\\input gwebmac") {
 		t.Errorf("limbo lost its TeX: %q", w.Limbo)
+	}
+}
+
+@ Several \.{@@f}/\.{@@s} directives may share one line, even after ordinary limbo
+\TEX/, exactly as \.{cweave}'s manual writes \.{\\def\\x\#1\{x\_\{\#1\}\} @@f x1
+TeX @@f x2 TeX}. Each is picked up, and the leading \.{\\def} survives in the
+copied limbo.
+@(common_test.go@>=
+func TestLimboFormatsOneLine(t *testing.T) {
+	w := ParseString("\\def\\x#1{x_{#1}} @@f x1 TeX @@f x2 TeX\n@@ x\n@@c\npackage main\n")
+	if len(w.Formats) != 2 {
+		t.Fatalf("limbo formats = %d, want 2: %+v", len(w.Formats), w.Formats)
+	}
+	if w.Formats[0].Original != "x1" || w.Formats[0].Like != "TeX" {
+		t.Errorf("format[0] = %+v, want x1 TeX", w.Formats[0])
+	}
+	if w.Formats[1].Original != "x2" || w.Formats[1].Like != "TeX" {
+		t.Errorf("format[1] = %+v, want x2 TeX", w.Formats[1])
+	}
+	if contains(w.Limbo, "@@f") {
+		t.Errorf("directives not stripped from limbo: %q", w.Limbo)
+	}
+	if !contains(w.Limbo, "\\def\\x") {
+		t.Errorf("limbo lost the \\def before the directives: %q", w.Limbo)
 	}
 }
 

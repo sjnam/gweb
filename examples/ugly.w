@@ -1,6 +1,4 @@
-\def\x#1{x_{#1}}
-@f x1 TeX
-@f x2 TeX
+\def\x#1{x_{#1}} @f x1 TeX @f x2 TeX
 
 @* Introduction.
 This program implements a {\sl 1-indexed Fenwick tree.\/} However, to test
