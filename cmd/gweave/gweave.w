@@ -705,7 +705,7 @@ case common.AVerbatim:
 	emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)))
 	in.advanceGeneric()
 case common.ATeX:
-	emit(a.Text)
+	emit("\\hbox{" + a.Text + "}") // \.{@@t}: a \TEX/ box set amid the code, as in cweave
 case common.AIndex:
 	wv.xref.addManualIndex(a.Index, a.Text, secNum)
 case common.APaste:
@@ -1196,7 +1196,13 @@ func (wv *Weaver) renderInline(secNum int, code string) string {
 @ |inlineCode| does the work for both |renderInline| and the section-name and
 comment renderers: it sets the fragment as one math group, mirroring the source
 whitespace (such fragments are not wrapped), and, when |record| is set, adds
-each identifier to the index.
+each identifier to the index. Like a code part, the fragment is first split by
+|common.ScanCode|, so the control texts \.{CWEB} allows in inner-\CEE/ context are
+honored rather than lexed as \GO/: an index entry (\.{@@\^ @@. @@:}) is recorded, a
+\TEX/ box (\.{@@t}) and verbatim output (\.{@@=}) are set as they are in a code
+part, a section name is linked, and an \.{@@q} comment has already been dropped.
+The lone |emit| both flushes a pending source blank (as \.{\\\ }) and marks the
+run started, so the next blank counts.
 @<Render an inline code fragment@>=
 func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	var st lexState
@@ -1207,30 +1213,63 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	prevSigKind := tkNewline
 	prevSigText := ""
 	prevPrevSigText := ""
-	for _, t := range lexGo(code, &st) {
-		switch t.kind {
-		case tkSpace, tkNewline:
-			if started {
-				pendingSpace = true
-			}
-		default:
-			if pendingSpace {
-				b.WriteString("\\ ")
-				pendingSpace = false
-			}
-			qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
-			if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndexed(t.text, qual) {
-				wv.xref.addIdentUse(t.text, secNum)
-			}
-			b.WriteString(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
-			started = true
-			prevPrevSigText = prevSigText
-			prevSigKind, prevSigText = t.kind, t.text
+	emit := func(s string) {
+		if pendingSpace {
+			b.WriteString("\\ ")
+			pendingSpace = false
 		}
+		b.WriteString(s)
+		started = true
+	}
+	for _, a := range common.ScanCode(code) {
+		@<Render one inline atom@>
 	}
 	b.WriteString("$")
 	return b.String()
 }
+
+@ The atoms are dispatched by kind, as a code part's are, but written into the
+single math group rather than into broken lines. A paste cancels the pending
+space so its neighbours abut; \GO/ text is handed to the token loop.
+@<Render one inline atom@>=
+switch a.Kind {
+case common.AText:
+	for _, t := range lexGo(a.Text, &st) {
+		@<Set one token of an inline atom@>
+	}
+case common.AIndex:
+	if record {
+		wv.xref.addManualIndex(a.Index, a.Text, secNum)
+	}
+case common.ATeX:
+	emit("\\hbox{" + a.Text + "}")
+case common.AVerbatim:
+	emit("\\GST{" + escTT(a.Text) + "}")
+case common.ARef:
+	name := wv.w.Resolve(a.Text)
+	wv.xref.addSectionUse(name, secNum)
+	emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
+case common.APaste:
+	pendingSpace = false
+}
+
+@ A blank or newline only arms the pending space; a significant token flushes it,
+is recorded in the index when the run records and the name is indexable, and is
+set in its effective class.
+@<Set one token of an inline atom@>=
+if t.kind == tkSpace || t.kind == tkNewline {
+	if started {
+		pendingSpace = true
+	}
+	continue
+}
+qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
+if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndexed(t.text, qual) {
+	wv.xref.addIdentUse(t.text, secNum)
+}
+emit(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
+prevPrevSigText = prevSigText
+prevSigKind, prevSigText = t.kind, t.text
 
 @ |renderComment| typesets a code comment. As in \.{CWEB}, the comment is \TEX/:
 a |...| span inside it is set as the \GO/ code it represents (via |inlineCode|),
@@ -2759,6 +2798,34 @@ func TestWeaveQCommentInProse(t *testing.T) {
 	}
 	if !strings.Contains(out, "Visible") || !strings.Contains(out, "tail") {
 		t.Errorf("prose around @@q was lost:\n%s", out)
+	}
+}
+
+@ A \.{@@t...@@>} control text is a \TEX/ box set amid the code; \.{gweave} wraps
+it in an \.{\\hbox} as \.{cweave} does, so math (cweb's own \.{2@@t\$\^\{15\}\$@@>}
+trick) survives the surrounding math mode instead of derailing it.
+@(gweave_test.go@>=
+func TestWeaveTeXBoxInCode(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nvar a = 1 @@t$^{15}$@@> + 2\n")
+	if !strings.Contains(out, `\hbox{$^{15}$}`) {
+		t.Errorf("@@t should be wrapped in \\hbox:\n%s", out)
+	}
+}
+
+@ Inner-\CEE/ code (a \.{\|...\|} span in prose) is scanned like a code part, so the
+control texts \.{CWEB} allows there are honored, not lexed as \GO/: an index
+entry records (and prints nothing inline), a \.{@@t} box and \.{@@=} verbatim are set,
+and a \.{@@q} comment vanishes --- none of it leaking as stray tokens.
+@(gweave_test.go@>=
+func TestWeaveInnerCControlCodes(t *testing.T) {
+	out := weaveString(t, "@@ A |x @@^ROM@@> @@.TT@@> @@t\\bf B@@> @@=V@@> @@q Z @@> y| end.\n@@c\npackage main\n")
+	for _, want := range []string{`\GIR{ROM}`, `\GIT{TT}`, `\hbox{\bf B}`, `\GST{V}`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("inner-C control text lost %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, `\mathord{@}`) || strings.Contains(out, `\GID{ROM}`) || strings.Contains(out, `\GID{Z}`) {
+		t.Errorf("inner-C control code leaked as stray tokens:\n%s", out)
 	}
 }
 
