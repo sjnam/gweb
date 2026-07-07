@@ -364,8 +364,10 @@ labels;
 \bull \cw{hangul.w} --- a short Fibonacci program written in Korean, woven with
 \cw{luatex} and \cw{kotexgweb.tex} (see {\it Weaving in another language\/}).
 
-\bull \cw{ugly.w} --- a deliberately messy program designed to test \.{gweave}.
-This program implements a 1-indexed Fenwick tree.
+\bull \cw{torture.w} --- a deliberately mangled but compiling 1-indexed Fenwick
+tree, its indentation inconsistent and its code cramped on every line, so that
+weaving it shows off how the grammar-driven prettyprinter cleans up careless
+source.
 
 \noindent \.{GWEB} also documents itself: \cw{make selfdoc} weaves the system's own
 \cw{.w} sources into a single PDF, and \cw{make manual} builds this document.

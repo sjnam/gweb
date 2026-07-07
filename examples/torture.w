@@ -1,6 +1,6 @@
 \def\x#1{x_{#1}} @f x1 TeX @f x2 TeX
 
-@* Introduction. @q ugly @>
+@* Introduction. @q torture @>
 This program implements a {\sl 1-indexed Fenwick tree.\/} However, to test
 \.{gweave}, I intentionally made the code --- including the indentation and the
 code on each line --- a mess, even though it compiles and runs. Of course, there

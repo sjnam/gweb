@@ -162,8 +162,10 @@ make -C examples NAME=wc     # just one example
 * [examples/hangul.w](examples/hangul.w) — a short Fibonacci program written in
   Korean, demonstrating `\input kotexgweb.tex`. Typeset it with **luatex**:
   `make -C examples NAME=hangul TEXENGINE=luatex` (or `make example`).
-* [examples/ugly.w](examples/ugly.w) — a deliberately messy program designed to
-  test gweave. This program implements a 1-indexed Fenwick tree.
+* [examples/torture.w](examples/torture.w) is a deliberately mangled but
+  compiling 1-indexed Fenwick tree — inconsistent indentation and cramped code
+  on every line — so weaving it shows off how the grammar-driven prettyprinter
+  cleans up careless source.
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.
