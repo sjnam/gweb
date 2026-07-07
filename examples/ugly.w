@@ -1,10 +1,10 @@
 \def\x#1{x_{#1}} @f x1 TeX @f x2 TeX
 
-@* Introduction.
+@* Introduction. @q ugly @>
 This program implements a {\sl 1-indexed Fenwick tree.\/} However, to test
 \.{gweave}, I intentionally made the code --- including the indentation and the
 code on each line --- a mess, even though it compiles and runs. Of course, there
-is almost no explanation in the \TEX/ part.
+is almost no explanation in the \TEX/ part. @^ Fenwick@> @.tree@>
 @c
 package main
 
@@ -19,7 +19,7 @@ func main() {
 fw:=NewFenwick(10)
 
 fw.Add(1,5)
-fw.Add(3,              2)
+fw.Add(3,              2) 
 fw.Add(5,7)
 fw.Add(8,                    4)
 

@@ -1151,9 +1151,9 @@ if c == '|' {
 }
 
 @ In prose, \.{@@@@} is a literal at-sign, \.{@@<...@@>} is a section reference
-(set as a \.{\\GX} link and recorded as a use), and an index entry \.{@@\^},
-\.{@@.}, or \.{@@:} is recorded and removed. Everything else --- the user's
-\TEX/ --- falls through unchanged.
+(set as a \.{\\GX} link and recorded as a use), an index entry \.{@@\^},
+\.{@@.}, or \.{@@:} is recorded and removed, and a \.{@@q...@@>} source comment is
+dropped. Everything else --- the user's \TEX/ --- falls through unchanged.
 @<Handle a control code in prose@>=
 if c == '@@' && i+1 < n {
 	switch d := s[i+1]; d {
@@ -1175,6 +1175,12 @@ if c == '@@' && i+1 < n {
 			end += i + 2
 			wv.xref.addManualIndex(d, s[i+2:end], secNum)
 			i = end + 2
+			continue
+		}
+	case 'q':
+		if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
+			end += i + 2
+			i = end + 2 // drop the source-only comment
 			continue
 		}
 	}
@@ -2740,6 +2746,19 @@ func TestWeaveStringVisibleSpace(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\ns := \"a b  c\"\n")
 	if !strings.Contains(out, `\GST{"a\GSP b\GSP \GSP c"}`) {
 		t.Errorf("string blanks should become \\GSP markers:\n%s", out)
+	}
+}
+
+@ A \.{@@q...@@>} comment in prose addresses the \.{.w} reader alone, so it never
+reaches the woven \TEX/, while the prose on either side of it survives.
+@(gweave_test.go@>=
+func TestWeaveQCommentInProse(t *testing.T) {
+	out := weaveString(t, "@@ Visible @@q HIDDEN @@> tail.\n@@c\npackage main\n")
+	if strings.Contains(out, "HIDDEN") {
+		t.Errorf("@@q text leaked into woven prose:\n%s", out)
+	}
+	if !strings.Contains(out, "Visible") || !strings.Contains(out, "tail") {
+		t.Errorf("prose around @@q was lost:\n%s", out)
 	}
 }
 

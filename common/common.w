@@ -730,8 +730,9 @@ func parseMacro(seg string) (Format, bool) {
 }
 
 @ |extractLimboFormats| pulls \.{@@d}/\.{@@f}/\.{@@s} directives out of the limbo text and
-returns the cleaned text together with the formats. Other control codes and
-argument-terminated groups are copied through unchanged.
+returns the cleaned text together with the formats. A \.{@@q...@@>} source comment
+is dropped, as it is everywhere; other control codes and argument-terminated
+groups are copied through unchanged.
 @<Parse the definition-part directives@>=
 func extractLimboFormats(src string) (string, []Format) {
 	var b strings.Builder
@@ -750,7 +751,13 @@ func extractLimboFormats(src string) (string, []Format) {
 			i += 2
 		case 'd', 'f', 's':
 			@<Extract one limbo directive@>
-		case '<', '(', '=', 't', '^', '.', ':', 'q':
+		case 'q':
+			if end := indexFrom(src, "@@>", i+2); end < 0 {
+				i = n // unterminated: drop the rest of limbo
+			} else {
+				i = end + 2 // drop the source-only comment
+			}
+		case '<', '(', '=', 't', '^', '.', ':':
 			end := indexFrom(src, "@@>", i+2)
 			if end < 0 {
 				b.WriteString(src[i:])
@@ -1333,6 +1340,25 @@ func TestLimboFormatsOneLine(t *testing.T) {
 	}
 	if !contains(w.Limbo, "\\def\\x") {
 		t.Errorf("limbo lost the \\def before the directives: %q", w.Limbo)
+	}
+}
+
+@ A \.{@@q...@@>} comment speaks to the reader of the \.{.w} file alone, so it is
+dropped everywhere --- from the limbo and from code alike --- and the text on
+either side simply joins. Its own words (here \.{SECRET}) never reach the output.
+@(common_test.go@>=
+func TestQComment(t *testing.T) {
+	w := ParseString("A@@q SECRET @@>B\n@@ @@c\nvar x = 1 @@q SECRET @@>+ 2\n")
+	if contains(w.Limbo, "SECRET") || contains(w.Limbo, "@@q") {
+		t.Errorf("@@q not dropped from limbo: %q", w.Limbo)
+	}
+	if !contains(w.Limbo, "A") || !contains(w.Limbo, "B") {
+		t.Errorf("limbo text around @@q was lost: %q", w.Limbo)
+	}
+	for _, a := range ScanCode(w.Sections[0].Code) {
+		if a.Kind == AText && contains(a.Text, "SECRET") {
+			t.Errorf("@@q not dropped from code: %q", a.Text)
+		}
 	}
 }
 

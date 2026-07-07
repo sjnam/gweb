@@ -1131,139 +1131,138 @@ func parseMacro(seg string) (Format, bool) {
 //line common/common.w:730
 }
 
-//line common/common.w:736
-func extractLimboFormats(src string) (string, []Format) {
 //line common/common.w:737
-	var b strings.Builder
+func extractLimboFormats(src string) (string, []Format) {
 //line common/common.w:738
-	var formats []Format
+	var b strings.Builder
 //line common/common.w:739
-	n := len(src)
+	var formats []Format
 //line common/common.w:740
-	i := 0
+	n := len(src)
 //line common/common.w:741
-	for i < n {
+	i := 0
 //line common/common.w:742
-		if src[i] != '@' || i+1 >= n {
+	for i < n {
 //line common/common.w:743
-			b.WriteByte(src[i])
+		if src[i] != '@' || i+1 >= n {
 //line common/common.w:744
-			i++
+			b.WriteByte(src[i])
 //line common/common.w:745
-			continue
+			i++
 //line common/common.w:746
-		}
+			continue
 //line common/common.w:747
-		switch c := src[i+1]; c {
+		}
 //line common/common.w:748
-		case '@':
+		switch c := src[i+1]; c {
 //line common/common.w:749
-			b.WriteString("@@")
+		case '@':
 //line common/common.w:750
-			i += 2
+			b.WriteString("@@")
 //line common/common.w:751
-		case 'd', 'f', 's':
+			i += 2
 //line common/common.w:752
+		case 'd', 'f', 's':
+//line common/common.w:753
 
-//line common/common.w:779
-			var f Format
-//line common/common.w:780
-			var ok bool
-//line common/common.w:781
-			var j int
-//line common/common.w:782
-			if c == 'd' {
-//line common/common.w:783
-				j = i + 2
-//line common/common.w:784
-				for j < n && src[j] != '\n' {
-//line common/common.w:785
-					j++
 //line common/common.w:786
-				}
+			var f Format
 //line common/common.w:787
-				f, ok = parseMacro(src[i+2 : j])
+			var ok bool
 //line common/common.w:788
-			} else {
+			var j int
 //line common/common.w:789
-				j = endOfFormatArgs(src, i+2, n)
+			if c == 'd' {
 //line common/common.w:790
-				f, ok = parseFormat(src[i+2:j], c == 's')
+				j = i + 2
 //line common/common.w:791
-			}
+				for j < n && src[j] != '\n' {
 //line common/common.w:792
-			if ok {
+					j++
 //line common/common.w:793
-				formats = append(formats, f)
+				}
 //line common/common.w:794
-			}
+				f, ok = parseMacro(src[i+2 : j])
 //line common/common.w:795
-			if k := skipBlanks(src, j, n); k < n && src[k] == '\n' {
+			} else {
 //line common/common.w:796
-				j = k + 1 // the directive ended its line; drop the blanks and the newline
+				j = endOfFormatArgs(src, i+2, n)
 //line common/common.w:797
-			}
+				f, ok = parseFormat(src[i+2:j], c == 's')
 //line common/common.w:798
+			}
+//line common/common.w:799
+			if ok {
+//line common/common.w:800
+				formats = append(formats, f)
+//line common/common.w:801
+			}
+//line common/common.w:802
+			if k := skipBlanks(src, j, n); k < n && src[k] == '\n' {
+//line common/common.w:803
+				j = k + 1 // the directive ended its line; drop the blanks and the newline
+//line common/common.w:804
+			}
+//line common/common.w:805
 			i = j
 
-//line common/common.w:753
-		case '<', '(', '=', 't', '^', '.', ':', 'q':
 //line common/common.w:754
-			end := indexFrom(src, "@>", i+2)
+		case 'q':
 //line common/common.w:755
-			if end < 0 {
+			if end := indexFrom(src, "@>", i+2); end < 0 {
 //line common/common.w:756
-				b.WriteString(src[i:])
+				i = n // unterminated: drop the rest of limbo
 //line common/common.w:757
-				i = n
-//line common/common.w:758
 			} else {
+//line common/common.w:758
+				i = end + 2 // drop the source-only comment
 //line common/common.w:759
-				b.WriteString(src[i : end+2])
-//line common/common.w:760
-				i = end + 2
-//line common/common.w:761
 			}
+//line common/common.w:760
+		case '<', '(', '=', 't', '^', '.', ':':
+//line common/common.w:761
+			end := indexFrom(src, "@>", i+2)
 //line common/common.w:762
-		default:
+			if end < 0 {
 //line common/common.w:763
-			b.WriteString(src[i : i+2])
+				b.WriteString(src[i:])
 //line common/common.w:764
-			i += 2
+				i = n
 //line common/common.w:765
-		}
+			} else {
 //line common/common.w:766
-	}
+				b.WriteString(src[i : end+2])
 //line common/common.w:767
-	return b.String(), formats
+				i = end + 2
 //line common/common.w:768
-}
-
-//line common/common.w:804
-func endOfFormatArgs(src string, p, n int) int {
-//line common/common.w:805
-	for word := 0; word < 2; word++ {
-//line common/common.w:806
-		p = skipBlanks(src, p, n)
-//line common/common.w:807
-		for p < n && src[p] != ' ' && src[p] != '\t' && src[p] != '\n' {
-//line common/common.w:808
-			p++
-//line common/common.w:809
+			}
+//line common/common.w:769
+		default:
+//line common/common.w:770
+			b.WriteString(src[i : i+2])
+//line common/common.w:771
+			i += 2
+//line common/common.w:772
 		}
-//line common/common.w:810
+//line common/common.w:773
 	}
-//line common/common.w:811
-	return p
-//line common/common.w:812
+//line common/common.w:774
+	return b.String(), formats
+//line common/common.w:775
 }
 
+//line common/common.w:811
+func endOfFormatArgs(src string, p, n int) int {
+//line common/common.w:812
+	for word := 0; word < 2; word++ {
+//line common/common.w:813
+		p = skipBlanks(src, p, n)
 //line common/common.w:814
-func skipBlanks(src string, p, n int) int {
+		for p < n && src[p] != ' ' && src[p] != '\t' && src[p] != '\n' {
 //line common/common.w:815
-	for p < n && (src[p] == ' ' || src[p] == '\t') {
+			p++
 //line common/common.w:816
-		p++
+		}
 //line common/common.w:817
 	}
 //line common/common.w:818
@@ -1271,483 +1270,496 @@ func skipBlanks(src string, p, n int) int {
 //line common/common.w:819
 }
 
-//line common/common.w:830
+//line common/common.w:821
+func skipBlanks(src string, p, n int) int {
+//line common/common.w:822
+	for p < n && (src[p] == ' ' || src[p] == '\t') {
+//line common/common.w:823
+		p++
+//line common/common.w:824
+	}
+//line common/common.w:825
+	return p
+//line common/common.w:826
+}
+
+//line common/common.w:837
 type AtomKind int
 
-//line common/common.w:832
-const (
-//line common/common.w:833
-	AText AtomKind = iota // ordinary \GO/ source text
-//line common/common.w:834
-	ARef // \.{@<name@>} reference to a named section
-//line common/common.w:835
-	AVerbatim // \.{@=text@>} passed verbatim to tangled output
-//line common/common.w:836
-	ATeX // \.{@t text@>} \TEX/ text for the woven output
-//line common/common.w:837
-	AIndex // \.{@\^/@./@}: index entry
-//line common/common.w:838
-	APaste // \.{@\&} join (delete surrounding whitespace)
 //line common/common.w:839
-	ALayout // \.{@}, \.{@/} \.{@|} \.{@\#} woven-output layout hints
+const (
 //line common/common.w:840
-	AIndexDef // \.{@!} force the next identifier to index as a definition
+	AText AtomKind = iota // ordinary \GO/ source text
 //line common/common.w:841
+	ARef // \.{@<name@>} reference to a named section
+//line common/common.w:842
+	AVerbatim // \.{@=text@>} passed verbatim to tangled output
+//line common/common.w:843
+	ATeX // \.{@t text@>} \TEX/ text for the woven output
+//line common/common.w:844
+	AIndex // \.{@\^/@./@}: index entry
+//line common/common.w:845
+	APaste // \.{@\&} join (delete surrounding whitespace)
+//line common/common.w:846
+	ALayout // \.{@}, \.{@/} \.{@|} \.{@\#} woven-output layout hints
+//line common/common.w:847
+	AIndexDef // \.{@!} force the next identifier to index as a definition
+//line common/common.w:848
 )
 
-//line common/common.w:843
+//line common/common.w:850
 type Atom struct {
-//line common/common.w:844
+//line common/common.w:851
 	Kind AtomKind
-//line common/common.w:845
+//line common/common.w:852
 	Text string // payload for |AText|/|AVerbatim|/|ATeX|/|AIndex|; name for |ARef|
-//line common/common.w:846
-	Index byte // '\.{\^}','\.{.}','\.{:}' for AIndex; '\.{,}' '\.{/}' '\.{|}' '\.{\#}' for |ALayout|
-//line common/common.w:847
-}
-
 //line common/common.w:853
-func ScanCode(code string) []Atom {
+	Index byte // '\.{\^}','\.{.}','\.{:}' for AIndex; '\.{,}' '\.{/}' '\.{|}' '\.{\#}' for |ALayout|
 //line common/common.w:854
-	var atoms []Atom
-//line common/common.w:855
-	var buf strings.Builder
-//line common/common.w:856
-	flush := func() {
-//line common/common.w:857
-		if buf.Len() > 0 {
-//line common/common.w:858
-			atoms = append(atoms, Atom{Kind: AText, Text: buf.String()})
-//line common/common.w:859
-			buf.Reset()
-//line common/common.w:860
-		}
-//line common/common.w:861
-	}
-//line common/common.w:862
-	n := len(code)
-//line common/common.w:863
-	i := 0
-//line common/common.w:864
-	for i < n {
-//line common/common.w:865
-		c := code[i]
-//line common/common.w:866
-		if c != '@' || i+1 >= n {
-//line common/common.w:867
-			buf.WriteByte(c)
-//line common/common.w:868
-			i++
-//line common/common.w:869
-			continue
-//line common/common.w:870
-		}
-//line common/common.w:871
-
-//line common/common.w:891
-		switch d := code[i+1]; d {
-//line common/common.w:892
-		case '@':
-//line common/common.w:893
-			buf.WriteByte('@')
-//line common/common.w:894
-			i += 2
-//line common/common.w:895
-		case '&':
-//line common/common.w:896
-			flush()
-//line common/common.w:897
-			atoms = append(atoms, Atom{Kind: APaste})
-//line common/common.w:898
-			i += 2
-//line common/common.w:899
-		case '<':
-//line common/common.w:900
-			end := indexFrom(code, "@>", i+2)
-//line common/common.w:901
-			if end < 0 {
-//line common/common.w:902
-				buf.WriteString(code[i:])
-//line common/common.w:903
-				i = n
-//line common/common.w:904
-				continue
-//line common/common.w:905
-			}
-//line common/common.w:906
-			flush()
-//line common/common.w:907
-			atoms = append(atoms, Atom{Kind: ARef, Text: canonName(code[i+2 : end])})
-//line common/common.w:908
-			i = end + 2
-//line common/common.w:909
-		case '=':
-//line common/common.w:910
-			end := indexFrom(code, "@>", i+2)
-//line common/common.w:911
-			if end < 0 {
-//line common/common.w:912
-				i = n
-//line common/common.w:913
-				continue
-//line common/common.w:914
-			}
-//line common/common.w:915
-			flush()
-//line common/common.w:916
-			atoms = append(atoms, Atom{Kind: AVerbatim, Text: code[i+2 : end]})
-//line common/common.w:917
-			i = end + 2
-//line common/common.w:918
-		case 't':
-//line common/common.w:919
-			end := indexFrom(code, "@>", i+2)
-//line common/common.w:920
-			if end < 0 {
-//line common/common.w:921
-				i = n
-//line common/common.w:922
-				continue
-//line common/common.w:923
-			}
-//line common/common.w:924
-			flush()
-//line common/common.w:925
-			atoms = append(atoms, Atom{Kind: ATeX, Text: code[i+2 : end]})
-//line common/common.w:926
-			i = end + 2
-//line common/common.w:927
-		case '^', '.', ':':
-//line common/common.w:928
-			end := indexFrom(code, "@>", i+2)
-//line common/common.w:929
-			if end < 0 {
-//line common/common.w:930
-				i = n
-//line common/common.w:931
-				continue
-//line common/common.w:932
-			}
-//line common/common.w:933
-			flush()
-//line common/common.w:934
-			atoms = append(atoms, Atom{Kind: AIndex, Text: code[i+2 : end], Index: d})
-//line common/common.w:935
-			i = end + 2
-//line common/common.w:936
-		case 'q':
-//line common/common.w:937
-			end := indexFrom(code, "@>", i+2)
-//line common/common.w:938
-			if end < 0 {
-//line common/common.w:939
-				i = n
-//line common/common.w:940
-				continue
-//line common/common.w:941
-			}
-//line common/common.w:942
-			i = end + 2 // ignored material
-//line common/common.w:943
-		case '%':
-//line common/common.w:944
-			j := i + 2
-//line common/common.w:945
-			for j < n && code[j] != '\n' {
-//line common/common.w:946
-				j++
-//line common/common.w:947
-			}
-//line common/common.w:948
-			i = j
-//line common/common.w:949
-		case '>':
-//line common/common.w:950
-			i += 2 // stray terminator
-//line common/common.w:951
-		case ',', '/', '|', '#':
-//line common/common.w:952
-			flush()
-//line common/common.w:953
-			atoms = append(atoms, Atom{Kind: ALayout, Index: d})
-//line common/common.w:954
-			i += 2
-//line common/common.w:955
-		case '!':
-//line common/common.w:956
-			flush()
-//line common/common.w:957
-			atoms = append(atoms, Atom{Kind: AIndexDef})
-//line common/common.w:958
-			i += 2
-//line common/common.w:959
-		case '+', '[', ']', ';':
-//line common/common.w:960
-			i += 2 // \.{CWEB} prettyprinter hints, dropped
-//line common/common.w:961
-		default:
-//line common/common.w:962
-			i += 2 // unknown \.{@x}: drop it rather than corrupt the output
-//line common/common.w:963
-		}
-
-//line common/common.w:872
-	}
-//line common/common.w:873
-	flush()
-//line common/common.w:874
-	return atoms
-//line common/common.w:875
 }
 
-//line common/common.w:985
-type change struct {
-//line common/common.w:986
-	match []string // lines to find in the master source
-//line common/common.w:987
-	repl []string // lines to substitute for them
-//line common/common.w:988
-	line int // 1-based line of the \.{@x} in the change file (for diagnostics)
-//line common/common.w:989
-	replLine int // 1-based change-file line of the first replacement line
-//line common/common.w:990
+//line common/common.w:860
+func ScanCode(code string) []Atom {
+//line common/common.w:861
+	var atoms []Atom
+//line common/common.w:862
+	var buf strings.Builder
+//line common/common.w:863
+	flush := func() {
+//line common/common.w:864
+		if buf.Len() > 0 {
+//line common/common.w:865
+			atoms = append(atoms, Atom{Kind: AText, Text: buf.String()})
+//line common/common.w:866
+			buf.Reset()
+//line common/common.w:867
+		}
+//line common/common.w:868
+	}
+//line common/common.w:869
+	n := len(code)
+//line common/common.w:870
+	i := 0
+//line common/common.w:871
+	for i < n {
+//line common/common.w:872
+		c := code[i]
+//line common/common.w:873
+		if c != '@' || i+1 >= n {
+//line common/common.w:874
+			buf.WriteByte(c)
+//line common/common.w:875
+			i++
+//line common/common.w:876
+			continue
+//line common/common.w:877
+		}
+//line common/common.w:878
+
+//line common/common.w:898
+		switch d := code[i+1]; d {
+//line common/common.w:899
+		case '@':
+//line common/common.w:900
+			buf.WriteByte('@')
+//line common/common.w:901
+			i += 2
+//line common/common.w:902
+		case '&':
+//line common/common.w:903
+			flush()
+//line common/common.w:904
+			atoms = append(atoms, Atom{Kind: APaste})
+//line common/common.w:905
+			i += 2
+//line common/common.w:906
+		case '<':
+//line common/common.w:907
+			end := indexFrom(code, "@>", i+2)
+//line common/common.w:908
+			if end < 0 {
+//line common/common.w:909
+				buf.WriteString(code[i:])
+//line common/common.w:910
+				i = n
+//line common/common.w:911
+				continue
+//line common/common.w:912
+			}
+//line common/common.w:913
+			flush()
+//line common/common.w:914
+			atoms = append(atoms, Atom{Kind: ARef, Text: canonName(code[i+2 : end])})
+//line common/common.w:915
+			i = end + 2
+//line common/common.w:916
+		case '=':
+//line common/common.w:917
+			end := indexFrom(code, "@>", i+2)
+//line common/common.w:918
+			if end < 0 {
+//line common/common.w:919
+				i = n
+//line common/common.w:920
+				continue
+//line common/common.w:921
+			}
+//line common/common.w:922
+			flush()
+//line common/common.w:923
+			atoms = append(atoms, Atom{Kind: AVerbatim, Text: code[i+2 : end]})
+//line common/common.w:924
+			i = end + 2
+//line common/common.w:925
+		case 't':
+//line common/common.w:926
+			end := indexFrom(code, "@>", i+2)
+//line common/common.w:927
+			if end < 0 {
+//line common/common.w:928
+				i = n
+//line common/common.w:929
+				continue
+//line common/common.w:930
+			}
+//line common/common.w:931
+			flush()
+//line common/common.w:932
+			atoms = append(atoms, Atom{Kind: ATeX, Text: code[i+2 : end]})
+//line common/common.w:933
+			i = end + 2
+//line common/common.w:934
+		case '^', '.', ':':
+//line common/common.w:935
+			end := indexFrom(code, "@>", i+2)
+//line common/common.w:936
+			if end < 0 {
+//line common/common.w:937
+				i = n
+//line common/common.w:938
+				continue
+//line common/common.w:939
+			}
+//line common/common.w:940
+			flush()
+//line common/common.w:941
+			atoms = append(atoms, Atom{Kind: AIndex, Text: code[i+2 : end], Index: d})
+//line common/common.w:942
+			i = end + 2
+//line common/common.w:943
+		case 'q':
+//line common/common.w:944
+			end := indexFrom(code, "@>", i+2)
+//line common/common.w:945
+			if end < 0 {
+//line common/common.w:946
+				i = n
+//line common/common.w:947
+				continue
+//line common/common.w:948
+			}
+//line common/common.w:949
+			i = end + 2 // ignored material
+//line common/common.w:950
+		case '%':
+//line common/common.w:951
+			j := i + 2
+//line common/common.w:952
+			for j < n && code[j] != '\n' {
+//line common/common.w:953
+				j++
+//line common/common.w:954
+			}
+//line common/common.w:955
+			i = j
+//line common/common.w:956
+		case '>':
+//line common/common.w:957
+			i += 2 // stray terminator
+//line common/common.w:958
+		case ',', '/', '|', '#':
+//line common/common.w:959
+			flush()
+//line common/common.w:960
+			atoms = append(atoms, Atom{Kind: ALayout, Index: d})
+//line common/common.w:961
+			i += 2
+//line common/common.w:962
+		case '!':
+//line common/common.w:963
+			flush()
+//line common/common.w:964
+			atoms = append(atoms, Atom{Kind: AIndexDef})
+//line common/common.w:965
+			i += 2
+//line common/common.w:966
+		case '+', '[', ']', ';':
+//line common/common.w:967
+			i += 2 // \.{CWEB} prettyprinter hints, dropped
+//line common/common.w:968
+		default:
+//line common/common.w:969
+			i += 2 // unknown \.{@x}: drop it rather than corrupt the output
+//line common/common.w:970
+		}
+
+//line common/common.w:879
+	}
+//line common/common.w:880
+	flush()
+//line common/common.w:881
+	return atoms
+//line common/common.w:882
 }
 
 //line common/common.w:992
-type srcLoc struct {
+type change struct {
 //line common/common.w:993
-	file string
+	match []string // lines to find in the master source
 //line common/common.w:994
-	line int
+	repl []string // lines to substitute for them
 //line common/common.w:995
+	line int // 1-based line of the \.{@x} in the change file (for diagnostics)
+//line common/common.w:996
+	replLine int // 1-based change-file line of the first replacement line
+//line common/common.w:997
 }
 
-//line common/common.w:997
-func (l srcLoc) String() string {
-//line common/common.w:998
-	if l.file == "" {
 //line common/common.w:999
-		return fmt.Sprintf("line %d", l.line)
+type srcLoc struct {
 //line common/common.w:1000
-	}
+	file string
 //line common/common.w:1001
-	return fmt.Sprintf("%s:%d", l.file, l.line)
+	line int
 //line common/common.w:1002
 }
 
+//line common/common.w:1004
+func (l srcLoc) String() string {
+//line common/common.w:1005
+	if l.file == "" {
+//line common/common.w:1006
+		return fmt.Sprintf("line %d", l.line)
 //line common/common.w:1007
-func isChangeCtrl(line string, c byte) bool {
+	}
 //line common/common.w:1008
-	return len(line) >= 2 && line[0] == '@' && line[1] == c
+	return fmt.Sprintf("%s:%d", l.file, l.line)
 //line common/common.w:1009
 }
 
-//line common/common.w:1011
-func splitLines(s string) []string {
-//line common/common.w:1012
-	return strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
-//line common/common.w:1013
+//line common/common.w:1014
+func isChangeCtrl(line string, c byte) bool {
+//line common/common.w:1015
+	return len(line) >= 2 && line[0] == '@' && line[1] == c
+//line common/common.w:1016
 }
 
-//line common/common.w:1015
-func sameLine(a, b string) bool {
-//line common/common.w:1016
-	return strings.TrimRight(a, " \t") == strings.TrimRight(b, " \t")
-//line common/common.w:1017
+//line common/common.w:1018
+func splitLines(s string) []string {
+//line common/common.w:1019
+	return strings.Split(strings.ReplaceAll(s, "\r\n", "\n"), "\n")
+//line common/common.w:1020
 }
 
 //line common/common.w:1022
-func parseChangeFile(src string) ([]change, error) {
+func sameLine(a, b string) bool {
 //line common/common.w:1023
-	lines := splitLines(src)
+	return strings.TrimRight(a, " \t") == strings.TrimRight(b, " \t")
 //line common/common.w:1024
-	var changes []change
-//line common/common.w:1025
-	n := len(lines)
-//line common/common.w:1026
-	for i := 0; i < n; {
-//line common/common.w:1027
-		if !isChangeCtrl(lines[i], 'x') {
-//line common/common.w:1028
-			i++ // commentary between changes
+}
+
 //line common/common.w:1029
-			continue
+func parseChangeFile(src string) ([]change, error) {
 //line common/common.w:1030
-		}
+	lines := splitLines(src)
 //line common/common.w:1031
-		c := change{line: i + 1}
+	var changes []change
 //line common/common.w:1032
-		i++
+	n := len(lines)
 //line common/common.w:1033
-
-//line common/common.w:1047
-		for i < n && !isChangeCtrl(lines[i], 'y') {
-//line common/common.w:1048
-			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'z') {
-//line common/common.w:1049
-				return nil, fmt.Errorf("change file line %d: expected @y to close the @x match part", c.line)
-//line common/common.w:1050
-			}
-//line common/common.w:1051
-			c.match = append(c.match, lines[i])
-//line common/common.w:1052
-			i++
-//line common/common.w:1053
-		}
-//line common/common.w:1054
-		if i >= n {
-//line common/common.w:1055
-			return nil, fmt.Errorf("change file line %d: @x without a matching @y", c.line)
-//line common/common.w:1056
-		}
-//line common/common.w:1057
-		i++ // skip \.{@y}
-//line common/common.w:1058
-		c.replLine = i + 1
-
+	for i := 0; i < n; {
 //line common/common.w:1034
-
-//line common/common.w:1063
-		for i < n && !isChangeCtrl(lines[i], 'z') {
-//line common/common.w:1064
-			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'y') {
-//line common/common.w:1065
-				return nil, fmt.Errorf("change file line %d: expected @z to close the change", c.line)
-//line common/common.w:1066
-			}
-//line common/common.w:1067
-			c.repl = append(c.repl, lines[i])
-//line common/common.w:1068
-			i++
-//line common/common.w:1069
-		}
-//line common/common.w:1070
-		if i >= n {
-//line common/common.w:1071
-			return nil, fmt.Errorf("change file line %d: change has no @z", c.line)
-//line common/common.w:1072
-		}
-//line common/common.w:1073
-		i++ // skip \.{@z}
-
+		if !isChangeCtrl(lines[i], 'x') {
 //line common/common.w:1035
-		if len(c.match) == 0 {
+			i++ // commentary between changes
 //line common/common.w:1036
-			return nil, fmt.Errorf("change file line %d: the @x match part is empty", c.line)
+			continue
 //line common/common.w:1037
 		}
 //line common/common.w:1038
-		changes = append(changes, c)
+		c := change{line: i + 1}
 //line common/common.w:1039
-	}
-//line common/common.w:1040
-	return changes, nil
-//line common/common.w:1041
-}
-
-//line common/common.w:1077
-func applyChanges(src string, changes []change, chFile string) (string, error) {
-//line common/common.w:1078
-	out, _, err := applyChangesMapped(splitLines(src), nil, changes, chFile)
-//line common/common.w:1079
-	if err != nil {
-//line common/common.w:1080
-		return "", err
-//line common/common.w:1081
-	}
-//line common/common.w:1082
-	return strings.Join(out, "\n"), nil
-//line common/common.w:1083
-}
-
-//line common/common.w:1090
-func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) ([]string, []srcLoc, error) {
-//line common/common.w:1091
-	loc := func(i int) srcLoc {
-//line common/common.w:1092
-		if locs != nil && i < len(locs) {
-//line common/common.w:1093
-			return locs[i]
-//line common/common.w:1094
-		}
-//line common/common.w:1095
-		return srcLoc{line: i + 1}
-//line common/common.w:1096
-	}
-//line common/common.w:1097
-	out := make([]string, 0, len(master))
-//line common/common.w:1098
-	var outLocs []srcLoc
-//line common/common.w:1099
-	ci := 0
-//line common/common.w:1100
-	for i := 0; i < len(master); {
-//line common/common.w:1101
-		if ci < len(changes) && sameLine(master[i], changes[ci].match[0]) {
-//line common/common.w:1102
-			if !blockMatches(master, i, changes[ci].match) {
-//line common/common.w:1103
-				return nil, nil, fmt.Errorf("%s:%d: change did not match the master source at %s",
-//line common/common.w:1104
-					chFile, changes[ci].line, loc(i))
-//line common/common.w:1105
-			}
-//line common/common.w:1106
-			for r, rl := range changes[ci].repl {
-//line common/common.w:1107
-				out = append(out, rl)
-//line common/common.w:1108
-				outLocs = append(outLocs, srcLoc{chFile, changes[ci].replLine + r})
-//line common/common.w:1109
-			}
-//line common/common.w:1110
-			i += len(changes[ci].match)
-//line common/common.w:1111
-			ci++
-//line common/common.w:1112
-			continue
-//line common/common.w:1113
-		}
-//line common/common.w:1114
-		out = append(out, master[i])
-//line common/common.w:1115
-		outLocs = append(outLocs, loc(i))
-//line common/common.w:1116
 		i++
-//line common/common.w:1117
+//line common/common.w:1040
+
+//line common/common.w:1054
+		for i < n && !isChangeCtrl(lines[i], 'y') {
+//line common/common.w:1055
+			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'z') {
+//line common/common.w:1056
+				return nil, fmt.Errorf("change file line %d: expected @y to close the @x match part", c.line)
+//line common/common.w:1057
+			}
+//line common/common.w:1058
+			c.match = append(c.match, lines[i])
+//line common/common.w:1059
+			i++
+//line common/common.w:1060
+		}
+//line common/common.w:1061
+		if i >= n {
+//line common/common.w:1062
+			return nil, fmt.Errorf("change file line %d: @x without a matching @y", c.line)
+//line common/common.w:1063
+		}
+//line common/common.w:1064
+		i++ // skip \.{@y}
+//line common/common.w:1065
+		c.replLine = i + 1
+
+//line common/common.w:1041
+
+//line common/common.w:1070
+		for i < n && !isChangeCtrl(lines[i], 'z') {
+//line common/common.w:1071
+			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'y') {
+//line common/common.w:1072
+				return nil, fmt.Errorf("change file line %d: expected @z to close the change", c.line)
+//line common/common.w:1073
+			}
+//line common/common.w:1074
+			c.repl = append(c.repl, lines[i])
+//line common/common.w:1075
+			i++
+//line common/common.w:1076
+		}
+//line common/common.w:1077
+		if i >= n {
+//line common/common.w:1078
+			return nil, fmt.Errorf("change file line %d: change has no @z", c.line)
+//line common/common.w:1079
+		}
+//line common/common.w:1080
+		i++ // skip \.{@z}
+
+//line common/common.w:1042
+		if len(c.match) == 0 {
+//line common/common.w:1043
+			return nil, fmt.Errorf("change file line %d: the @x match part is empty", c.line)
+//line common/common.w:1044
+		}
+//line common/common.w:1045
+		changes = append(changes, c)
+//line common/common.w:1046
 	}
-//line common/common.w:1118
-	if ci < len(changes) {
-//line common/common.w:1119
-		return nil, nil, fmt.Errorf("%s:%d: change was never matched (looking for %q)",
-//line common/common.w:1120
-			chFile, changes[ci].line, changes[ci].match[0])
-//line common/common.w:1121
-	}
-//line common/common.w:1122
-	return out, outLocs, nil
-//line common/common.w:1123
+//line common/common.w:1047
+	return changes, nil
+//line common/common.w:1048
 }
 
-//line common/common.w:1128
-func blockMatches(master []string, at int, match []string) bool {
-//line common/common.w:1129
-	if at+len(match) > len(master) {
-//line common/common.w:1130
-		return false
-//line common/common.w:1131
+//line common/common.w:1084
+func applyChanges(src string, changes []change, chFile string) (string, error) {
+//line common/common.w:1085
+	out, _, err := applyChangesMapped(splitLines(src), nil, changes, chFile)
+//line common/common.w:1086
+	if err != nil {
+//line common/common.w:1087
+		return "", err
+//line common/common.w:1088
 	}
-//line common/common.w:1132
-	for k, m := range match {
-//line common/common.w:1133
-		if !sameLine(master[at+k], m) {
-//line common/common.w:1134
-			return false
-//line common/common.w:1135
+//line common/common.w:1089
+	return strings.Join(out, "\n"), nil
+//line common/common.w:1090
+}
+
+//line common/common.w:1097
+func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) ([]string, []srcLoc, error) {
+//line common/common.w:1098
+	loc := func(i int) srcLoc {
+//line common/common.w:1099
+		if locs != nil && i < len(locs) {
+//line common/common.w:1100
+			return locs[i]
+//line common/common.w:1101
 		}
-//line common/common.w:1136
+//line common/common.w:1102
+		return srcLoc{line: i + 1}
+//line common/common.w:1103
 	}
+//line common/common.w:1104
+	out := make([]string, 0, len(master))
+//line common/common.w:1105
+	var outLocs []srcLoc
+//line common/common.w:1106
+	ci := 0
+//line common/common.w:1107
+	for i := 0; i < len(master); {
+//line common/common.w:1108
+		if ci < len(changes) && sameLine(master[i], changes[ci].match[0]) {
+//line common/common.w:1109
+			if !blockMatches(master, i, changes[ci].match) {
+//line common/common.w:1110
+				return nil, nil, fmt.Errorf("%s:%d: change did not match the master source at %s",
+//line common/common.w:1111
+					chFile, changes[ci].line, loc(i))
+//line common/common.w:1112
+			}
+//line common/common.w:1113
+			for r, rl := range changes[ci].repl {
+//line common/common.w:1114
+				out = append(out, rl)
+//line common/common.w:1115
+				outLocs = append(outLocs, srcLoc{chFile, changes[ci].replLine + r})
+//line common/common.w:1116
+			}
+//line common/common.w:1117
+			i += len(changes[ci].match)
+//line common/common.w:1118
+			ci++
+//line common/common.w:1119
+			continue
+//line common/common.w:1120
+		}
+//line common/common.w:1121
+		out = append(out, master[i])
+//line common/common.w:1122
+		outLocs = append(outLocs, loc(i))
+//line common/common.w:1123
+		i++
+//line common/common.w:1124
+	}
+//line common/common.w:1125
+	if ci < len(changes) {
+//line common/common.w:1126
+		return nil, nil, fmt.Errorf("%s:%d: change was never matched (looking for %q)",
+//line common/common.w:1127
+			chFile, changes[ci].line, changes[ci].match[0])
+//line common/common.w:1128
+	}
+//line common/common.w:1129
+	return out, outLocs, nil
+//line common/common.w:1130
+}
+
+//line common/common.w:1135
+func blockMatches(master []string, at int, match []string) bool {
+//line common/common.w:1136
+	if at+len(match) > len(master) {
 //line common/common.w:1137
-	return true
+		return false
 //line common/common.w:1138
+	}
+//line common/common.w:1139
+	for k, m := range match {
+//line common/common.w:1140
+		if !sameLine(master[at+k], m) {
+//line common/common.w:1141
+			return false
+//line common/common.w:1142
+		}
+//line common/common.w:1143
+	}
+//line common/common.w:1144
+	return true
+//line common/common.w:1145
 }
