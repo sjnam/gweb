@@ -293,7 +293,7 @@ luatex foo.tex
 fonts, translates \cw{gweave}'s wording into Korean, and supplies a LuaTeX PDF
 back end so the blue cross-reference links and the bookmark outline --- with
 Korean titles --- keep working; \cw{gweave} itself needs no special flag. The
-\cw{hangul} example is a complete web built this way, and \cw{kotexgweb.tex} is
+\cw{rps} example is a complete web built this way, and \cw{kotexgweb.tex} is
 the file to copy as a model for a language of your own.
 
 \chapter{Running the programs}
@@ -364,13 +364,11 @@ Toy Problems Useful?} (meet-in-the-middle search and a \cw{math/big} check);
 \cw{sham}, built on the \cw{go-sgb} module ---\ an external dependency and \cw{goto}
 labels;
 
-\bull \cw{hangul.w} --- a short Fibonacci program written in Korean, woven with
-\cw{luatex} and \cw{kotexgweb.tex} (see {\it Weaving in another language\/}).
-
-\bull \cw{rps.w} --- a longer Korean essay on a rock-paper-scissors coffee bet:
-the expected number of rounds for $N$ players to settle a loser, and the best way
-to split them into groups, in exact \cw{math/big} rationals (with a companion
-\cw{rps\_test.go}); also woven with \cw{luatex}.
+\bull \cw{rps.w} --- a Korean essay on a rock-paper-scissors coffee bet: the
+expected number of rounds for $N$ players to settle a loser, and the best way to
+split them into groups, in exact \cw{math/big} rationals (with a companion
+\cw{rps\_test.go}); woven with \cw{luatex} and \cw{kotexgweb.tex} (see {\it Weaving
+in another language\/}).
 
 \bull \cw{torture.w} --- a deliberately mangled but compiling 1-indexed Fenwick
 tree, its indentation inconsistent and its code cramped on every line, so that

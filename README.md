@@ -159,17 +159,14 @@ make -C examples NAME=wc     # just one example
   √1…√50 into two nearly-equal halves. A worked literate solution
   (meet-in-the-middle search, Gray-code enumeration, compensated summation, and
   a `math/big` verification).
-* [examples/hangul.w](examples/hangul.w) — a short Fibonacci program written in
-  Korean, demonstrating `\input kotexgweb.tex`. Typeset it with **luatex**:
-  `make -C examples NAME=hangul TEXENGINE=luatex` (or `make example`).
-* [examples/rps.w](examples/rps.w) — a longer Korean literate essay disguised as a
-  coffee bet: how many rounds of rock–paper–scissors does it take *N* players to
-  settle who pays, and how should they split into groups to finish fastest?
-  Worked out in exact rationals with `math/big` — expected-value recurrences,
-  a full search over integer partitions, a recursive strategy for 100 players,
-  a proof that groups of four are optimal, and a convexity check — with a
-  companion `rps_test.go`. Korean, so typeset it with **luatex**:
-  `make -C examples NAME=rps TEXENGINE=luatex`.
+* [examples/rps.w](examples/rps.w) — a Korean literate essay disguised as a
+  coffee bet, demonstrating `\input kotexgweb.tex`: how many rounds of
+  rock–paper–scissors does it take *N* players to settle who pays, and how should
+  they split into groups to finish fastest? Worked out in exact rationals with
+  `math/big` — expected-value recurrences, a full search over integer partitions,
+  a recursive strategy for 100 players, a proof that groups of four are optimal,
+  and a convexity check — with a companion `rps_test.go`. Korean, so typeset it
+  with **luatex**: `make -C examples NAME=rps TEXENGINE=luatex` (or `make example`).
 * [examples/torture.w](examples/torture.w) is a deliberately mangled but
   compiling 1-indexed Fenwick tree — inconsistent indentation and cramped code
   on every line — so weaving it shows off how the grammar-driven prettyprinter

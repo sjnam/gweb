@@ -97,7 +97,7 @@ example: build
 	$(MAKE) -C examples NAME=floyd
 	$(MAKE) -C examples NAME=sham
 	$(MAKE) -C examples NAME=squint
-	$(MAKE) -C examples NAME=hangul TEXENGINE=luatex
+	$(MAKE) -C examples NAME=rps TEXENGINE=luatex
 
 clean:
 	rm -rf $(BIN) build $(GEN_GO)
