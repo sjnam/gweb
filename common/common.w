@@ -30,9 +30,10 @@ const Version = "0.4.5"
 @<Collect and resolve section names@>
 @<Small parser helpers@>
 
-@ The |Format| record captures one \.{@@f} or \.{@@s} directive: it asks that
-identifier |Original| be typeset the way identifier or keyword |Like| is.
-|NoIndex| is true for \.{@@s}, and |Macro| is true for a \.{@@d} constant.
+@ The |Format| record captures one directive's request for a single identifier:
+an \.{@@f} or \.{@@s} asks that identifier |Original| be typeset the way identifier
+or keyword |Like| is. |NoIndex| is true for \.{@@s}, and |Macro| is true for a
+name listed in \.{@@d} (one |Format| per name, since \.{@@d} may name several).
 @<Records shared across the web@>=
 type Format struct {
 	Original string
@@ -598,9 +599,7 @@ for ct.kind == cDefn || ct.kind == cFormat {
 	nx := scanStruct(src, ct.end)
 	seg := src[ct.end:nx.pos]
 	if ct.kind == cDefn {
-		if f, ok := parseMacro(seg); ok {
-			sec.Formats = append(sec.Formats, f)
-		}
+		sec.Formats = append(sec.Formats, parseMacro(seg)...)
 	} else if f, ok := parseFormat(seg, ct.noIndex); ok {
 		sec.Formats = append(sec.Formats, f)
 	}
@@ -708,25 +707,26 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 	return Format{Original: fields[0], Like: fields[1], NoIndex: noIndex}, true
 }
 
-@ |parseMacro| parses the body of an \.{@@d} directive. Its first word names a
-constant to set in typewriter (like a \.{CWEB} macro); any value after it is ignored,
-since \GO/ has no preprocessor and \.{@@d} never tangles to code. A qualified name
-keeps its final component, so \.{@@d http.StatusOK} and \.{@@d StatusOK} both
-register the identifier \.{StatusOK}.
+@ |parseMacro| parses the body of an \.{@@d} directive. Where \.{CWEB}'s \.{@@d}
+names one macro and gives its replacement text, \GO/ has no preprocessor, so
+\.{GWEB} borrows the code for a lighter purpose: every whitespace-separated word
+of the body --- the body runs to the next \.{@@}, so it may span several lines ---
+is an identifier to set in typewriter, like a \.{CWEB} macro. A qualified name
+keeps its final component, so \.{@@d http.StatusOK} registers \.{StatusOK}, and
+\.{@@d Push Pop Peek} sets all three at once.
 @<Parse the definition-part directives@>=
-func parseMacro(seg string) (Format, bool) {
-	fields := strings.Fields(seg)
-	if len(fields) == 0 {
-		return Format{}, false
+func parseMacro(seg string) []Format {
+	var fs []Format
+	for _, field := range strings.Fields(seg) {
+		name := field
+		if k := strings.LastIndex(name, "."); k >= 0 {
+			name = name[k+1:]
+		}
+		if name != "" {
+			fs = append(fs, Format{Original: name, Macro: true})
+		}
 	}
-	name := fields[0]
-	if k := strings.LastIndex(name, "."); k >= 0 {
-		name = name[k+1:]
-	}
-	if name == "" {
-		return Format{}, false
-	}
-	return Format{Original: name, Macro: true}, true
+	return fs
 }
 
 @ |extractLimboFormats| pulls \.{@@d}/\.{@@f}/\.{@@s} directives out of the limbo text and
@@ -778,27 +778,26 @@ func extractLimboFormats(src string) (string, []Format) {
 several may share a line --- as \.{cweave}'s own manual does with \.{@@f x1 TeX
 @@f x2 TeX}. We therefore scan just those two words and let the loop pick up any
 directive that follows, rather than swallowing the rest of the line. A \.{@@d}
-macro, whose replacement is free text, still runs to the end of its line. Either
-way, once the directive is parsed, a newline with nothing but blanks before it is
-dropped, so a line given over to directives leaves no blank line in the copied
-\TEX/.
+lists identifiers to set in typewriter, so it runs to the next \.{@@} (it may span
+several lines) and each word becomes a format. Either way, once the directive is
+parsed, a newline with nothing but blanks before it is dropped, so a line given
+over to directives leaves no blank line in the copied \TEX/.
 @<Extract one limbo directive@>=
-var f Format
-var ok bool
+var fs []Format
 var j int
 if c == 'd' {
 	j = i + 2
-	for j < n && src[j] != '\n' {
-		j++
+	for j < n && src[j] != '@@' {
+		j++ // the body runs to the next control code
 	}
-	f, ok = parseMacro(src[i+2 : j])
+	fs = parseMacro(src[i+2 : j])
 } else {
 	j = endOfFormatArgs(src, i+2, n)
-	f, ok = parseFormat(src[i+2:j], c == 's')
+	if f, ok := parseFormat(src[i+2:j], c == 's'); ok {
+		fs = []Format{f}
+	}
 }
-if ok {
-	formats = append(formats, f)
-}
+formats = append(formats, fs...)
 if k := skipBlanks(src, j, n); k < n && src[k] == '\n' {
 	j = k + 1 // the directive ended its line; drop the blanks and the newline
 }
@@ -1358,6 +1357,24 @@ func TestQComment(t *testing.T) {
 	for _, a := range ScanCode(w.Sections[0].Code) {
 		if a.Kind == AText && contains(a.Text, "SECRET") {
 			t.Errorf("@@q not dropped from code: %q", a.Text)
+		}
+	}
+}
+
+@ A \.{@@d} names several identifiers at once --- its body runs to the next
+\.{@@} and may span lines --- and each word becomes its own typewriter |Format|.
+A qualified name keeps its final component.
+@(common_test.go@>=
+func TestMacroMultipleNames(t *testing.T) {
+	w := ParseString("@@ @@d Push Pop\n   Peek http.Get\n@@c\npackage main\n")
+	got := w.Sections[0].Formats
+	want := []string{"Push", "Pop", "Peek", "Get"}
+	if len(got) != len(want) {
+		t.Fatalf("@@d formats = %d, want %d: %+v", len(got), len(want), got)
+	}
+	for i, name := range want {
+		if got[i].Original != name || !got[i].Macro {
+			t.Errorf("format[%d] = %+v, want %s (macro)", i, got[i], name)
 		}
 	}
 }

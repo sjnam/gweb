@@ -3047,6 +3047,21 @@ var hidden int
 	}
 }
 
+@ A \.{@@d} sets every identifier it lists in typewriter (\.{\\GMAC}), even across
+line breaks, while a name it does not mention stays italic (\.{\\GID}).
+@(gweave_test.go@>=
+func TestWeaveMacroMultipleNames(t *testing.T) {
+	out := weaveString(t, "@@ @@d Push Pop\n   Peek\n@@c\nvar _ = Push + Pop + Peek + Other\n")
+	for _, name := range []string{"Push", "Pop", "Peek"} {
+		if !strings.Contains(out, `\GMAC{`+name+`}`) {
+			t.Errorf("@@d should set %s in typewriter:\n%s", name, out)
+		}
+	}
+	if !strings.Contains(out, `\GID{Other}`) {
+		t.Errorf("a name not in @@d should stay italic:\n%s", out)
+	}
+}
+
 @ The special right-hand side |TeX| makes \.{@@f name TeX} typeset the identifier
 as its own control sequence |\name|, with an underscore transliterated to |x| (so
 |two_words| goes through \.{\\twoxwords}).

@@ -125,10 +125,13 @@ for you, and removes a stray copy if you include one.
 \section{No preprocessor}
 \GO/ has no preprocessor, so \cw{@d} never generates code: \cw{gtangle} ignores it
 (use \GO/ \cw{const} and \cw{func} for real definitions). It is not useless,
-though --- \cw{gweave} reads \cw{@d Name} as a request to set \cw{Name} in
-typewriter, like a \.{CWEB} macro (see below). The formatting directives \cw{@f} and
-\cw{@s} also remain --- for example \cw{@f Stack int} sets the user type
-\cw{Stack} in bold, the way predeclared types are set.
+though --- \cw{gweave} reads \cw{@d} as a list of identifiers to set in
+typewriter, like \.{CWEB} macros (see below). Unlike \.{CWEB}'s single-macro
+\cw{@d}, it takes as many names as you like: the body runs to the next \cw{@} and
+may span several lines, so \cw{@d Push Pop Peek} sets all three at once. The
+formatting directives \cw{@f} and \cw{@s} also remain --- for example
+\cw{@f Stack int} sets the user type \cw{Stack} in bold, the way predeclared
+types are set.
 
 \section{Pretty-printing without a parser}
 \cw{cweave} parses \CEE/ and re-derives every space, break, and indent from the
