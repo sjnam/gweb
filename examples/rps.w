@@ -1,15 +1,11 @@
 \input kotexgweb
 \def\title{가위바위보 커피 내기}
 
-% 프로그램의 콘솔 출력을 그대로(줄바꿈과 공백까지) 조판하는 verbatim 상자.
-% ASCII는 cmtt, 한글은 Noto Sans Mono CJK로 나와 터미널처럼 정렬된다.
-% \leftskip을 바깥 문단의 들여쓰기(\parindent)만큼 잡아 상자 전체를 그만큼 들여쓴다
-% (\parindent을 0으로 지우기 전에 그 값을 먼저 캡처한다).
-\def\begintty{\par\medskip\begingroup
+\def\verbatim{\par\medskip\begingroup
   \leftskip=\parindent \parindent=0pt \parskip=0pt \tt \obeyspaces \obeylines
   \catcode`\_=12 \catcode`\^=12 \catcode`\$=12 \catcode`\#=12
   \catcode`\&=12 \catcode`\%=12 \catcode`\~=12}
-\def\endtty{\endgroup\medskip}
+\def\endverbatim{\endgroup\medskip}
 
 @s Rat int
 @s Int int
@@ -44,8 +40,9 @@
 확률과 그로부터 얻는 기대 판수 |expected|)에 답하고, 그다음 절이 두 번째 물음(모든
 나누기를 |partitions|로 훑어 가장 싼 편성을 |optimize|가 고르기)에 답한다. |pow3|과
 |binom|은 점화식에 쓰이는 자잘한 셈을 정확한 정수로 처리하는 도우미다. |main|은
-그 둘을 불러 표 두 개를 찍는 게 전부다. 상수 |N|은 표를 사람 수 몇 명까지 그릴지
-정한다 --- 그날 무리는 열 명이었으니 넉넉히 열둘까지 본다.
+그 둘을 불러 표 두 개를 찍는 게 전부다. 변수 |N|은 표를 사람 수 몇 명까지 그릴지
+정한다 --- 그날 무리는 열 명이었으니 기본값은 넉넉히 열둘로 두되, 더 큰 무리가
+궁금하면 명령행에서 \.{./rps 30}처럼 숫자 하나를 건네 얼마든지 늘릴 수 있게 했다.
 
 @c
 package main
@@ -53,20 +50,30 @@ package main
 import (
 	"fmt"
 	"math/big"
+	"os"
+	"strconv"
+	"strings"
 )
-
-const N = 12 // 표를 그릴 최대 인원; 원하는 숫자로 바꿔라.
 
 @<함수들@>@;
 
 func main() {
+	N := 12 // 표를 그릴 최대 인원; 기본값이자 명령행 인자가 없을 때의 값
+	@<명령행 인자로 인원 상한을 받는다@>
 	E := expected(N)
 	C, best := optimize(E)
 	@<첫 번째 물음의 답을 표로 낸다@>
 	@<두 번째 물음의 답을 표로 낸다@>
-	@<백 명이 모이면 어떻게 되는지 보인다@>
-	@<크기별로 효율을 재어 최적을 찾는다@>
-	@<우리 비용이 볼록한지 물어본다@>
+}
+
+@ 인자가 있으면 첫째 것을 인원 상한으로 삼는다. 숫자로 읽히지 않거나 둘보다 작으면
+(둘은 있어야 게임이 성립하니) 잠자코 무시하고 기본값을 지킨다.
+
+@<명령행 인자로 인원 상한을 받는다@>=
+if len(os.Args) > 1 {
+	if n, err := strconv.Atoi(os.Args[1]); err == nil && n >= 2 {
+		N = n
+	}
 }
 
 @ 두 도우미부터. |pow3|은 $3^e$을, |binom|은 이항계수 $n\choose k$를 임의 정밀도
@@ -238,17 +245,42 @@ fmt.Println("\n사람수   함께(판수)   나눠서(판수)   최선의 편성
 for k := 2; k <= N; k++ {
 	plan := "그냥 함께"
 	if best[k] != nil {
-		plan = fmt.Sprint(best[k])
+		@<편성 |best[k]|를 재귀 노드까지 드러내 |plan|으로 짓는다@>
 	}
 	fmt.Printf("%4d명   %9s   %9s   %s\n",
 		k, E[k].FloatString(2), C[k].FloatString(2), plan)
 }
 
+@ 여기 한 가지 함정이 있다. |best[k]|에는 편성의 {\it 맨 위 한 층\/}만 적혀 있고,
+각 조각의 비용으로는 |E[m]|이 아니라 |C[m]|을, 곧 그 인원을 다시 최적으로 쪼갠 값을
+썼음을 떠올리자. 그래서 열두 명을 넘어서면 |best[28]=[4 4 4 16]|처럼 큼직한 수가
+불쑥 끼어드는데, 이 ``16''은 열여섯이 한 판에 뭉쳐 논다는 뜻이 결코 아니다 --- 그저
+``열여섯은 다시 재귀하라''는 이정표일 뿐이라, 펼쳐 보면 |[4 4 4 4]|로 또 넷씩 갈린다
+(그러니 실제로 손을 내미는 그룹은 여전히 온통 서넛짜리다). 이 속내가 표에서도
+드러나도록, 조각 |m|이 제 나름 더 쪼개지는 놈이면(|best[m]| 이 |nil|이 아니면)
+대괄호로 한 겹 더 감싸 |[16]|처럼 적어, 진짜 그룹과 재귀 노드를 눈으로 갈라 준다.
+
+@<편성 |best[k]|를 재귀 노드까지 드러내 |plan|으로 짓는다@>=
+var b strings.Builder
+b.WriteByte('[')
+for i, m := range best[k] {
+	if i > 0 {
+		b.WriteByte(' ')
+	}
+	if best[m] != nil {
+		fmt.Fprintf(&b, "[%d]", m)
+	} else {
+		fmt.Fprintf(&b, "%d", m)
+	}
+}
+b.WriteByte(']')
+plan = b.String()
+
 @ 마침내 프로그램을 돌려 두 물음의 답을 한 상에 차려 본다. 위쪽 표가 첫 번째 물음
 (함께 할 때의 기대 판수)에, 아래쪽 표가 두 번째 물음(어떻게 나눌지)에 대한
 답이다. 열 명 줄을 보라: 함께 하면 $24.35$판이지만 $(3,3,4)$로 나누면 $9.96$판이다.
 
-\begintty
+\verbatim
 사람수   한 판 승부 확률      기대 판수
    2명           0.6667      1.500  (= 3/2)
    3명           0.6667      2.250  (= 9/4)
@@ -274,7 +306,7 @@ for k := 2; k <= N; k++ {
   10명       24.35        9.96   [3 3 4]
   11명       34.98       10.93   [3 4 4]
   12명       50.63       11.89   [4 4 4]
-\endtty
+\endverbatim
 
 \noindent 그러고 보니 이 결론은 여느 삶의 지혜와 닮았다. 혼자 다 떠안으면(큰 한
 그룹) 일은 끝날 줄 모르고, 잘게 쪼개 너무 많은 이에게 미루면(둘씩) 뒤처리가 되레
@@ -325,25 +357,17 @@ func recCost(E []*big.Rat, k, size int) *big.Rat {
 	return total
 }
 
-@ 백 명까지 $E$를 넉넉히 마련해 두고, 다 함께 할 때의 아득한 판수와 $2\cdot3\cdot4$
-명씩 나눠 재귀할 때의 판수를 나란히 찍는다.
+@ 백 명까지 $E$를 마련해 두고, 다 함께 할 때의 아득한 판수와 $2\cdot3\cdot4$명씩
+나눠 재귀할 때의 판수를 나란히 재 본다. 이 셈은 커피 내기의 답을 내는 데 꼭 필요한
+것은 아니라, 프로그램의 출력이 아니라 뒤 「시험」 절의 |TestRecCost|에 딸려 두었다.
+\.{go test}로 돌려 보면 이렇게 찍힌다.
 
-@<백 명이 모이면 어떻게 되는지 보인다@>=
-E100 := expected(100)
-together, _ := E100[100].Float64()
-fmt.Printf("\n백 명이 다 함께: 평균 %.3e 판\n", together)
-for _, size := range []int{2, 3, 4} {
-	fmt.Printf("%d명씩 나눠 재귀: %s 판\n", size, recCost(E100, 100, size).FloatString(2))
-}
-
-@ 찍어 보면 이렇다.
-
-\begintty
+\verbatim
 백 명이 다 함께: 평균 1.355e+17 판
 2명씩 나눠 재귀: 148.50 판
 3명씩 나눠 재귀: 112.71 판
 4명씩 나눠 재귀: 106.91 판
-\endtty
+\endverbatim
 
 \noindent $10^{17}$이 $10^2$으로 주저앉았다. 나누기의 위력은 규모가 클수록 더
 아찔하다. 그런데 눈여겨볼 대목이 하나 있다: 이번엔 {\it 4명씩\/}이 3명씩을
@@ -370,24 +394,10 @@ func groupEfficiency(E []*big.Rat, m int) *big.Rat {
 	return new(big.Rat).Quo(E[m], big.NewRat(int64(m-1), 1))
 }
 
-@ 프로그램에게 $m=2$부터 훑으며 $f(m)$을 재고 가장 작은 $m$을 짚으라 시킨다.
+@ $m=2$부터 훑으며 $f(m)$을 재고 가장 작은 $m$을 짚는 일 역시 뒤 「시험」 절의
+|TestGroupEfficiency|에 맡겼다. \.{go test}로 돌려 보면 이렇게 나온다.
 
-@<크기별로 효율을 재어 최적을 찾는다@>=
-fmt.Println("\n그룹 크기 m의 효율 f(m)=E_m/(m-1) (작을수록 좋음):")
-bestm := 0
-var bestf *big.Rat
-for m := 2; m <= 7; m++ {
-	f := groupEfficiency(E100, m)
-	if bestf == nil || f.Cmp(bestf) < 0 {
-		bestm, bestf = m, f
-	}
-	fmt.Printf("  m=%d: %s\n", m, f.FloatString(4))
-}
-fmt.Printf("→ 최적 그룹 크기 = %d명 (f=%s)\n", bestm, bestf.FloatString(4))
-
-@ 결과는 이렇다.
-
-\begintty
+\verbatim
 그룹 크기 m의 효율 f(m)=E_m/(m-1) (작을수록 좋음):
   m=2: 1.5000
   m=3: 1.1250
@@ -396,7 +406,7 @@ fmt.Printf("→ 최적 그룹 크기 = %d명 (f=%s)\n", bestm, bestf.FloatString
   m=6: 1.2440
   m=7: 1.4411
 → 최적 그룹 크기 = 4명 (f=1.0714)
-\endtty
+\endverbatim
 
 \noindent $f(m)$은 정확한 분수로 $f(2)={3\over2}$, $f(3)={9\over8}$, $f(4)={15\over14}$,
 $f(5)={157\over140}$이며, 최소는 $m=4$다. 손으로도 못 박을 수 있다: $f(4)<f(3)$은
@@ -408,78 +418,6 @@ ${150\over140}<{157\over140}$이라 참이다. $m=2$는 결승이 너무 잦아 
 효과일 뿐, 골짜기의 바닥은 언제나 넷이다. 백 명이든 천 명이든, 커피는
 $N\cdot{15\over14}$판, 곧 사람 수보다 조금 많은 판이면 정해진다.
 
-@* 구현 노트: CHT도 CDQ도 아닌 까닭. 두 번째 물음을 나는 완전 탐색(모든 편성
-훑기)으로 풀었고, 다항식 시간으로 조이려면 그것이 층층 $(\min,+)$ 합성곱 배낭
-$$G[k][g]=\min_{p\ge2}\bigl(C[p]+G[k-p][g-1]\bigr),\qquad
-   C(k)=\min\bigl(E_k,\ \min_g G[k][g]+C(g)\bigr)$$
-이 됨을 앞서 넌지시 보았다. 이런 DP를 마주하면 기울기 최적화(CHT)나 CDQ
-분할정복 같은 가속이 손끝에서 근질거리기 마련이다. 결론부터 말하면 둘 다 곧이곧대로는
-붙지 않는데, 그 까닭을 짚어 두는 것이 이 노트다.
-
-CHT가 먹히는 전이는 $dp[i]=\min_j(a_j\,x_i+b_j)$처럼 {\it 직선들의 하부포락선을
-한 점에서 질의\/}하는 꼴이다. 우리 전이의 $C[k-p]$는 $(k-p)$에 대해 비선형이라
-``점에서 평가하는 직선''이 아니다 --- 한 조의 비용 $E_m$이 조원 수 $m$에 아핀이었다면
-붙었겠지만, $E_m$은 오히려 볼록하게 치솟는다(그게 작은 조가 이기는 바로 그 이유다).
-CDQ의 DP 용법은 $dp[i]=\min_{j<i}(dp[j]+w(i,j))$의 {\it 좌우 순서 의존\/}을
-``왼쪽이 확정돼야 오른쪽에 기여''하는 흐름으로 처리하는 것인데, 우리 조들은 순서
-없는 분할이라 자를 좌우 축 자체가 없다.
-
-@ $(\min,+)$ 합성곱을 정말로 빠르게 하는 정공법은 SMAWK나 분할정복 DP 최적화이고,
-이들은 비용 행렬이 완전단조(Monge), 곧 비용 수열이 {\it 볼록\/}일 때만 성립한다.
-그렇다면 우리 수열 $E_k$와 $C_k$는 볼록한가? 손으로 어림하지 말고 프로그램에게
-곧장 물어보자. 볼록성은 2차 차분 $s_{k+1}-2s_k+s_{k-1}$이 하나도 음이 아닌지로
-판가름 난다.
-
-@<함수들@>=
-func isConvex(s []*big.Rat) bool {
-	for k := 1; k+1 < len(s); k++ {
-		d2 := new(big.Rat).Add(s[k-1], s[k+1])
-		d2.Sub(d2, s[k])
-		d2.Sub(d2, s[k])
-		if d2.Sign() < 0 {
-			return false
-		}
-	}
-	return true
-}
-
-@ 사람 수 $2$ 이상 자리(|E[2:]|, |C[2:]|)만 떼어 물어본다.
-
-@<우리 비용이 볼록한지 물어본다@>=
-fmt.Printf("\nE_k는 볼록인가? %v   C_k는 볼록인가? %v\n",
-	isConvex(E[2:]), isConvex(C[2:]))
-
-@ 답이 이렇다.
-
-\begintty
-E_k는 볼록인가? true   C_k는 볼록인가? false
-\endtty
-
-\noindent $E_k$는 볼록이지만, 정작 우리가 합성곱하는 $C_k$는 볼록이 아니다
-($C_6=6$이 이웃 $C_5,C_7$과의 볼록성을 깬다). 그러니 SMAWK류 가속조차 깔끔히
-붙지 않는다. 게다가 --- 이것이 정작 핵심인데 --- 앞 절에서 최적 조 크기가 넷임을
-이미 {\it 증명\/}했으니, 최적해는 ``재귀로 넷씩 자르기''라는 자명한 꼴이라 DP 표
-자체가 필요 없다. CHT와 CDQ의 정신이 ``구조를 알아채 완전 탐색을 피하라''인데, 우리는
-그걸 한 층 위에서 해치운 셈이다: 분할에 대한 min을 빠르게 {\it 계산\/}하는 대신,
-그 min이 언제나 균일 분할에서 달성됨을 {\it 증명\/}해 계산을 통째로 없앴다.
-
-@ 그래도 이 기법들을 손에 익히고 싶다면, 비용의 꼴만 바꾼 사촌 문제를 하나 남겨
-둔다. 커피 문제와 달리 여기서는 비용이 끝점에 대해 이차라, 교차항이 생겨 직선
-포락선이 등장한다.
-
-\smallskip
-{\narrower\noindent {\bf 연습.} $N$명이 한 줄로 서고 $i$번째 사람에게 무게 $w_i$가
-있다. 인접한 사람끼리만 한 조로 묶어 줄을 연속 구간으로 자르되, 한 조의 비용이
-(조원 무게 합)$^2$에 고정비 $K$를 더한 값이라 하자. 총비용을 최소로 하는 자르기를
-구하라. 누적합을 $S_j=w_1+\cdots+w_j$라 하면
-$$dp[j]=\min_{i<j}\bigl(dp[i]+(S_j-S_i)^2+K\bigr)
-   =S_j^2+K+\min_{i<j}\bigl(\underbrace{dp[i]+S_i^2}_{b_i}
-   -\underbrace{2S_i}_{a_i}\,S_j\bigr),$$
-곧 기울기 $a_i=-2S_i$, 절편 $b_i=dp[i]+S_i^2$인 직선들의 하부포락선을 $x=S_j$에서
-질의하는 CHT의 정석이다. $S$가 단조라 단조 CHT면 $O(N)$, 질의점이 뒤섞이거나 온라인
-제약이 있으면 CDQ 분할정복으로 오프라인 처리하면 된다.\par}
-\smallskip
-
 @* 시험. 유도한 식이 정말 맞는지, 부수 파일 \.{rps\_test.go}에 몇 가지 시험을
 붙여 둔다. 손으로도 확인할 수 있는 작은 값들과, 도저히 손으로는 엄두가 안 나는 큰
 값들을 함께 넣어 두 방향에서 옭아맨다. 시험마다 기댓값을 ``분자/분모'' 꼴 문자열로
@@ -490,6 +428,7 @@ $$dp[j]=\min_{i<j}\bigl(dp[i]+(S_j-S_i)^2+K\bigr)
 package main
 
 import (
+	"fmt"
 	"math/big"
 	"reflect"
 	"testing"
@@ -594,13 +533,19 @@ func TestPartitionsCount(t *testing.T) {
 	}
 }
 
-@ 끝으로 재귀 전략. 앞서 자랑한 교차검증 --- 열 명을 3명씩 재귀하면 완전 탐색이
-찾은 최적 ${279\over28}$과 한 치도 다르지 않다는 것 --- 을 못 박고, 백 명은 나누는
-편이 다 함께 하는 것보다 압도적으로 싸다는 자명하지만 통쾌한 사실도 확인한다.
+@ 끝으로 재귀 전략. 앞서 「백 명이 모이면」 절에 실은 표를 실제로 찍어 내는 것이
+바로 이 시험이다. 그러면서 두 가지를 못 박는다: 열 명을 3명씩 재귀하면 완전 탐색이
+찾은 최적 ${279\over28}$과 한 치도 다르지 않다는 교차검증, 그리고 백 명은 나누는
+편이 다 함께 하는 것보다 압도적으로 싸다는 자명하지만 통쾌한 사실.
 
 @(rps_test.go@>=
 func TestRecCost(t *testing.T) {
 	E := expected(100)
+	together, _ := E[100].Float64()
+	fmt.Printf("\n백 명이 다 함께: 평균 %.3e 판\n", together)
+	for _, size := range []int{2, 3, 4} {
+		fmt.Printf("%d명씩 나눠 재귀: %s 판\n", size, recCost(E, 100, size).FloatString(2))
+	}
 	if got := recCost(E, 10, 3); got.Cmp(rat("279/28")) != 0 {
 		t.Errorf("recCost(10,3) = %s, want 279/28", got.RatString())
 	}
@@ -609,38 +554,29 @@ func TestRecCost(t *testing.T) {
 	}
 }
 
-@ 그리고 한 그룹의 최적 크기가 넷이라는 증명의 알맹이: $f(4)={15\over14}$가 이웃한
-$f(3)={9\over8}$과 $f(5)={157\over140}$보다, 나아가 $2\le m\le7$의 어떤 $f(m)$보다도
-작음을 확인한다.
+@ 그리고 한 그룹의 최적 크기가 넷이라는 증명의 알맹이. 「왜 하필 넷인가」 절의
+$f(m)$ 표를 찍어 내면서, $f(4)={15\over14}$가 $2\le m\le7$의 어떤 $f(m)$보다도 작아
+골짜기의 바닥이 정확히 넷임을 확인한다.
 
 @(rps_test.go@>=
 func TestGroupEfficiency(t *testing.T) {
 	E := expected(8)
+	fmt.Println("\n그룹 크기 m의 효율 f(m)=E_m/(m-1) (작을수록 좋음):")
+	bestm := 0
+	var bestf *big.Rat
+	for m := 2; m <= 7; m++ {
+		f := groupEfficiency(E, m)
+		if bestf == nil || f.Cmp(bestf) < 0 {
+			bestm, bestf = m, f
+		}
+		fmt.Printf("  m=%d: %s\n", m, f.FloatString(4))
+	}
+	fmt.Printf("→ 최적 그룹 크기 = %d명 (f=%s)\n", bestm, bestf.FloatString(4))
+	if bestm != 4 {
+		t.Errorf("최적 크기가 4가 아니라 %d로 나온다", bestm)
+	}
 	if got := groupEfficiency(E, 4); got.Cmp(rat("15/14")) != 0 {
 		t.Errorf("f(4) = %s, want 15/14", got.RatString())
-	}
-	for m := 2; m <= 7; m++ {
-		if m == 4 {
-			continue
-		}
-		if groupEfficiency(E, 4).Cmp(groupEfficiency(E, m)) >= 0 {
-			t.Errorf("f(4)가 f(%d)보다 작지 않다", m)
-		}
-	}
-}
-
-@ 구현 노트가 기댄 볼록성 판정도 못 박는다: $E_k$는 볼록이고 $C_k$는 비볼록이라야
-한다 --- 후자가 SMAWK류 가속이 곧이곧대로 붙지 않는 까닭이었다.
-
-@(rps_test.go@>=
-func TestConvexity(t *testing.T) {
-	E := expected(12)
-	C, _ := optimize(E)
-	if !isConvex(E[2:]) {
-		t.Errorf("E_k가 볼록이어야 하는데 아니라고 나온다")
-	}
-	if isConvex(C[2:]) {
-		t.Errorf("C_k가 비볼록이어야 하는데 볼록이라고 나온다")
 	}
 }
 
