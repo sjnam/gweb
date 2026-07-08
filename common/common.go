@@ -15,7 +15,7 @@ import (
 )
 
 //line common/common.w:23
-const Version = "0.4.5"
+const Version = "0.4.9"
 
 //line common/common.w:38
 type Format struct {
