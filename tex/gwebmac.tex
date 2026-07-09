@@ -68,21 +68,15 @@
 % by each starred section. Each section deposits a \mark of the form
 % {section-number}{group-title}; the headline reads it back through \topmark.
 % Upper-case the (expanded) job name for the running header and contents title.
-% \title is shown in the running header and on the contents page; it defaults to
-% the upper-cased job name and may be redefined in limbo.
+% \title is shown, as written, in the running header and on the contents page. It
+% defaults to the upper-cased job name -- so a web with no \def\title still gets
+% an all-caps header, as in cweb -- but a \def\title{...} in limbo is shown
+% verbatim, mixed case and all: cweb likewise upper-cases only the default
+% job-name title, never one the author supplies.
 \edef\title{\jobname}
 \def\Gtitleaux#1{\uppercase{\gdef\title{#1}}}
 \expandafter\Gtitleaux\expandafter{\title}
 \def\Gtitle{\title}
-% \GtitleUP is \Gtitle upper-cased, for the running header's small-caps style (as
-% in cweb). It fully expands the title to characters, then upper-cases them, so a
-% plain mixed-case \def\title{...} in limbo still yields an all-caps header while
-% the contents page keeps the title as written. (Titles meant for the header
-% should be plain text, not \. typewriter, which must not be expanded here.)
-\def\GtitleUP{\begingroup
-  \edef\GtitleX{\Gtitle}%
-  \uppercase\expandafter{\expandafter\def\expandafter\GtitleX\expandafter{\GtitleX}}%
-  \GtitleX\endgroup}
 % The current group (chapter) title, upper-cased, is kept in a token register so
 % each \mark can capture a *snapshot* of it (via \the) rather than a reference to
 % a macro -- otherwise every page would show whatever group is current at shipout
@@ -115,11 +109,11 @@
   \ifx\Gtm\Gempty\expandafter\def\expandafter\Gtm\expandafter{\firstmark}\fi
   \ifx\Gtm\Gempty\def\Gtm{{}{\Gtitle}}\fi
   \ifodd\pageno
-    \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\Gheadfont\GtitleUP}\hfil
+    \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\Gheadfont\Gtitle}\hfil
       {\Gheadfont\Ggrouphead}\enspace\folio}%
   \else
     \hbox to\Gpagewidth{\mainfont\folio\enspace{\Gheadfont\Ggrouphead}\hfil
-      {\Gheadfont\GtitleUP}\enspace\Gsechead}%
+      {\Gheadfont\Gtitle}\enspace\Gsechead}%
   \fi}
 \headline={\iftitle\hfil\else\Grunhead\fi}
 \footline={\hfil}
