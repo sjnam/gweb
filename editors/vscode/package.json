@@ -1,13 +1,15 @@
 {
   "name": "gweb",
   "displayName": "GWEB (literate Go)",
-  "description": "Syntax highlighting for GWEB literate-programming files (.w, .ch): control codes, embedded Go, and TeX commentary.",
-  "version": "0.1.5",
+  "description": "GWEB literate-programming support (.w, .ch): syntax highlighting, Go to Definition and Hover forwarded to your Go extension through gtangle's //line source map, section-name navigation, and tangle on save.",
+  "version": "0.2.0",
   "publisher": "sjnam",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/sjnam/gweb" },
   "engines": { "vscode": "^1.60.0" },
   "categories": ["Programming Languages"],
+  "main": "./extension.js",
+  "activationEvents": ["onLanguage:gweb", "onCommand:gweb.tangle"],
   "contributes": {
     "languages": [
       {
@@ -27,6 +29,27 @@
           "meta.embedded.inline.go": "go"
         }
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "gweb.tangle",
+        "title": "GWEB: Tangle current file"
+      }
+    ],
+    "configuration": {
+      "title": "GWEB",
+      "properties": {
+        "gweb.gtanglePath": {
+          "type": "string",
+          "default": "gtangle",
+          "description": "Path to the gtangle executable (default: found on PATH)."
+        },
+        "gweb.tangleOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Re-tangle a .w file on save when its tangled .go already exists, keeping Go to Definition and Hover accurate. (A web is never tangled for the first time behind your back; use the 'GWEB: Tangle current file' command for that.)"
+        }
+      }
+    }
   }
 }

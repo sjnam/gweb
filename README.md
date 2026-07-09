@@ -214,15 +214,19 @@ tex/kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
 man/             gtangle.1 and gweave.1 man pages
 doc/             format reference and the gwebman.tex manual
 examples/        worked examples
-editors/vscode   VS Code syntax highlighting for .w files
+editors/vscode   VS Code language support for .w files
 install.sh       installer for the commands, gwebmac.tex, and man pages
 ```
 
 ## Editor support
 
-A VS Code extension in [editors/vscode/](editors/vscode/) highlights `.w` files:
-the control codes, embedded **Go** in code parts and `|…|` spans, and the TeX
-commentary. To use it, install the `.vsix` from the
+A VS Code extension in [editors/vscode/](editors/vscode/) supports `.w` files:
+syntax highlighting (the control codes, embedded **Go** in code parts and `|…|`
+spans, the TeX commentary), **Go to Definition and Hover inside code parts** —
+forwarded to your Go extension through the `//line` source map gtangle leaves
+in its output, so a jump from one web into code defined in another lands in
+that web's `.w` — plus `@<section name@>` navigation and re-tangling on save.
+To use it, install the `.vsix` from the
 [releases page](https://github.com/sjnam/gweb/releases)
 (Extensions view → *Install from VSIX…*), then fully relaunch.
 
