@@ -418,14 +418,3 @@
     \vfill
   \fi\fi
   \end}
-
-% ---- insert pdf image --------------------------------------------------------
-\ifx\saveimageresource\undefined\else
-  \let\pdfximage\saveimageresource
-  \let\pdfrefximage\useimageresource
-  \let\pdflastximage\lastsavedimageresourceindex
-\fi
-
-% #1: 크기/페이지 스펙 (다음 { 앞까지), 뒤이어 {파일이름}
-\def\pdfpic#1#{\pdfpicaux{#1}}
-\def\pdfpicaux#1#2{\pdfximage #1{#2}\pdfrefximage\pdflastximage}
