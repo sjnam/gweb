@@ -3,7 +3,7 @@
 GO  ?= go
 BIN ?= bin
 
-.PHONY: all build generate test install install-tools uninstall clean example tangle bootstrap selfdoc manual
+.PHONY: all build generate test install install-tools uninstall clean example tangle bootstrap selfdoc manual bump
 
 # GWEB is self-hosted: its Go is tangled from the literate .w sources, each kept
 # next to its output. Following cweb's tradition, the repository commits only the
@@ -50,7 +50,11 @@ bootstrap:
 	@rm -rf .bootstrap
 	@for w in $(WEBS); do $(BIN)/gtangle -o ".bootstrap/$$(dirname "$$w")" "$$w" >/dev/null; done
 	@ok=1; for d in common cmd/gtangle; do \
-		diff -r "$$d" ".bootstrap/$$d" --exclude='*_test.go' --exclude='*.w' >/dev/null || { echo "DIFF in $$d"; ok=0; }; \
+		for f in .bootstrap/$$d/*.go; do \
+			case "$$f" in *_test.go) continue ;; esac; \
+			b=`basename "$$f"`; \
+			cmp -s "$$d/$$b" "$$f" || { echo "DIFF in $$d/$$b"; ok=0; }; \
+		done; \
 	done; \
 	rm -rf .bootstrap; \
 	[ $$ok = 1 ] && echo "bootstrap: the .w sources reproduce the committed Go byte-for-byte"
@@ -74,6 +78,26 @@ manual:
 
 test: generate
 	$(GO) test ./...
+
+# Bump the release version everywhere it appears. Usage:
+#   make bump VERSION=0.5.2
+# The current version is read from common.w's Version constant, then replaced --
+# in every tracked .w/.tex/.ch/.md that carries it -- with VERSION. That is why
+# it exists: the version now lives in each component web's \title and
+# \topofcontents, in doc/gweb.ch (which must keep matching those lines), and in
+# the manual, besides common.w's constant; this moves them together. The
+# committed Go is regenerated afterwards. Review the diff, then commit, tag, and
+# release by hand (make bootstrap && make test first).
+bump:
+	@test -n "$(VERSION)" || { echo "usage: make bump VERSION=x.y.z"; exit 2; }
+	@old=`sed -n 's/.*const Version = "\([^"]*\)".*/\1/p' common/common.w`; \
+	test -n "$$old" || { echo "cannot read the current version from common/common.w"; exit 1; }; \
+	if [ "$$old" = "$(VERSION)" ]; then echo "already at $$old"; exit 0; fi; \
+	files=`git grep -lF "$$old" -- '*.w' '*.tex' '*.ch' '*.md'`; \
+	echo "bumping $$old -> $(VERSION) in:"; echo "$$files" | sed 's/^/  /'; \
+	for f in $$files; do perl -pi -e "s/\Q$$old\E(?![0-9.])/$(VERSION)/g" $$f; done
+	@$(MAKE) --no-print-directory generate >/dev/null
+	@echo "bumped to $(VERSION); verify with 'make bootstrap test', then commit, tag, push"
 
 # Full install: the commands, gwebmac.tex, and the man pages. Pass options
 # through, e.g.  make install ARGS=--prefix=$$HOME/.local . May need sudo for a
@@ -101,4 +125,7 @@ example: build
 
 clean:
 	rm -rf $(BIN) build $(GEN_GO)
+	@for d in common cmd/gtangle cmd/gweave; do b=`basename $$d`; \
+		rm -f $$d/$$b.tex $$d/$$b.pdf $$d/$$b.dvi $$d/$$b.ps $$d/$$b.log $$d/$$b.toc $$d/$$b.idx $$d/$$b.scn; \
+	done
 	$(MAKE) -C examples clean
