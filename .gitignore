@@ -27,6 +27,24 @@ examples/*.scn
 # but keep sources
 !examples/*.w
 
+# woven output left in a component's own directory when it is woven standalone
+# (each of the three component webs carries its own \title and \topofcontents)
+/common/*.tex
+/common/*.pdf
+/common/*.dvi
+/common/*.log
+/common/*.ps
+/cmd/gtangle/*.tex
+/cmd/gtangle/*.pdf
+/cmd/gtangle/*.dvi
+/cmd/gtangle/*.log
+/cmd/gtangle/*.ps
+/cmd/gweave/*.tex
+/cmd/gweave/*.pdf
+/cmd/gweave/*.dvi
+/cmd/gweave/*.log
+/cmd/gweave/*.ps
+
 # rasterized previews
 *.png
 

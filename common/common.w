@@ -1,4 +1,12 @@
-@d Version
+\def\title{Common code for GTANGLE and GWEAVE (Version 0.5.0)}
+\def\topofcontents{\null\vfill
+  \centerline{\titlefont Common code for {\ttitlefont GTANGLE} and
+    {\ttitlefont GWEAVE}}
+  \vskip 15pt
+  \centerline{(Version 0.5.0)}
+  \vfill}
+\def\botofcontents{\vfill\centerline{\Gsmallfont
+  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
 
 @* The common package.
 This package is the shared front end of \.{GWEB}. It reads a \.{.w} source file,
@@ -10,6 +18,7 @@ The skeleton is the package declaration, the imports, and the |Version| constant
 (the \.{GWEB} release, shared by \.{gtangle} and \.{gweave} for their startup
 banner and their \.{-version} output). The named sections that follow supply the
 records and the parsing machinery, in reading order.
+@d Version
 @c
 package common
 

@@ -410,16 +410,21 @@
 % number back in \GTline.
 \def\Gconsetup#1{\ifnum#1<0 \bf \else
   \ifcase#1 \or\hskip2em\or\hskip4em\or\hskip6em\else\hskip8em\fi \fi}
+% \topofcontents and \botofcontents open and close the contents page; redefine
+% either in limbo, as in cwebmac, to dress it up (a subtitle, a version line, a
+% cover note). The defaults reproduce \Gcon's own former top and bottom.
+\def\topofcontents{\centerline{\titlefont\Gtitle}\vskip .7in \vfill}
+\def\botofcontents{\vfill}
 \def\Gcon{\ifGsecs\par\endgroup\vfil\eject\fi % finish the section names
   \ifGtocopen\immediate\closeout\Gtoc\fi
   \ifGcon\ifGtocopen
     \titletrue \pageno=\contentspagenumber
     \parindent=0pt
-    \centerline{\titlefont\Gtitle}\vskip .7in \vfill
+    \topofcontents
     \line{\hfil{\Gsmallfont\Gsectionword}\hbox to 3em{\hss\Gsmallfont\Gpageword}}%
     \begingroup \rm
       \readcontents\relax
     \endgroup
-    \vfill
+    \botofcontents
   \fi\fi
   \end}

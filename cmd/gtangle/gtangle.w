@@ -1,3 +1,12 @@
+\def\title{GTANGLE (Version 0.5.0)}
+\def\topofcontents{\null\vfill
+  \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
+  \vskip 15pt
+  \centerline{(Version 0.5.0)}
+  \vfill}
+\def\botofcontents{\vfill\centerline{\Gsmallfont
+  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
+
 @* Command gtangle.
 This is the command-line front end of \.{gtangle}; the tangle engine it drives is
 defined in the second half of this web. The input may be named with or without
