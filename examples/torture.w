@@ -1,3 +1,7 @@
+\noatl
+\nocon
+\nosecs
+
 \def\x#1{x_{#1}} @f x1 TeX @f x2 TeX
 
 @* Introduction. @q torture @>
