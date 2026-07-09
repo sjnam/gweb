@@ -8,12 +8,12 @@
 
 % --- common.w -----------------------------------------------------------------
 @x
-\def\title{Common code for GTANGLE and GWEAVE (Version 0.5.0)}
+\def\title{Common code for GTANGLE and GWEAVE (Version 0.5.1)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Common code for {\ttitlefont GTANGLE} and
     {\ttitlefont GWEAVE}}
   \vskip 15pt
-  \centerline{(Version 0.5.0)}
+  \centerline{(Version 0.5.1)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
@@ -22,11 +22,11 @@
 
 % --- gtangle.w ----------------------------------------------------------------
 @x
-\def\title{GTANGLE (Version 0.5.0)}
+\def\title{GTANGLE (Version 0.5.1)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
   \vskip 15pt
-  \centerline{(Version 0.5.0)}
+  \centerline{(Version 0.5.1)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
@@ -35,11 +35,11 @@
 
 % --- gweave.w -----------------------------------------------------------------
 @x
-\def\title{GWEAVE (Version 0.5.0)}
+\def\title{GWEAVE (Version 0.5.1)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GWEAVE} processor}
   \vskip 15pt
-  \centerline{(Version 0.5.0)}
+  \centerline{(Version 0.5.1)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
