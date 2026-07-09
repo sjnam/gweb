@@ -276,6 +276,11 @@ the list of section names (and the contents); and \cw{\bs noinx} drops the index
 too (so everything after the program). \cw{\bs noatl} is accepted for \.{CWEB}
 compatibility but does nothing, since \.{GWEB} has no \cw{@l} transliteration.
 
+The contents data is written to \cw{\bs contentsfile} (default \cw{\bs jobname
+.toc}) and read back by \cw{\bs readcontents} (default \cw{\bs input \bs
+contentsfile}); redefining either in limbo lets you, as in \.{CWEB}, gather the
+contents of several separately-typeset pieces into one.
+
 \chapter{Weaving in another language}
 \noindent Every fixed phrase \cw{gweave} writes into the woven output --- the
 cross-reference notes beneath a code part, the {\it Names of the Sections\/}

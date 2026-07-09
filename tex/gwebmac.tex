@@ -177,11 +177,20 @@
 \def\Gmakeheadline{\vbox to 0pt{\vskip-22.5pt
   \hbox to\Gpagewidth{\vbox to8.5pt{}\Grunhead}\vss}\nointerlineskip}
 
-% A starred section records itself in \jobname.toc as it is shipped, so \Gcon can
-% build the contents in one pass; the page number is captured by the deferred
-% \write, the title is stashed in a control sequence.
+% A starred section records itself in \contentsfile as it is shipped, so \Gcon
+% can build the contents in one pass; the page number is captured by the deferred
+% \write, the title is stashed in a control sequence. \contentsfile (the file the
+% data goes to) and \readcontents (how \Gcon reads it back) are redefinable in
+% limbo, as in cwebmac: to split a long document into separately-typeset pieces
+% and gather their contents in the last one, give each piece its own
+% \contentsfile and let the last \readcontents \input them all. The file is
+% opened lazily, by \Gopentoc at the first starred section, so that a limbo
+% redefinition of \contentsfile is already in force when it opens.
+\def\contentsfile{\jobname.toc}
+\def\readcontents{\input \contentsfile }
 \newwrite\Gtoc
-\immediate\openout\Gtoc=\jobname.toc
+\newif\ifGtocopen
+\def\Gopentoc{\ifGtocopen\else\Gtocopentrue\immediate\openout\Gtoc=\contentsfile \fi}
 
 % ---- section openers --------------------------------------------------------
 % \GM{n} : an ordinary (unstarred) section, run-in bold number. The
@@ -199,13 +208,15 @@
   % Snapshot the upper-cased title into \Ggrouptoks; \uppercase only upper-cases
   % the letter tokens, leaving control sequences (\.) intact for the header.
   {\uppercase{\global\Ggrouptoks={#3}}}%
-  \expandafter\gdef\csname Gtoctitle\number#2\endcsname{#3}%
   \Gsetmark{#2}% set the mark before any page break, so the new page's \topmark
   \ifGfirst \Gfirstfalse \vskip 6pt
   \else \ifnum#1<\Gsecpagedepth \vfil\eject
         \else \penalty-200\vfil\penalty-200\vfilneg\vskip\Gsecskip \fi
   \fi
-  \write\Gtoc{\string\GTline{#1}{#2}{\the\pageno}}%
+  \Gopentoc
+  % The title (#3) is written unexpanded so it survives to the contents run
+  % intact, and the page number is captured by the deferred \write after the break.
+  \write\Gtoc{\string\GTline{#1}{#2}{\unexpanded{#3}}{\the\pageno}}%
   \noindent\Gdest{#2}{\bf #2.\quad #3.\quad}\rightskip=0pt\ignorespaces}
 
 % ---- \datethis: timestamp the listing just above section 1 ------------------
@@ -382,9 +393,12 @@
   \ifx\Gempty#3\else\quad{\Gsmallfont#3}\fi\par\fi}
 
 % ---- contents page: centered title, Section/Page columns, dot leaders --------
-\def\GTline#1#2#3{\line{\Gconsetup{#1}%
-  \csname Gtoctitle\number#2\endcsname\ %
-  \rm\leaders\hbox to .5em{\hss.\hss}\hfil\ \Gs{#2}\hbox to 3em{\hss#3}}}
+% \GTline{depth}{secno}{title}{page}: one contents entry. The title travels in
+% the toc file itself (written unexpanded by \GN), so the file is self-contained
+% and \readcontents can gather several pieces' contents in one run.
+\def\GTline#1#2#3#4{\line{\Gconsetup{#1}%
+  #3\ %
+  \rm\leaders\hbox to .5em{\hss.\hss}\hfil\ \Gs{#2}\hbox to 3em{\hss#4}}}
 % A contents entry's leading material by group depth: a top-level @** section
 % (depth -1) sets its title in bold, as cweave does; @* (0) is flush, and deeper
 % groups (@*1, @*2, ...) are indented. The \bf is reset to \rm before the page
@@ -392,17 +406,17 @@
 \def\Gconsetup#1{\ifnum#1<0 \bf \else
   \ifcase#1 \or\hskip2em\or\hskip4em\or\hskip6em\else\hskip8em\fi \fi}
 \def\Gcon{\ifGsecs\par\endgroup\vfil\eject\fi % finish the section names
-  \immediate\closeout\Gtoc
-  \ifGcon
+  \ifGtocopen\immediate\closeout\Gtoc\fi
+  \ifGcon\ifGtocopen
     \titletrue \pageno=\contentspagenumber
     \parindent=0pt
     \centerline{\titlefont\Gtitle}\vskip .7in \vfill
     \line{\hfil{\Gsmallfont\Gsectionword}\hbox to 3em{\hss\Gsmallfont\Gpageword}}%
     \begingroup \rm
-      \input \jobname.toc
+      \readcontents\relax
     \endgroup
     \vfill
-  \fi
+  \fi\fi
   \end}
 
 % ---- insert pdf image --------------------------------------------------------
