@@ -328,10 +328,16 @@
 \def\Goutsecname{절 이름 목록} % title of the section-names PDF bookmark
 \def\Gsectionword{절}
 \def\Gpageword{쪽}
-% Running-head font: pair the small roman (cmr8) with a sans hangul (\eightgt,
+% Running-head font: pair the small roman (cmr8) with a sans hangul (\ninegt,
 % Noto Sans) so Korean in the header matches the upper-cased Latin instead of
-% clashing with it as the serif body font would.
+% clashing with it as the serif body font would. This is the group (chapter)
+% title's font, and \Ggroupfont follows it.
 \def\Gheadfont{\eightrm\ninegt}
+% The document title, though, is set as written (not upper-cased), and on the
+% contents page it is serif; so when the author supplies a \def\title we set it
+% in serif hangul (\ninemj, Noto Serif) here too, to match. A default job-name
+% title keeps the sans of the group titles, since it reads like one of them.
+\def\Gtitlefont{\eightrm\ifx\title\Gdefaulttitle\ninegt\else\ninemj\fi}
 
 % ---- LuaTeX PDF back end: blue links and Korean (UTF-16BE) bookmarks --------
 % gwebmac's \Gdest/\Glink/\Gbookmark are written for pdfTeX primitives that
