@@ -1,6 +1,6 @@
 @d Version
 
-@* The \.{common} package.
+@* The common package.
 This package is the shared front end of \.{GWEB}. It reads a \.{.w} source file,
 expands \.{@@i} includes, optionally applies a change file, and splits the
 result into a sequence of {\it sections\/}. Both \.{gtangle} and \.{gweave}
