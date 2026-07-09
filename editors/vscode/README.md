@@ -29,6 +29,12 @@ normally.
 pieces); `prefix...` abbreviations resolve. Hovering a name shows where it is
 defined.
 
+**Section-name completion.** Typing `@<` pops up every section name declared or
+defined so far — in this web and in files it `@i`-includes — and keeps
+filtering as you type (spaces included); accepting an entry completes
+`name@>`, replacing the rest of an existing name when your cursor sits inside
+one. Names already defined sort first, with their definition lines shown.
+
 **Tangle on save.** Saving a `.w` re-runs gtangle so the source map stays
 fresh. Only a web whose tangled `.go` already exists is re-tangled — the
 extension never creates one behind your back; run the **GWEB: Tangle current
@@ -93,8 +99,8 @@ copy is only picked up after a **full restart** of VS Code, and is easy to
 leave stale — prefer the VSIX above.
 
 ```sh
-cp -r editors/vscode ~/.vscode/extensions/gweb-0.2.0   # macOS / Linux
-# Windows: %USERPROFILE%\.vscode\extensions\gweb-0.2.0
+cp -r editors/vscode ~/.vscode/extensions/gweb-0.3.0   # macOS / Linux
+# Windows: %USERPROFILE%\.vscode\extensions\gweb-0.3.0
 ```
 
 If things work in one project but not another, you most likely have a stale

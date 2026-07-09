@@ -1,8 +1,8 @@
 {
   "name": "gweb",
   "displayName": "GWEB (literate Go)",
-  "description": "GWEB literate-programming support (.w, .ch): syntax highlighting, Go to Definition and Hover forwarded to your Go extension through gtangle's //line source map, section-name navigation, and tangle on save.",
-  "version": "0.2.0",
+  "description": "GWEB literate-programming support (.w, .ch): syntax highlighting, Go to Definition and Hover forwarded to your Go extension through gtangle's //line source map, section-name navigation and completion, and tangle on save.",
+  "version": "0.3.0",
   "publisher": "sjnam",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/sjnam/gweb" },

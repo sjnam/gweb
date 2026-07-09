@@ -143,6 +143,52 @@ function indexSections(wText) {
   return { defs, fullNames: [...fullNames] };
 }
 
+// openSectionStart: given the text of a line up to the cursor, the column just
+// past an `@<` whose name is still open at the cursor (no `@>` yet); -1 when
+// the cursor is not inside a section name. `@@` is a literal at-sign.
+function openSectionStart(linePrefix) {
+  let open = -1;
+  for (let i = 0; i < linePrefix.length; i++) {
+    if (linePrefix[i] !== '@') continue;
+    const c = linePrefix[i + 1];
+    if (c === '@') { i++; continue; }
+    if (c === '<') { open = i + 2; i++; continue; }
+    if (c === '>') { open = -1; i++; continue; }
+  }
+  return open;
+}
+
+// closeAfter: given the rest of the line after the cursor, the offset just past
+// a `@>` that closes the currently open name -- so completion can replace the
+// tail of a name being retyped -- or -1 when no closer comes before another
+// `@<`.
+function closeAfter(lineSuffix) {
+  for (let i = 0; i < lineSuffix.length; i++) {
+    if (lineSuffix[i] !== '@') continue;
+    const c = lineSuffix[i + 1];
+    if (c === '@') { i++; continue; }
+    if (c === '<') return -1;
+    if (c === '>') return i + 2;
+  }
+  return -1;
+}
+
+// escapeName re-escapes a canonical section name for insertion into .w source:
+// a literal at-sign is written @@.
+function escapeName(name) {
+  return name.replace(/@/g, '@@');
+}
+
+// includeTargets: the file names named by @i lines (quoted or bare), in order.
+function includeTargets(wText) {
+  const out = [];
+  for (const line of wText.split('\n')) {
+    const m = /^[ \t]*@i[ \t]+(?:"([^"]+)"|(\S+))/.exec(line);
+    if (m) out.push(m[1] || m[2]);
+  }
+  return out;
+}
+
 // resolveName expands a `prefix...` abbreviation to the unique full name that
 // begins with the prefix; a full name resolves to itself; an ambiguous or
 // unmatched abbreviation resolves to null.
@@ -177,4 +223,8 @@ module.exports = {
   indexSections,
   resolveName,
   sectionDefSites,
+  openSectionStart,
+  closeAfter,
+  escapeName,
+  includeTargets,
 };

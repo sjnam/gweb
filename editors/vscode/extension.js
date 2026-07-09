@@ -254,6 +254,79 @@ const hoverProvider = {
 };
 
 // ---------------------------------------------------------------------------
+// Section-name completion: typing `@<` offers every section name declared or
+// defined so far (in this web and in files it @i-includes); typing on filters
+// the list, and accepting an entry completes `name@>` -- replacing the rest of
+// an existing name when the cursor sits inside one.
+
+// collectIncludeNames: section names from the files this web @i-includes
+// (transitively, within reason), tagged with the file they come from.
+function collectIncludeNames(document) {
+  const out = [];
+  const seen = new Set();
+  const visit = (filePath, depth) => {
+    if (depth > 4 || seen.has(filePath)) return;
+    seen.add(filePath);
+    let text;
+    try {
+      text = fs.readFileSync(filePath, 'utf8');
+    } catch {
+      return;
+    }
+    const idx = lib.indexSections(text);
+    for (const n of idx.fullNames) out.push({ name: n, file: path.basename(filePath) });
+    for (const inc of lib.includeTargets(text)) {
+      visit(path.resolve(path.dirname(filePath), inc), depth + 1);
+    }
+  };
+  for (const inc of lib.includeTargets(document.getText())) {
+    visit(path.resolve(path.dirname(document.uri.fsPath), inc), 1);
+  }
+  return out;
+}
+
+const completionProvider = {
+  provideCompletionItems(document, position) {
+    const lineText = document.lineAt(position.line).text;
+    const start = lib.openSectionStart(lineText.slice(0, position.character));
+    if (start < 0) return null;
+
+    // Replace from just after `@<` to the cursor -- or through the closing
+    // `@>` when the cursor sits inside an already-closed name.
+    const closeIdx = lib.closeAfter(lineText.slice(position.character));
+    const end = closeIdx >= 0 ? position.character + closeIdx : position.character;
+    const range = new vscode.Range(position.line, start, position.line, end);
+
+    const index = lib.indexSections(document.getText());
+    const names = new Map(); // name -> { detail, rank }
+    for (const n of index.fullNames) {
+      const sites = lib.sectionDefSites(n, index);
+      names.set(
+        n,
+        sites.length
+          ? { detail: 'defined at line ' + sites.map((s) => s.line + 1).join(', '), rank: '0' }
+          : { detail: 'referenced only (not yet defined)', rank: '1' }
+      );
+    }
+    for (const inc of collectIncludeNames(document)) {
+      if (!names.has(inc.name)) names.set(inc.name, { detail: 'from ' + inc.file, rank: '2' });
+    }
+
+    const items = [];
+    for (const [name, info] of names) {
+      const it = new vscode.CompletionItem(name, vscode.CompletionItemKind.Reference);
+      it.detail = info.detail;
+      it.insertText = lib.escapeName(name) + '@>';
+      it.filterText = name;
+      it.sortText = info.rank + name;
+      it.range = range;
+      items.push(it);
+    }
+    return items;
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Tangling. On save (when enabled) the extension re-runs gtangle so the source
 // map stays fresh -- but only for a web that already has tangled output; it
 // never creates one behind your back. `GWEB: Tangle current file` always runs.
@@ -304,6 +377,7 @@ function activate(context) {
     out,
     vscode.languages.registerDefinitionProvider(selector, defProvider),
     vscode.languages.registerHoverProvider(selector, hoverProvider),
+    vscode.languages.registerCompletionItemProvider(selector, completionProvider, '<'),
     vscode.workspace.onDidSaveTextDocument((doc) => tangle(doc, false)),
     vscode.commands.registerCommand('gweb.tangle', () => {
       const ed = vscode.window.activeTextEditor;
