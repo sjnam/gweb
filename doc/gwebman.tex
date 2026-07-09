@@ -270,6 +270,12 @@ thin space before \cw{(}, \cw{2mu} by default) are registers you may tune.
 \noindent And \cw{\bs datethis} in limbo prints the date and time of the run
 beneath section~1, as in \.{CWEB}.
 
+You can also suppress the tail of the document, as in \.{CWEB}, by putting one of
+these in limbo: \cw{\bs nocon} drops the table of contents; \cw{\bs nosecs} drops
+the list of section names (and the contents); and \cw{\bs noinx} drops the index
+too (so everything after the program). \cw{\bs noatl} is accepted for \.{CWEB}
+compatibility but does nothing, since \.{GWEB} has no \cw{@l} transliteration.
+
 \chapter{Weaving in another language}
 \noindent Every fixed phrase \cw{gweave} writes into the woven output --- the
 cross-reference notes beneath a code part, the {\it Names of the Sections\/}

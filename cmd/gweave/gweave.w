@@ -2397,7 +2397,7 @@ func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 	bw.WriteString("\n\\Ginx\n")
 	wv.writeIndex(bw)
 	bw.WriteString("\\Gfin\n")
-	fmt.Fprintf(bw, "\\Gdest{%d}%%\n", len(wv.w.Sections)+1)
+	fmt.Fprintf(bw, "\\Gsecdest{%d}%%\n", len(wv.w.Sections)+1)
 	wv.writeSectionNames(bw)
 	bw.WriteString("\\Gcon\n\\end\n")
 }
@@ -2443,7 +2443,9 @@ for i, s := range starred {
 one past the last section) lists every defined section name beneath it, each
 linking to its defining section, as cweave does. The negative child count starts
 the group collapsed; \.{\\Goutsecname} holds the title, which the Korean backend
-localizes.
+localizes. The whole block is bracketed by \.{\\ifGsecs} so that \.{\\nosecs} (and
+\.{\\noinx}), which drop the section-name list, drop its outline too rather than
+leaving it pointing at a destination that is no longer emitted.
 @<Emit the ``Names of the sections'' bookmarks@>=
 var names []string
 for _, n := range wv.sortedSectionNames() {
@@ -2451,10 +2453,12 @@ for _, n := range wv.sortedSectionNames() {
 		names = append(names, n)
 	}
 }
+bw.WriteString("\\ifGsecs\n")
 fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%d}{\\Goutsecname}%%\n", topDepth, len(wv.w.Sections)+1, -len(names))
 for _, n := range names {
 	fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{0}{%s}%%\n", topDepth+1, wv.defNum[n], bookmarkTitle(n))
 }
+bw.WriteString("\\fi\n")
 
 @ |bookmarkTitle| reduces a starred-section title to plain text safe for a PDF
 outline: a |...| span keeps its inner text, \.{@@@@} becomes an at-sign, the
@@ -2762,8 +2766,11 @@ func TestNamesBookmark(t *testing.T) {
 	if !strings.Contains(out, `\Gbookmark{1}{2}{0}{x}`) {
 		t.Errorf("missing section-name child bookmark:\n%s", out)
 	}
-	if !strings.Contains(out, `\Gdest{3}`) {
+	if !strings.Contains(out, `\Gsecdest{3}`) {
 		t.Errorf("missing section-names destination:\n%s", out)
+	}
+	if !strings.Contains(out, "\\ifGsecs\n\\Gbookmark{0}{3}{-1}{\\Goutsecname}") {
+		t.Errorf("Names-of-the-sections outline should be guarded by \\ifGsecs:\n%s", out)
 	}
 }
 

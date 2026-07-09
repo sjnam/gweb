@@ -147,6 +147,10 @@
     \smash{\raise\baselineskip\hbox to0pt{%
       \special{pdf: dest (\romannumeral#1) [ @thispage /FitH @ypos ]}\hss}}%
   \fi\fi}
+% The destination for the `Names of the sections' page. It is emitted only when
+% that list is (\ifGsecs), so \nosecs leaves no stray whatsit --- and hence no
+% blank page --- on the sheet the index ejects into.
+\def\Gsecdest#1{\ifGsecs\Gdest{#1}\fi}
 \def\Glink#1#2{%
   \ifGpdf
     \pdfstartlink attr{/Border[0 0 0]}goto num #1\relax
@@ -305,6 +309,22 @@
 \def\GNused#1{Used in section #1}
 \def\GNuseds#1{Used in sections #1}
 
+% ---- selectively suppressing the back matter (as in cwebmac) ----------------
+% Put any of these in limbo to drop part of the tail. Following cwebmac they are
+% cumulative in reach: \noinx drops the index, the `Names of the sections' list,
+% and the contents; \nosecs drops the list and the contents; \nocon drops the
+% contents. The three flags guard the matching parts of \Ginx/\GII, \Gfin/\GNS,
+% and \Gcon below, so every group stays balanced whatever is switched off.
+% \noatl is accepted for portability with cwebmac webs but does nothing: GWEB
+% has no \.{@l} transliteration (Go source is Unicode), so there is no such note.
+\newif\ifGinx  \Ginxtrue   % include the index?
+\newif\ifGsecs \Gsecstrue  % include the `Names of the sections' list?
+\newif\ifGcon  \Gcontrue   % include the table of contents?
+\def\noinx{\Ginxfalse\Gsecsfalse\Gconfalse}
+\def\nosecs{\Gsecsfalse\Gconfalse}
+\def\nocon{\Gconfalse}
+\def\noatl{}
+
 % ---- index: title-less, set in two columns ----------------------------------
 % The index is set in two columns. \Ginx stashes the preceding material (the
 % user's `@* Index.' heading and prose) in \Gsbox, then narrows \hsize to one
@@ -324,7 +344,8 @@
     \global\advance\pageno by1
     \global\setbox\Gsbox=\vbox{}\global\vsize=\Gpageheight \gdef\Glr{L}%
   \fi}
-\def\Ginx{\par
+\def\Ginx{\ifGinx
+  \par
   \vskip 9pt plus 2pt           % gap between the Index heading/prose and entries
   \output={\global\setbox\Gsbox=\box255}\eject % stash heading+prose, hold page
   \setbox\Gsbox=\vbox{\unvbox\Gsbox}%
@@ -334,26 +355,31 @@
   \global\output={\Gcoloutput}\gdef\Glr{L}%
   \begingroup
   \baselineskip=12pt \parindent=0pt \parskip=1pt plus .5pt \rm
-  \rightskip=0pt plus 2.5em \tolerance=10000 \hyphenpenalty=10000}
-\def\GII#1#2{\noindent\hangindent2em #1:\kern.5em #2.\par} % one index entry
+  \rightskip=0pt plus 2.5em \tolerance=10000 \hyphenpenalty=10000
+  \fi}
+\def\GII#1#2{\ifGinx\noindent\hangindent2em #1:\kern.5em #2.\par\fi} % index entry
 \def\GIR#1{{\rm #1}}                          % @^...@>  roman index entry
 \def\GIT#1{{\tentex #1}}                      % @....@>  typewriter index entry
 \def\9#1{{\rm #1}}                            % default for @:...@> entries
 \def\GIC#1{\9{#1}}
 
 % ---- list of section names (a `Names of the Sections' page) -----------------
-\def\Gfin{\par\vfil\eject       % seal/ship the current index column
+% \Gfin ends the index (\Gendindex) and starts the section-name list
+% (\Gbeginsecs); the two halves are split out so \nosecs can end the index and
+% stop, and each is guarded by its own flag so the groups stay balanced.
+\def\Gendindex{\par\vfil\eject  % seal/ship the current index column
   \if L\Glr\else\null\vfil\eject\fi % a left column is pending: ship its page
-  \endgroup                     % close the index paragraph group
+  \endgroup                     % close the index paragraph group (from \Ginx)
   \global\output={\plainoutput}% back to ordinary single-column pages
-  \global\hsize=\Gpagewidth \global\vsize=\Gpageheight
-  \vfil\eject
+  \global\hsize=\Gpagewidth \global\vsize=\Gpageheight}
+\def\Gbeginsecs{\vfil\eject
   \global\def\Gsechead{}% no section number in the header here
   \global\def\Ggrouphead{\Gnamesheading}%
   \begingroup
   \parindent=0pt \parskip=2pt plus 1pt \rightskip=0pt plus 2em \rm}
-\def\GNS#1#2#3{\noindent\hangindent2em \Gangle{#1}{#2}%
-  \ifx\Gempty#3\else\quad{\Gsmallfont#3}\fi\par}
+\def\Gfin{\ifGinx\Gendindex\fi \ifGsecs\Gbeginsecs\fi}
+\def\GNS#1#2#3{\ifGsecs\noindent\hangindent2em \Gangle{#1}{#2}%
+  \ifx\Gempty#3\else\quad{\Gsmallfont#3}\fi\par\fi}
 
 % ---- contents page: centered title, Section/Page columns, dot leaders --------
 \def\GTline#1#2#3{\line{\Gconsetup{#1}%
@@ -365,16 +391,19 @@
 % number back in \GTline.
 \def\Gconsetup#1{\ifnum#1<0 \bf \else
   \ifcase#1 \or\hskip2em\or\hskip4em\or\hskip6em\else\hskip8em\fi \fi}
-\def\Gcon{\par\endgroup\vfil\eject % finish the section names
+\def\Gcon{\ifGsecs\par\endgroup\vfil\eject\fi % finish the section names
   \immediate\closeout\Gtoc
-  \titletrue \pageno=\contentspagenumber
-  \parindent=0pt
-  \centerline{\titlefont\Gtitle}\vskip .7in \vfill
-  \line{\hfil{\Gsmallfont\Gsectionword}\hbox to 3em{\hss\Gsmallfont\Gpageword}}%
-  \begingroup \rm
-    \input \jobname.toc
-  \endgroup
-  \vfill\end}
+  \ifGcon
+    \titletrue \pageno=\contentspagenumber
+    \parindent=0pt
+    \centerline{\titlefont\Gtitle}\vskip .7in \vfill
+    \line{\hfil{\Gsmallfont\Gsectionword}\hbox to 3em{\hss\Gsmallfont\Gpageword}}%
+    \begingroup \rm
+      \input \jobname.toc
+    \endgroup
+    \vfill
+  \fi
+  \end}
 
 % ---- insert pdf image --------------------------------------------------------
 \ifx\saveimageresource\undefined\else
