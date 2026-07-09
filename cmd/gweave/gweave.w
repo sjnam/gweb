@@ -7,7 +7,7 @@
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
 
-@* Command gweave.
+@** Processor gweave.
 This is the command-line front end of \.{gweave}; the weave engine it drives is
 defined in the second half of this web. The input may be named with or without
 its \.{.w} extension (|gweave wc| reads \.{wc.w}, as in cweb). The woven document

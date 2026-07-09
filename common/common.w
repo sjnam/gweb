@@ -8,7 +8,7 @@
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
 
-@* The common package.
+@** Package common.
 This package is the shared front end of \.{GWEB}. It reads a \.{.w} source file,
 expands \.{@@i} includes, optionally applies a change file, and splits the
 result into a sequence of {\it sections\/}. Both \.{gtangle} and \.{gweave}

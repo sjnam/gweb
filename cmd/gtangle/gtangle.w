@@ -7,7 +7,7 @@
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
 
-@* Command gtangle.
+@** Processor gtangle.
 This is the command-line front end of \.{gtangle}; the tangle engine it drives is
 defined in the second half of this web. The input may be named with or without
 its \.{.w} extension (|gtangle wc| reads \.{wc.w}, as in cweb). The unnamed \.{@@c}

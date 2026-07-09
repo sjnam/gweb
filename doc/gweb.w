@@ -2,7 +2,16 @@
 % This master simply \i-includes the three component webs in reading order;
 % it is meant for gweave only (the components are what `make tangle' builds).
 
-@* Introduction.
+\def\title{GWEB (Version 0.5.1)}
+\def\topofcontents{\null\vfill
+  \centerline{\titlefont Literate programming system for the Go}
+  \vskip 15pt
+  \centerline{(Version 0.5.1)}
+  \vfill}
+\def\botofcontents{\vfill\centerline{\Gsmallfont
+  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
+
+@** Introduction.
 This is \.{GWEB}, a literate-programming system for the \GO/ language, modeled
 closely on Knuth and Levy's \.{CWEB}. You write a single |.w| source that
 interleaves \TeX\ documentation with \GO/ code; \.{gtangle} extracts the \GO/ a
