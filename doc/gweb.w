@@ -2,11 +2,11 @@
 % This master simply \i-includes the three component webs in reading order;
 % it is meant for gweave only (the components are what `make tangle' builds).
 
-\def\title{GWEB (Version 0.5.1)}
+\def\title{GWEB (Version 0.6.0)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Literate programming system for the Go}
   \vskip 15pt
-  \centerline{(Version 0.5.1)}
+  \centerline{(Version 0.6.0)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
