@@ -177,6 +177,23 @@
     \special{pdf: outline #1 << /Title (#4)
        /A << /S /GoTo /D (\romannumeral#2) >> >>}%
   \fi\fi}
+% \pdfURL{text}{url}: `text' set in blue as a clickable link to `url', as in
+% cwebmac; with no PDF back end both are printed, the URL in parentheses and
+% typewriter. In the url write @@ for an at-sign (the usual .w escape),
+% \TILDE/ for ~, and \UNDER/ for _, as in cwebmac.
+\def\pdfURL#1#2{%
+  \ifGpdf
+    \pdfstartlink attr{/Border[0 0 0]}
+      user{/Subtype /Link /A << /S /URI /URI (#2) >>}\relax
+    \pdfliteral{0 0 1 rg}#1\pdfliteral{0 g}\pdfendlink
+  \else\ifGdvipdf
+    \setbox\Glinkbox=\hbox{\special{pdf: bc [ 0 0 1 ]}#1\special{pdf: ec}}%
+    \special{pdf: ann width \the\wd\Glinkbox\space height \the\ht\Glinkbox\space
+       depth \the\dp\Glinkbox\space << /Subtype /Link /Border [ 0 0 0 ]
+       /A << /S /URI /URI (#2) >> >>}\box\Glinkbox\relax
+  \else #1 ({\tt#2})\fi\fi}
+{\catcode`\~=12 \gdef\TILDE/{~}} % ~ in a URL
+{\catcode`\_=12 \gdef\UNDER/{_}} % _ in a URL
 % \Gmakeheadline places \Grunhead like plain TeX's \makeheadline, for use inside
 % the index's custom \shipout (where the plain \headline machinery is bypassed).
 \def\Gmakeheadline{\vbox to 0pt{\vskip-22.5pt

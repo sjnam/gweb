@@ -385,5 +385,12 @@
   \pdfextension literal{0 0 1 rg}#2\pdfextension literal{0 g}\pdfextension endlink}
 \def\Gbookmark#1#2#3#4{\pdfextension outline goto num #2 count #3
   {\directlua{gweb_pdfutf16("\luaescapestring{#4}")}}}
+% gwebmac's \pdfURL is likewise written for pdfTeX primitives; restate it (the
+% link text may of course be Korean).
+\def\pdfURL#1#2{%
+  \pdfextension startlink attr{/Border[0 0 0]}
+    user{/Subtype /Link /A << /S /URI /URI (#2) >>}\relax
+  \pdfextension literal{0 0 1 rg}#1\pdfextension literal{0 g}%
+  \pdfextension endlink}
 % Open the bookmark (outline) pane when the document is first shown.
 \pdfextension catalog{/PageMode /UseOutlines}

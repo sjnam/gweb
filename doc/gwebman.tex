@@ -281,6 +281,12 @@ The contents data is written to \cw{\bs contentsfile} (default \cw{\bs jobname
 contentsfile}); redefining either in limbo lets you, as in \.{CWEB}, gather the
 contents of several separately-typeset pieces into one.
 
+And \cw{\bs pdfURL\char123 text\char125\char123 url\char125}, anywhere in the
+\TeX\ parts, sets {\it text\/} in blue as a clickable link to {\it url\/}, as in
+\.{CWEB}; with no PDF back end both are printed, the URL in parentheses. In the
+URL write \cw{@@} for an at-sign (the usual \cw{.w} escape), \cw{\bs TILDE/} for
+\cw{\char126}, and \cw{\bs UNDER/} for \cw{\char95}.
+
 \chapter{Weaving in another language}
 \noindent Every fixed phrase \cw{gweave} writes into the woven output --- the
 cross-reference notes beneath a code part, the {\it Names of the Sections\/}
