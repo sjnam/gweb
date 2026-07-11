@@ -1126,11 +1126,25 @@ func (wv *Weaver) processTex(secNum int, s string) string {
 	var b strings.Builder
 	n := len(s)
 	i := 0
+	inMath := false
 	for i < n {
 		c := s[i]
 		if c == '\\' && i+1 < n && s[i+1] == '|' {
 			b.WriteString("|") // \| is a literal bar in prose
 			i += 2
+			continue
+		}
+		if c == '$' && (i == 0 || s[i-1] != '\\') {
+			// track the author's math shifts, so a bar-delimited span
+			// inside them is later set without dollars of its own
+			if i+1 < n && s[i+1] == '$' {
+				b.WriteString("$$")
+				i += 2
+			} else {
+				b.WriteByte('$')
+				i++
+			}
+			inMath = !inMath
 			continue
 		}
 		@<Set an inline code span in prose@>
@@ -1159,7 +1173,7 @@ if c == '|' {
 		code.WriteByte(s[j])
 		j++
 	}
-	b.WriteString(wv.renderInline(secNum, code.String()))
+	b.WriteString(wv.renderInline(secNum, code.String(), inMath))
 	i = j + 1
 	continue
 }
@@ -1201,10 +1215,11 @@ if c == '@@' && i+1 < n {
 }
 
 @ |renderInline| formats a |...| inline \GO/ fragment from prose, recording its
-identifiers in the index.
+identifiers in the index. |inMath| tells whether the span sits inside a \.{\$...\$}
+the author opened, in which case the fragment is not re-wrapped in dollars.
 @<Render an inline code fragment@>=
-func (wv *Weaver) renderInline(secNum int, code string) string {
-	return wv.inlineCode(code, secNum, true)
+func (wv *Weaver) renderInline(secNum int, code string, inMath bool) string {
+	return wv.inlineCode(code, secNum, true, !inMath)
 }
 
 @ |inlineCode| does the work for both |renderInline| and the section-name and
@@ -1216,12 +1231,16 @@ honored rather than lexed as \GO/: an index entry (\.{@@\^ @@. @@:}) is recorded
 \TEX/ box (\.{@@t}) and verbatim output (\.{@@=}) are set as they are in a code
 part, a section name is linked, and an \.{@@q} comment has already been dropped.
 The lone |emit| both flushes a pending source blank (as \.{\\\ }) and marks the
-run started, so the next blank counts.
+run started, so the next blank counts. |wrap| adds the enclosing \.{\$...\$}; a
+caller already inside \TEX/ math (a \.{\|...\|} within a \.{\$...\$} span in prose
+or a comment, as \.{CWEB} allows) passes |false| so the dollars do not nest.
 @<Render an inline code fragment@>=
-func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
+func (wv *Weaver) inlineCode(code string, secNum int, record, wrap bool) string {
 	var st lexState
 	var b strings.Builder
-	b.WriteString("$")
+	if wrap {
+		b.WriteString("$")
+	}
 	pendingSpace := false
 	started := false
 	prevSigKind := tkNewline
@@ -1238,7 +1257,9 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	for _, a := range common.ScanCode(code) {
 		@<Render one inline atom@>
 	}
-	b.WriteString("$")
+	if wrap {
+		b.WriteString("$")
+	}
 	return b.String()
 }
 
@@ -1316,10 +1337,22 @@ func (wv *Weaver) commentBody(secNum int, s string) string {
 		}
 	}
 	n := len(s)
+	inMath := false
 	for i := 0; i < n; {
 		if s[i] == '\\' && i+1 < n && s[i+1] == '|' {
 			lit.WriteByte('|') // \| is a literal bar
 			i += 2
+			continue
+		}
+		if s[i] == '$' && (i == 0 || s[i-1] != '\\') {
+			if i+1 < n && s[i+1] == '$' {
+				lit.WriteString("$$")
+				i += 2
+			} else {
+				lit.WriteByte('$')
+				i++
+			}
+			inMath = !inMath
 			continue
 		}
 		@<Pass an opaque typewriter span through@>
@@ -1376,7 +1409,7 @@ if s[i] == '|' {
 		continue
 	}
 	flush()
-	b.WriteString(wv.inlineCode(code.String(), secNum, true))
+	b.WriteString(wv.inlineCode(code.String(), secNum, true, !inMath))
 	i = j + 1
 	continue
 }
@@ -1429,7 +1462,7 @@ if name[i] == '|' {
 		code.WriteByte(name[j])
 		j++
 	}
-	b.WriteString(wv.inlineCode(code.String(), 0, false))
+	b.WriteString(wv.inlineCode(code.String(), 0, false, true))
 	i = j + 1
 	continue
 }
@@ -3340,6 +3373,33 @@ func TestCommentInlineCode(t *testing.T) {
 	out2 := weaveString(t, "@@ x\n@@c\nx := 1 // a | b\n")
 	if strings.Contains(out2, `\GID{b}`) {
 		t.Errorf("an unmatched bar must not turn the rest into code:\n%s", out2)
+	}
+}
+
+@ A \.{\|...\|} span the author places inside a \.{\$...\$} math shift --- in prose
+or in a comment, as \.{CWEB} allows --- is set without its own dollars, so the
+math does not nest and break. Outside math it still wraps; \.{\$\$...\$\$} display
+math and an escaped \.{\\\$} are tracked correctly.
+@(gweave_test.go@>=
+func TestInlineCodeInMath(t *testing.T) {
+	out := weaveString(t, "@@ The bound $k < |maxDim|$, and $$\\sum |a| = |b|.$$ But |c| wraps.\n@@c\npackage main\n")
+	for _, want := range []string{`$k < \GID{maxDim}$`, `$$\sum \GID{a} = \GID{b}.$$`, `$\GID{c}$`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, `\GID{maxDim}$$`) || strings.Contains(out, `$\GID{maxDim}$$`) {
+		t.Errorf("a |...| inside $...$ must not add its own dollars:\n%s", out)
+	}
+	// A comment: |y| inside the comment's own $...$ is bare; |z| outside wraps.
+	cm := weaveString(t, "@@ x\n@@c\nvar _ = 0 // $x=|y|$ and |z|\n")
+	if !strings.Contains(cm, `$x=\GID{y}$`) || !strings.Contains(cm, `$\GID{z}$`) {
+		t.Errorf("comment math handling wrong:\n%s", cm)
+	}
+	// An escaped \$ is a literal dollar, not a math shift, so a later |w| wraps.
+	esc := weaveString(t, "@@ price \\$5 then |w| here.\n@@c\npackage main\n")
+	if !strings.Contains(esc, `$\GID{w}$`) {
+		t.Errorf("|w| after an escaped \\$ should still wrap:\n%s", esc)
 	}
 }
 
