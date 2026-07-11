@@ -1,8 +1,8 @@
-\def\title{GWEAVE (Version 0.6.0)}
+\def\title{GWEAVE (Version 0.6.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GWEAVE} processor}
   \vskip 15pt
-  \centerline{(Version 0.6.0)}
+  \centerline{(Version 0.6.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
