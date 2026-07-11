@@ -297,6 +297,13 @@
 \def\GBL{\par\penalty\Gcodepenalty\smallskip}             % @# blank line in code
 \def\GBK{\par\penalty\Gcodepenalty\vskip 2.5pt} % a blank source line: a little air
 
+% A |...| fragment from the TeX parts (prose, comments, section names) is wrapped
+% in \GPB, cweb's ``program brackets'': the code material is math (it uses
+% \mathord and friends), so \GPB supplies the enclosing $...$ only when TeX is
+% not already in math mode. That way a |...| the author put inside a $...$ span,
+% or inside a text-mode \halign cell of a $$...$$ display, is set correctly
+% either way -- TeX decides the mode, so gweave need not guess it.
+\def\GPB#1{\ifmmode#1\else$#1$\fi}
 % ---- code token fonts (called inside the math of \GL) -----------------------
 \def\GID#1{\hbox{\it #1\/}}      % identifier
 \def\GKW#1{\hbox{\bf #1}}        % reserved word or predeclared type
