@@ -292,10 +292,20 @@ func scanDecls(toks []token, keyword string, add func(string)) {
 	}
 }
 
-@ |nextSignificant| skips whitespace and newlines to the next real token.
+@ |nextSignificant| skips whitespace and newlines to the next real token;
+|prevSignificant| is its mirror, scanning back for the previous one.
 @<Scan a declaration group@>=
 func nextSignificant(toks []token, i int) int {
 	for ; i < len(toks); i++ {
+		if toks[i].kind != tkSpace && toks[i].kind != tkNewline {
+			return i
+		}
+	}
+	return -1
+}
+
+func prevSignificant(toks []token, i int) int {
+	for i--; i >= 0; i-- {
 		if toks[i].kind != tkSpace && toks[i].kind != tkNewline {
 			return i
 		}
@@ -892,6 +902,9 @@ case "(", "[":
 		if cur.text == "(" {
 			return gThin
 		}
+		if cur.text == "[" && k > 0 && toks[k-1].kind == tkSpace {
+			return gWide // a declared name and its array type: \.{b [256]int}
+		}
 		return gTight
 	}
 	if pk == tkKeyword && pt == "map" {
@@ -901,6 +914,9 @@ case "(", "[":
 }
 if isSignOp(cur.text) && !isOperandEnd(pk, pt) {
 	return gapAfter(pk, pt) // a unary prefix operator
+}
+if cur.text == "*" && starAfterArrayType(toks, k) {
+	return gTight // a pointer element type crammed to its array: \.{[256]*Node}
 }
 return gWide
 
@@ -964,25 +980,92 @@ func isUnaryPrefix(pk tokKind, pt string, cur token) bool {
 }
 
 @ A \.* after an operand is the one genuine ambiguity: a product or a pointer type.
-The programmer's own spacing settles it, and reliably --- for the two read quite
-differently. A pointer type keeps a space {\it before\/} the star and runs straight
-into its type after it: \.{p~*int}, \.{w~*W}. A product has either no space at all
-(\.{a*b}, the form |gofmt| uses to group a higher-precedence factor) or a space on
-each side (\.{a~*~b}); either way it is set spaced, the \.{cweave} way. So
-|pointerStar| clings the star to its right just when the source put a blank before
-it but none after. That leaves \.{*a**b} a product of two dereferences --- the
-middle star is tight on its left --- so it comes out \.{*a~*~*b}, as in \.{cweave}.
-This lone appeal to the source is the escape hatch \.{cweave} spells
+The programmer's own spacing usually settles it, and reliably --- for the two read
+quite differently. A pointer type keeps a space {\it before\/} the star and runs
+straight into its type after it: \.{p~*int}, \.{w~*W}. A product has either no space
+at all (\.{a*b}, the form |gofmt| uses to group a higher-precedence factor) or a
+space on each side (\.{a~*~b}); either way it is set spaced, the \.{cweave} way. So
+|pointerStar| clings the star to its right when the source put a blank before it but
+none after. That leaves \.{*a**b} a product of two dereferences --- the middle star
+is tight on its left --- so it comes out \.{*a~*~*b}, as in \.{cweave}. This appeal
+to the source is the escape hatch \.{cweave} spells
 \.{@@[}\thinspace\dots\thinspace\.{@@]}: where intent must be marked, the author's
 spacing marks it.
+
+@ Spacing alone cannot settle every star, though. The element type of an array runs
+tight against the brackets --- |gofmt| writes \.{[256]*Node}, the star crammed on
+both sides, exactly as it writes the product \.{a[i]*b}. Here the deciding fact is
+grammatical, not typographic: the \.] before the star closes an {\it array type\/},
+not an {\it index}, so the star is a pointer. |starAfterArrayType| makes that call,
+and the star clings right whenever either signal --- a leading blank, or a preceding
+array-type bracket --- says pointer.
 @<Space code tokens by grammar@>=
 func pointerStar(pk tokKind, pt string, cur token, toks []token, k int) bool {
 	if cur.kind != tkOp || cur.text != "*" || !isOperandEnd(pk, pt) {
 		return false
 	}
-	spaceBefore := k > 0 && toks[k-1].kind == tkSpace
 	tightAfter := k+1 < len(toks) && toks[k+1].kind != tkSpace
-	return spaceBefore && tightAfter
+	if !tightAfter {
+		return false
+	}
+	spaceBefore := k > 0 && toks[k-1].kind == tkSpace
+	return spaceBefore || starAfterArrayType(toks, k)
+}
+
+@ The gap before a \.[ is settled directly by the source blank |gofmt| writes
+between a declared name and its type (\.{b [256]int}) but never before an index
+(\.{a[i]}). The star after the matching \.] needs the grammatical judgement
+|arrayType| makes for the bracket opening at |open|. A \.[ that follows no operand
+at all --- at the start of a type, or after \.*, \.{map}, \.{chan}, a comma, an open
+paren --- always begins a type. A \.[ that does follow an operand is an index when
+crammed against it and an array type when the source keeps them apart. Stacked
+brackets defer to the innermost, so the whole run agrees: \.{[3][4]int} is a type
+throughout, \.{m[3][4]} an index chain throughout.
+@<Space code tokens by grammar@>=
+func arrayType(toks []token, open int) bool {
+	p := prevSignificant(toks, open)
+	if p < 0 {
+		return true
+	}
+	if toks[p].kind == tkOp && toks[p].text == "]" {
+		return arrayType(toks, matchingBracket(toks, p))
+	}
+	if !isOperandEnd(toks[p].kind, toks[p].text) {
+		return true
+	}
+	return open > 0 && toks[open-1].kind == tkSpace
+}
+
+@ |matchingBracket| walks back from a \.] to its \.[, counting depth so nested
+brackets are skipped; a lone \.{[]} is a single token and never confuses the count.
+|starAfterArrayType| uses it to ask whether the token just before a star is such an
+array type's closing bracket.
+@<Space code tokens by grammar@>=
+func matchingBracket(toks []token, close int) int {
+	depth := 0
+	for i := close; i >= 0; i-- {
+		if toks[i].kind != tkOp {
+			continue
+		}
+		switch toks[i].text {
+		case "]":
+			depth++
+		case "[":
+			if depth--; depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+func starAfterArrayType(toks []token, k int) bool {
+	j := prevSignificant(toks, k)
+	if j < 0 || toks[j].kind != tkOp || toks[j].text != "]" {
+		return false
+	}
+	open := matchingBracket(toks, j)
+	return open >= 0 && arrayType(toks, open)
 }
 
 @ |isMethodReceiver| decides whether the parenthesis just after \.{func} opens a
@@ -3204,6 +3287,27 @@ func TestWeaveStarSpacing(t *testing.T) {
 		`\mathord{*}\GID{a}$\GS $\mathord{*}$\GS $\mathord{*}\GID{b}`: "*a**b -> *a * *b",
 		`\mathord{*}\GKW{int}`: "a pointer *int clings to its type",
 		`\mathord{*}\GID{T}`:   "[]*T keeps *T tight",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant substring %q in:\n%s", msg, sub, out)
+		}
+	}
+}
+
+@ A pointer element type is crammed against its array brackets, so spacing alone
+cannot tell \.{[256]*Node} (a pointer) from \.{a[i]*b} (a product); the closing
+\.] settles it by grammar. And a declared name keeps the space before its array
+type (\.{b [256]int}) that |gofmt| never puts before an index.
+@(gweave_test.go@>=
+func TestWeaveArrayPointer(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\n"+
+		"func f(src *[256]*Node, b [256]*Node) {\nvar m [3][4]*int\nr := a[i]*b\n}\n")
+	checks := map[string]string{
+		`\mathord{]}\mathord{*}\GID{Node}`:                 "[256]*Node keeps *Node tight",
+		`\GID{b}$\GS $\mathord{[}`:                         "b [256] keeps the array-type space",
+		`\mathord{[}\GNU{3}\mathord{]}\mathord{[}\GNU{4}\mathord{]}\mathord{*}\GKW{int}`: "[3][4]*int stays tight throughout",
+		`\GID{i}\mathord{]}$\GS $\mathord{*}$\GS $\GID{b}`: "a[i]*b stays a spaced product",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
