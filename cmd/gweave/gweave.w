@@ -784,8 +784,7 @@ if atLineStart {
 } else if manualGap {
 	manualGap = false // a hand-placed layout code already set the spacing here
 } else {
-	blockBrace := t.kind == tkOp && t.text == "{" &&
-		in.pendingBlock && in.parenDepth == in.blockParenDepth
+	blockBrace := t.kind == tkOp && t.text == "{" && in.opensBlock()
 	switch spaceBefore(prevSigKind, prevSigText, prevUnary, t, blockBrace, in.inSquareBracket(), toks, k) {
 	case gWide:
 		pendingSpace = true
@@ -1589,9 +1588,7 @@ continues its statement.
 type indenter struct {
 	stack           []indentFrame
 	parenDepth      int
-	pendingBlock    bool // a block-opening keyword awaits its brace
-	pendingSwitch   bool // ...and that block is a switch/select
-	blockParenDepth int  // the parenDepth at which that brace is expected
+	pending         []pendingBlock // block-opening keywords awaiting their braces
 	rawOpen, cmtOpen bool
 	prevContinues   bool  // the previous line ended without closing its statement
 	stmtDepth       int   // bracket depth where the current statement began
@@ -1613,6 +1610,36 @@ func (in *indenter) top() indentFrame {
 func (in *indenter) inSquareBracket() bool {
 	n := len(in.stack)
 	return n > 0 && in.stack[n-1].opener == '['
+}
+
+@ A block-opening keyword (|func|, |if|, |for|, |switch|, \dots) arms a pending
+block: a brace that later turns up at its parenthesis depth opens a statement block
+rather than a composite literal. A single slot cannot see the whole picture, though
+--- the signature |func f(g func() int) {| carries a nested |func| {\it type\/} whose
+own arming would bury the outer function's, so the body's brace, arriving at depth
+zero, would be misread. So the pending blocks form a stack. |opensBlock| asks whether
+the brace now at hand matches the innermost pending; |dropPendingFrom| discards those
+armed at a parenthesis depth |d| or deeper --- a |func| type that a closing
+parenthesis leaves without ever a brace, or any keyword whose statement simply ended.
+@<Track structural indentation@>=
+type pendingBlock struct {
+	parenDepth int  // the parenthesis depth at which the brace is expected
+	isSwitch   bool // whether the block is a switch or select
+}
+
+func (in *indenter) opensBlock() bool {
+	n := len(in.pending)
+	return n > 0 && in.pending[n-1].parenDepth == in.parenDepth
+}
+
+func (in *indenter) dropPendingFrom(d int) {
+	kept := in.pending[:0]
+	for _, p := range in.pending {
+		if p.parenDepth < d {
+			kept = append(kept, p)
+		}
+	}
+	in.pending = kept
 }
 
 @ |beginLine| chooses the indentation for a line whose first significant token is
@@ -1693,21 +1720,23 @@ func (in *indenter) advance(t token) {
 	in.lastToken = t
 }
 
-@ A brace opens a block when a keyword armed |pendingBlock| at this parenthesis
-depth, and a composite literal (or struct/interface type) otherwise. Only a block's
-indentation follows the statement; a composite's follows its own line, so the two
-push |openerIndent| from different sources. Parentheses and brackets are never
-blocks. (A composite literal inside a |for \dots range| header could be mistaken for
-the block, but only |for| allows one unparenthesized, and only when it spans lines
-would the misread show --- a corner rare enough to leave be.)
+@ A brace opens a block when the innermost pending keyword sits at this parenthesis
+depth (|opensBlock|), and a composite literal (or struct/interface type) otherwise;
+matching it pops that pending. Only a block's indentation follows the statement; a
+composite's follows its own line, so the two push |openerIndent| from different
+sources. Parentheses and brackets are never blocks; when one closes it discards any
+pending keyword the parentheses swallowed unbraced, so a nested |func| type in a
+signature no longer masks the outer function's own pending block. (A composite literal
+inside a |for \dots range| header could be mistaken for the block, but only |for|
+allows one unparenthesized, and only when it spans lines would the misread show --- a
+corner rare enough to leave be.)
 @<Update the bracket stack for a token@>=
 switch t.kind {
 case tkKeyword:
 	switch t.text {
 	case "func", "if", "for", "else", "switch", "select", "struct", "interface":
-		in.pendingBlock = true
-		in.pendingSwitch = t.text == "switch" || t.text == "select"
-		in.blockParenDepth = in.parenDepth
+		in.pending = append(in.pending, pendingBlock{parenDepth: in.parenDepth,
+			isSwitch: t.text == "switch" || t.text == "select"})
 	case "case", "default":
 		if n := len(in.stack); n > 0 && in.stack[n-1].isSwitch {
 			in.stack[n-1].sawCase = true
@@ -1716,10 +1745,11 @@ case tkKeyword:
 case tkOp:
 	switch t.text {
 	case "{":
-		if in.pendingBlock && in.parenDepth == in.blockParenDepth {
+		if in.opensBlock() {
+			p := in.pending[len(in.pending)-1]
+			in.pending = in.pending[:len(in.pending)-1]
 			in.stack = append(in.stack, indentFrame{opener: '{',
-				openerIndent: in.blockOpenerIndent(), isBlock: true, isSwitch: in.pendingSwitch})
-			in.pendingBlock = false
+				openerIndent: in.blockOpenerIndent(), isBlock: true, isSwitch: p.isSwitch})
 		} else {
 			in.stack = append(in.stack, indentFrame{opener: '{', openerIndent: in.curLineIndent})
 		}
@@ -1733,6 +1763,7 @@ case tkOp:
 		if in.parenDepth > 0 {
 			in.parenDepth--
 		}
+		in.dropPendingFrom(in.parenDepth + 1) // a func type these parens left unbraced
 	}
 }
 
@@ -1788,8 +1819,8 @@ that material as an ordinary statement token.
 func (in *indenter) endLine() {
 	if in.lineHadToken {
 		in.prevContinues = continuesStmt(in.lastToken)
-		if !in.prevContinues && in.parenDepth <= in.blockParenDepth {
-			in.pendingBlock = false // a func type, say, that never opened a block
+		if !in.prevContinues {
+			in.dropPendingFrom(in.parenDepth) // a keyword whose statement ended unbraced
 		}
 	}
 	in.lineHadToken = false
@@ -3253,6 +3284,24 @@ func TestWeaveSwitchIndent(t *testing.T) {
 	want := []string{"0", "0", "1", "0", "1", "0"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("switch indent levels = %v, want %v\n%s", got, want, out)
+	}
+}
+
+@ A signature that spans lines and carries a |func| {\it type\/} once fooled the
+brace tracker: the nested |func| buried the outer function's pending block, so the
+body's brace was misread as a composite literal and the body sat a level too deep.
+The pending-block stack keeps them apart, and the body lands at level one.
+@(gweave_test.go@>=
+func TestWeaveMultilineSignatureIndent(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\n"+
+		"func f(g func() int,\nh int) {\nx := 1\n}\n")
+	var got []string
+	for _, m := range regexp.MustCompile(`\\GL\{(\d+)\}`).FindAllStringSubmatch(out, -1) {
+		got = append(got, m[1])
+	}
+	want := []string{"0", "1", "1", "0"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("multiline-signature indent levels = %v, want %v\n%s", got, want, out)
 	}
 }
 
