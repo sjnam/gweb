@@ -776,8 +776,10 @@ for k, t := range toks {
 chunk, or nothing --- and records its index entry (a preceding declaration
 keyword, or a following |:=|, marks a definition). Then it is emitted in its
 effective class: a comment through |renderComment|, everything else through
-|renderToken|. The line's first token takes its indentation from the |indenter|
-and no leading space.
+|renderToken|. A trailing comment is the one exception to the grammar space: it is
+set off from the code by the generous \.{\\GCS} gap \.{cweave} leaves before a
+comment, in place of the ordinary \.{\\GS}. The line's first token takes its
+indentation from the |indenter| and no leading space.
 @<Typeset a significant token@>=
 if atLineStart {
 	indent = in.beginLine(t, toks, k)
@@ -805,6 +807,11 @@ if t.kind == tkIdent || t.kind == tkBuiltin {
 	}
 }
 if t.kind == tkComment {
+	if pendingSpace { // set a trailing comment off from the code with a generous gap, as cweave does
+		flushRun()
+		line.WriteString("\\GCS ")
+		pendingSpace = false
+	}
 	emit(wv.renderComment(secNum, t.text))
 } else {
 	emit(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
@@ -2990,6 +2997,16 @@ func TestWeaveCommentSlashKern(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nx := 1 // hi\n")
 	if !strings.Contains(out, `\GCM{/\kern\Gcommentkern/ hi}`) {
 		t.Errorf("comment // not kerned:\n%s", out)
+	}
+}
+
+@ A trailing comment is set off from the code by the generous \.{\\GCS} gap, not the
+ordinary \.{\\GS} of an inter-token space.
+@(gweave_test.go@>=
+func TestWeaveCommentGap(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nx := 1 // hi\n")
+	if !strings.Contains(out, `\GCS $\GCM{`) {
+		t.Errorf("trailing comment should get the generous \\GCS gap:\n%s", out)
 	}
 }
 
