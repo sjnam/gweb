@@ -211,6 +211,7 @@
 \def\contentsfile{\jobname.toc}
 \def\readcontents{\input \contentsfile }
 \newwrite\Gtoc
+\newtoks\Gtoctoks % holds a starred section's title, unexpanded, for the deferred \write
 \newif\ifGtocopen
 \def\Gopentoc{\ifGtocopen\else\Gtocopentrue\immediate\openout\Gtoc=\contentsfile \fi}
 
@@ -236,9 +237,14 @@
         \else \penalty-200\vfil\penalty-200\vfilneg\vskip\Gsecskip \fi
   \fi
   \Gopentoc
-  % The title (#3) is written unexpanded so it survives to the contents run
-  % intact, and the page number is captured by the deferred \write after the break.
-  \write\Gtoc{\string\GTline{#1}{#2}{\unexpanded{#3}}{\the\pageno}}%
+  % The title (#3) must reach the contents run unexpanded. \unexpanded is an e-TeX
+  % primitive, absent from Knuth's tex, so we use plain TeX's own device instead: a
+  % token register, whose contents \the emits without re-expanding. The register is
+  % set after the page break above and read by the deferred \write at ship-out; a
+  % starred section always begins its own page (\Gsecpagedepth), so no later section
+  % overwrites it before then. Only \the\pageno is left for the \write to fill in.
+  \Gtoctoks={#3}%
+  \write\Gtoc{\string\GTline{#1}{#2}{\the\Gtoctoks}{\the\pageno}}%
   \noindent\Gdest{#2}{\bf #2.\quad #3.\quad}\rightskip=0pt\ignorespaces}
 
 % ---- \datethis: timestamp the listing just above section 1 ------------------
