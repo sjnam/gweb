@@ -1100,7 +1100,7 @@ func matchingBracket(toks []token, close int) int {
 	}
 	return -1
 }
-
+@#
 func starAfterArrayType(toks []token, k int) bool {
 	j := prevSignificant(toks, k)
 	if j < 0 || toks[j].kind != tkOp || toks[j].text != "]" {
@@ -1770,7 +1770,7 @@ composite's follows its own line, so the two push |openerIndent| from different
 sources. Parentheses and brackets are never blocks; when one closes it discards any
 pending keyword the parentheses swallowed unbraced, so a nested |func| type in a
 signature no longer masks the outer function's own pending block. (A composite literal
-inside a |for \dots range| header could be mistaken for the block, but only |for|
+inside a ${\bf for}\ldots{\bf range}$ header could be mistaken for the block, but only |for|
 allows one unparenthesized, and only when it spans lines would the misread show --- a
 corner rare enough to leave be.)
 @<Update the bracket stack for a token@>=
