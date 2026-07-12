@@ -76,7 +76,11 @@ type PS struct {
 
 @ @<Private subroutines@>=
 func mkPS(ctx context.Context) PS {
-	return PS{ctx: ctx, req: make(chan struct{}), dat: make(chan *big.Rat)}
+	return PS{
+		ctx: ctx,
+		req: make(chan struct{}),
+		dat: make(chan *big.Rat),
+	}
 }
 
 @* The demand protocol.
@@ -128,14 +132,15 @@ func (F PS) put(v *big.Rat) bool {
 }
 
 @ Two public accessors let a caller read a series. |Get| demands one coefficient
-(|nil| once the context is cancelled); |Take| collects the first |n|, stopping
-early if the network is shut down mid-stream.
+(|nil| once the context is cancelled).
 @<Public subroutines@>=
 func (F PS) Get() *big.Rat {
 	v, _ := F.get()
 	return v
 }
 
+@ |Take| collects the first |n|, stopping early if the network is shut down mid-stream.
+@<Public subroutines@>=
 func (F PS) Take(n int) []*big.Rat {
 	cs := make([]*big.Rat, 0, n)
 	for i := 0; i < n; i++ {
@@ -306,9 +311,9 @@ func Deriv(F PS) PS {
 	return D
 }
 
-@ @<Test |Deriv| routine@>=
+@ ${d\over dx} 1/(1-x) = 1/(1-x)^2 = 1 + 2x + 3x^2 +\ldots.$
+@<Test |Deriv| routine@>=
 func TestDeriv(t *testing.T) {
-	// ${d\over dx} 1/(1-x) = 1/(1-x)^2 = 1 + 2x + 3x^2 +\ldots$
 	checkTerms(t, "deriv(Ones)", Deriv(Ones(newCtx(t))),
 		[]string{"1", "2", "3", "4", "5", "6"})
 }

@@ -147,13 +147,10 @@ make -C examples NAME=wc     # just one example
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power
   Series*.
-* [examples/sham.w](examples/sham.w) — a GWEB port of Knuth's Stanford GraphBase
-  demo `sham`: count the symmetric Hamiltonian cycles of the knight's graph on an
-  8×9 board, by folding the graph in half and backtracking with `goto` labels. It
-  builds on [go-sgb](https://github.com/sjnam/go-sgb), a Go port of the SGB, so
-  running it needs that module (`go get github.com/sjnam/go-sgb`); the commentary
-  is newly written. Shows GWEB handling an external dependency and a real Knuth
-  program.
+* [examples/pairsums.w](pairsums.w) — HackerRank's *Pair Sums*: the
+  largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
+  and a prefix-sum twist turn it into the upper envelope of a family of lines,
+  solved with a **Li Chao tree** in O(n log n).
 * [examples/floyd.w](examples/floyd.w) — Floyd's partition problem, the classic
   "toy problem" Knuth discusses in *Are Toy Problems Useful?*: partition
   √1…√50 into two nearly-equal halves. A worked literate solution
