@@ -147,7 +147,7 @@ make -C examples NAME=wc     # just one example
   channel networks (sum, product, composition, reciprocal, functional inverse,
   and differential equations like `exp`), after McIlroy's *Squinting at Power
   Series*.
-* [examples/pairsums.w](pairsums.w) — HackerRank's *Pair Sums*: the
+* [examples/pairsums.w](examples/pairsums.w) — HackerRank's *Pair Sums*: the
   largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
   and a prefix-sum twist turn it into the upper envelope of a family of lines,
   solved with a **Li Chao tree** in O(n log n).
