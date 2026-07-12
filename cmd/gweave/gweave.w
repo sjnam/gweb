@@ -1172,7 +1172,8 @@ func renderToken(t token) string {
 		if rest, ok := strings.CutPrefix(t.text, "//"); ok {
 			return "\\GCM{/\\kern\\Gcommentkern/" + escComment(rest) + "}"
 		}
-		return "\\GCM{" + escComment(t.text) + "}"
+		open, close, body := blockCommentDelims(t.text)
+		return "\\GCM{" + open + escComment(body) + close + "}"
 	case tkOp:
 		return renderOp(t.text)
 	}
@@ -1419,16 +1420,15 @@ a |...| span inside it is set as the \GO/ code it represents (via |inlineCode|),
 and everything else passes through verbatim, so ordinary \TEX/ control sequences
 work -- at the cost (again as in \.{CWEB}) that the author must escape any \TEX/
 specials. A literal bar is written \.{\|}. The whole thing is wrapped in \.{\\GCM},
-with the leading \.{//} tightened by a small kern.
+with the leading \.{//} of a line comment tightened by a small kern and the
+\.{/*}\thinspace\.{*/} of a block comment set the \.{CWEB} way (see below).
 @<Render a code comment@>=
 func (wv *Weaver) renderComment(secNum int, text string) string {
-	prefix := ""
-	body := text
 	if rest, ok := strings.CutPrefix(text, "//"); ok {
-		prefix = "/\\kern\\Gcommentkern/"
-		body = rest
+		return "\\GCM{/\\kern\\Gcommentkern/" + wv.commentBody(secNum, rest) + "}"
 	}
-	return "\\GCM{" + prefix + wv.commentBody(secNum, body) + "}"
+	open, close, body := blockCommentDelims(text)
+	return "\\GCM{" + open + wv.commentBody(secNum, body) + close + "}"
 }
 
 @ |commentBody| walks the comment text, accumulating raw \TEX/ in |lit| and
@@ -1508,6 +1508,25 @@ if s[i] == '|' {
 	b.WriteString(wv.inlineCode(code.String(), secNum, true))
 	i = j + 1
 	continue
+}
+
+@ \.{CWEB} sets the \.* of a block comment's \.{/*} and \.{*/} as a math \.{\\ast},
+which rides on the axis rather than high up where the roman star sits; we follow
+suit. Either delimiter may be missing --- a continuation line of a multi-line
+comment can carry only one, or neither --- so each is peeled off on its own, and
+the blank beside it is trimmed so the \.{\\,} sets the gap.
+@<Render a code comment@>=
+func blockCommentDelims(text string) (open, close, body string) {
+	body = text
+	if rest, ok := strings.CutPrefix(body, "/*"); ok {
+		open = "$/\\ast\\,$"
+		body = strings.TrimLeft(rest, " \t")
+	}
+	if rest, ok := strings.CutSuffix(body, "*/"); ok {
+		close = "$\\,\\ast/$"
+		body = strings.TrimRight(rest, " \t")
+	}
+	return open, close, body
 }
 
 @ |renderName| typesets a section name for text mode: a |...| span is set as
@@ -3052,6 +3071,16 @@ func TestWeaveCommentSlashKern(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nx := 1 // hi\n")
 	if !strings.Contains(out, `\GCM{/\kern\Gcommentkern/ hi}`) {
 		t.Errorf("comment // not kerned:\n%s", out)
+	}
+}
+
+@ A block comment's \.{/*} and \.{*/} are set with \.{CWEB}'s math \.{\\ast}, so
+the star sits on the axis instead of riding high as the roman \.* does.
+@(gweave_test.go@>=
+func TestWeaveBlockCommentAsterisk(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nx := 1 /* hi */\n")
+	if !strings.Contains(out, `\GCM{$/\ast\,$hi$\,\ast/$}`) {
+		t.Errorf("block comment /* */ should use CWEB's math asterisk:\n%s", out)
 	}
 }
 
