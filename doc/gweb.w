@@ -2,6 +2,9 @@
 % This master simply \i-includes the three component webs in reading order;
 % it is meant for gweave only (the components are what `make tangle' builds).
 
+@d os.Stdin os.Stdout os.Stderr
+@s testing.T int
+
 \def\title{GWEB (Version 0.6.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Literate programming system for the Go}
@@ -39,7 +42,7 @@ gather all the cross-references automatically.
 @i ../cmd/gtangle/gtangle.w
 @i ../cmd/gweave/gweave.w
 
-@* Index.
+@** Index.
 This index lists every identifier used in the program (a section number is
 underlined when the identifier is defined there) together with the manual
 index entries. The list of section names follows.

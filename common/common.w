@@ -634,7 +634,7 @@ case cNamed:
 	nx := findNextSection(src, ct.end)
 	sec.Code = src[ct.end:nx.pos]
 	i = nx.pos
-default: // cSection or cEOF: a documentation-only section
+default: // |cSection| or |cEOF|: a documentation-only section
 	i = ct.pos
 }
 
@@ -721,8 +721,8 @@ names one macro and gives its replacement text, \GO/ has no preprocessor, so
 \.{GWEB} borrows the code for a lighter purpose: every whitespace-separated word
 of the body --- the body runs to the next \.{@@}, so it may span several lines ---
 is an identifier to set in typewriter, like a \.{CWEB} macro. A qualified name
-keeps its final component, so \.{@@d http.StatusOK} registers \.{StatusOK}, and
-\.{@@d Push Pop Peek} sets all three at once.
+keeps its final component, so `\.{@@d http.StatusOK}' registers \.{StatusOK}, and
+`\.{@@d Push Pop Peek}' sets all three at once.
 @<Parse the definition-part directives@>=
 func parseMacro(seg string) []Format {
 	var fs []Format
@@ -1120,7 +1120,9 @@ step: passed-through lines keep their origin, replacement lines are attributed
 to the change file. It is an error if a change is never matched, or matches its
 first line but not the rest.
 @<Apply changes to the master source@>=
-func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) ([]string, []srcLoc, error) {
+func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) (
+	[]string, []srcLoc, error,
+) {
 	loc := func(i int) srcLoc {
 		if locs != nil && i < len(locs) {
 			return locs[i]

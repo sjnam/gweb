@@ -940,7 +940,7 @@ func parse(src string) *Web {
 //line common/common.w:636
 			i = nx.pos
 //line common/common.w:637
-		default: // cSection or cEOF: a documentation-only section
+		default: // |cSection| or |cEOF|: a documentation-only section
 //line common/common.w:638
 			i = ct.pos
 //line common/common.w:639
@@ -1669,93 +1669,97 @@ func applyChanges(src string, changes []change, chFile string) (string, error) {
 }
 
 //line common/common.w:1123
-func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) ([]string, []srcLoc, error) {
+func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) (
 //line common/common.w:1124
-	loc := func(i int) srcLoc {
+	[]string, []srcLoc, error,
 //line common/common.w:1125
-		if locs != nil && i < len(locs) {
+) {
 //line common/common.w:1126
-			return locs[i]
+	loc := func(i int) srcLoc {
 //line common/common.w:1127
-		}
+		if locs != nil && i < len(locs) {
 //line common/common.w:1128
-		return srcLoc{line: i + 1}
+			return locs[i]
 //line common/common.w:1129
-	}
-//line common/common.w:1130
-	out := make([]string, 0, len(master))
-//line common/common.w:1131
-	var outLocs []srcLoc
-//line common/common.w:1132
-	ci := 0
-//line common/common.w:1133
-	for i := 0; i < len(master); {
-//line common/common.w:1134
-		if ci < len(changes) && sameLine(master[i], changes[ci].match[0]) {
-//line common/common.w:1135
-			if !blockMatches(master, i, changes[ci].match) {
-//line common/common.w:1136
-				return nil, nil, fmt.Errorf("%s:%d: change did not match the master source at %s",
-//line common/common.w:1137
-					chFile, changes[ci].line, loc(i))
-//line common/common.w:1138
-			}
-//line common/common.w:1139
-			for r, rl := range changes[ci].repl {
-//line common/common.w:1140
-				out = append(out, rl)
-//line common/common.w:1141
-				outLocs = append(outLocs, srcLoc{chFile, changes[ci].replLine + r})
-//line common/common.w:1142
-			}
-//line common/common.w:1143
-			i += len(changes[ci].match)
-//line common/common.w:1144
-			ci++
-//line common/common.w:1145
-			continue
-//line common/common.w:1146
 		}
+//line common/common.w:1130
+		return srcLoc{line: i + 1}
+//line common/common.w:1131
+	}
+//line common/common.w:1132
+	out := make([]string, 0, len(master))
+//line common/common.w:1133
+	var outLocs []srcLoc
+//line common/common.w:1134
+	ci := 0
+//line common/common.w:1135
+	for i := 0; i < len(master); {
+//line common/common.w:1136
+		if ci < len(changes) && sameLine(master[i], changes[ci].match[0]) {
+//line common/common.w:1137
+			if !blockMatches(master, i, changes[ci].match) {
+//line common/common.w:1138
+				return nil, nil, fmt.Errorf("%s:%d: change did not match the master source at %s",
+//line common/common.w:1139
+					chFile, changes[ci].line, loc(i))
+//line common/common.w:1140
+			}
+//line common/common.w:1141
+			for r, rl := range changes[ci].repl {
+//line common/common.w:1142
+				out = append(out, rl)
+//line common/common.w:1143
+				outLocs = append(outLocs, srcLoc{chFile, changes[ci].replLine + r})
+//line common/common.w:1144
+			}
+//line common/common.w:1145
+			i += len(changes[ci].match)
+//line common/common.w:1146
+			ci++
 //line common/common.w:1147
-		out = append(out, master[i])
+			continue
 //line common/common.w:1148
-		outLocs = append(outLocs, loc(i))
+		}
 //line common/common.w:1149
-		i++
+		out = append(out, master[i])
 //line common/common.w:1150
-	}
+		outLocs = append(outLocs, loc(i))
 //line common/common.w:1151
-	if ci < len(changes) {
+		i++
 //line common/common.w:1152
-		return nil, nil, fmt.Errorf("%s:%d: change was never matched (looking for %q)",
-//line common/common.w:1153
-			chFile, changes[ci].line, changes[ci].match[0])
-//line common/common.w:1154
 	}
+//line common/common.w:1153
+	if ci < len(changes) {
+//line common/common.w:1154
+		return nil, nil, fmt.Errorf("%s:%d: change was never matched (looking for %q)",
 //line common/common.w:1155
-	return out, outLocs, nil
+			chFile, changes[ci].line, changes[ci].match[0])
 //line common/common.w:1156
+	}
+//line common/common.w:1157
+	return out, outLocs, nil
+//line common/common.w:1158
 }
 
-//line common/common.w:1161
-func blockMatches(master []string, at int, match []string) bool {
-//line common/common.w:1162
-	if at+len(match) > len(master) {
 //line common/common.w:1163
-		return false
+func blockMatches(master []string, at int, match []string) bool {
 //line common/common.w:1164
-	}
+	if at+len(match) > len(master) {
 //line common/common.w:1165
-	for k, m := range match {
+		return false
 //line common/common.w:1166
-		if !sameLine(master[at+k], m) {
-//line common/common.w:1167
-			return false
-//line common/common.w:1168
-		}
-//line common/common.w:1169
 	}
+//line common/common.w:1167
+	for k, m := range match {
+//line common/common.w:1168
+		if !sameLine(master[at+k], m) {
+//line common/common.w:1169
+			return false
 //line common/common.w:1170
-	return true
+		}
 //line common/common.w:1171
+	}
+//line common/common.w:1172
+	return true
+//line common/common.w:1173
 }

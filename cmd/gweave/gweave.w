@@ -1,3 +1,6 @@
+@d os.Stdin os.Stdout os.Stderr
+@s testing.T int
+
 \def\title{GWEAVE (Version 0.6.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GWEAVE} processor}
@@ -10,9 +13,9 @@
 @** Processor gweave.
 This is the command-line front end of \.{gweave}; the weave engine it drives is
 defined in the second half of this web. The input may be named with or without
-its \.{.w} extension (|gweave wc| reads \.{wc.w}, as in cweb). The woven document
+its \.{.w} extension (\.{gweave wc} reads \.{wc.w}, as in \.{CWEB}). The woven document
 is written to the input's base name with a \.{.tex} extension; process it with a
-\TEX/ engine that can find \.{gwebmac.tex} to produce a PDF.
+\TEX/ engine that can find \.{gwebmac.tex} to produce a {\sc PDF}.
 @c
 package main
 

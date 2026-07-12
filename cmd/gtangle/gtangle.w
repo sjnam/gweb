@@ -1,3 +1,6 @@
+@d os.Stderr
+@s testing.T int
+
 \def\title{GTANGLE (Version 0.6.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
@@ -10,9 +13,9 @@
 @** Processor gtangle.
 This is the command-line front end of \.{gtangle}; the tangle engine it drives is
 defined in the second half of this web. The input may be named with or without
-its \.{.w} extension (|gtangle wc| reads \.{wc.w}, as in cweb). The unnamed \.{@@c}
+its \.{.w} extension (\.{gtangle wc} reads \.{wc.w}, as in \.{CWEB}). The unnamed \.{@@c}
 sections are written to the input's base name with a \.{.go} extension (in the
-|-o| directory, default the input's directory); \.{@@(file@@>=} sections are
+\.{-o} directory, default the input's directory); \.{@@(file@@>=} sections are
 written to their named files.
 @c
 package main
@@ -66,7 +69,7 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-@ A brief progress report in the style of \.{CWEB}: one |*N| on the standard error
+@ A brief progress report in the style of \.{CWEB}: one \.{*N} on the standard error
 for each starred (chapter) section, giving a sense of the web's structure as it
 is processed.
 @<Report a progress line@>=
@@ -112,7 +115,7 @@ func run(input, changeFile, outDir string) error {
 }
 
 @ Each tangled output is written under |outDir| (its subdirectories created as
-needed); a |gofmt| warning is reported if one was attached, and a one-line
+needed); a \.{gofmt} warning is reported if one was attached, and a one-line
 confirmation is printed for each file.
 @<Write the tangled output files@>=
 for _, out := range outs {
@@ -148,7 +151,7 @@ single file \.{gtangle.go}.
 @<The output buffer@>
 
 @ An |Output| is one tangled file: its target name and \GO/ contents. |Warning|
-is set (non-fatally) when |gofmt| could not format the assembled program.
+is set (non-fatally) when \.{gofmt} could not format the assembled program.
 @<An output file@>=
 type Output struct {
 	File    string
@@ -167,9 +170,9 @@ the generated \.{.go}.
 @<The tangler and its code pieces@>=
 type Tangler struct {
 	w     *common.Web
-	defs  map[string][]codePiece // canonical named-section -> code pieces
-	files map[string][]codePiece // @@(file@@>= name -> code pieces
-	main  []codePiece            // unnamed @@c sections, in order
+	defs  map[string][]codePiece // canonical named-section $\rightarrow$ code pieces
+	files map[string][]codePiece // \.{@@(file@@>=name} $\rightarrow$ code pieces
+	main  []codePiece            // unnamed \.{@@c} sections, in order
 }
 
 type codePiece struct {
@@ -252,7 +255,7 @@ func nonEmpty(pieces []codePiece) bool {
 
 @ |renderOutput| expands one destination's pieces and runs |gofmt| on the
 result. A genuine web error (an undefined or circular reference) is fatal; a
-|gofmt| failure is not -- the unformatted \GO/ is kept and reported via
+\.{gofmt} failure is not -- the unformatted \GO/ is kept and reported via
 |Output.Warning|.
 @<Render and gofmt one output@>=
 func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) {
@@ -281,7 +284,7 @@ func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) er
 }
 
 @ |expand| expands one code piece, threading the combined-source line through
-the text so \.{//line} directives stay accurate. Verbatim text tangles like
+the text so `\.{//line}' directives stay accurate. Verbatim text tangles like
 ordinary text; a paste deletes the preceding whitespace; a reference is followed
 recursively; and the woven-output-only atoms are ignored.
 @<Expand code pieces and references@>=
@@ -305,7 +308,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 
 @ A reference is resolved to its canonical name, checked against the recursion
 stack for a cycle, and expanded in place. The surrounding newlines keep adjacent
-statements on separate lines; |gofmt| collapses the rest.
+statements on separate lines; \.{gofmt} collapses the rest.
 @<Expand a section reference@>=
 name := t.w.Resolve(a.Text)
 def, ok := t.defs[name]
@@ -644,7 +647,7 @@ func buildExample(t *testing.T, path string) {
 		}
 	}
 	if !haveMod {
-		// go 1.23 so examples may use range-over-func iterators (e.g. seq.w).
+		// go 1.23 so examples may use range-over-func iterators (e.g. \.{seq.w}).
 		const mod = "module gwebexample\n\ngo 1.23\n"
 		if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
 			t.Fatal(err)
