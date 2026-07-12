@@ -49,6 +49,11 @@
 \newdimen\Gcolwidth   \Gcolwidth=.5\Gpagewidth \advance\Gcolwidth by-10pt
 \hsize=\Gpagewidth
 \vsize=\Gpageheight
+% Report a completely underfull page (badness 10000): a rigid code block too tall
+% to break has left a short page. Plain TeX's default \vbadness=10000 would hide
+% every one of these; 9999 surfaces exactly the unfixable ones (a \vfil-filled
+% chapter tail is badness 0 and stays quiet), so a page's fill can be trusted.
+\vbadness=9999
 \parindent=1em
 \parskip=0pt
 \hbadness=10000
