@@ -1,5 +1,11 @@
 @d os.Stdin os.Stdout os.Stderr
+@d common.AText common.ARef common.AVerbatim common.ATeX common.AIndex
+@d common.APaste common.ALayout common.AIndexDef
+
 @s testing.T int
+@s common.Web int
+@s common.Format int
+@s common.Section int
 
 \def\title{GWEAVE (Version 0.6.5)}
 \def\topofcontents{\null\vfill
@@ -128,7 +134,7 @@ tangled together with the front end into the single file \.{gweave.go}.
 @<Create a weaver@>
 @<Detect type declarations@>
 @<Scan a declaration group@>
-@<Detect iota constant declarations@>
+@<Detect |iota| constant declarations@>
 @<The effective token class@>
 @<Weave the document in two passes@>
 @<Drop a stray gwebmac input@>
@@ -369,7 +375,7 @@ These read like \CEE/'s |enum| members, or \.{CWEB}'s \.{@@d} macros, so \.{GWEB
 sets them in typewriter --- the same class as |nil|, |true|, and |false|.
 |detectIotaConsts| registers each such name as a typewriter macro, everywhere it
 is used, just as |detectDecls| registers |type| names as bold.
-@<Detect iota constant declarations@>=
+@<Detect |iota| constant declarations@>=
 func (wv *Weaver) detectIotaConsts() {
 	wv.scanAllCode(func(toks []token) {
 		scanIotaConsts(toks, func(name string) { wv.noteFormat(name, tkMacro) })
@@ -380,7 +386,7 @@ func (wv *Weaver) detectIotaConsts() {
 enumeration, collects its declared names with the shared |scanDeclGroup|. A plain
 |const| block with no |iota|, and a one-line |const|, match neither arm and are
 left exactly as before; only the enumerations change.
-@<Detect iota constant declarations@>=
+@<Detect |iota| constant declarations@>=
 func scanIotaConsts(toks []token, add func(string)) {
 	for i := 0; i < len(toks); i++ {
 		if toks[i].kind != tkKeyword || toks[i].text != "const" {
@@ -403,7 +409,7 @@ appears there, before the line ends at the group's own nesting level, the group
 is an enumeration. Blank and comment lines ahead of the first spec are skipped,
 and brace and bracket nesting is tracked so a composite value cannot end the line
 early.
-@<Detect iota constant declarations@>=
+@<Detect |iota| constant declarations@>=
 func constGroupUsesIota(toks []token, i int) bool {
 	depth := 0
 	seen := false // a significant token seen on the current spec line
@@ -869,7 +875,7 @@ func spaceBefore(pk tokKind, pt string, pUnary bool, cur token, blockBrace, inSl
 			return gTight
 		case ":":
 			if inSlice {
-				return gTight // the second colon in a slice a[i:j]
+				return gTight // the second colon in a slice |a[i:j]|
 			}
 		}
 	}
@@ -912,7 +918,7 @@ case "(", "[":
 			return gThin
 		}
 		if cur.text == "[" && k > 0 && toks[k-1].kind == tkSpace {
-			return gWide // a declared name and its array type: \.{b [256]int}
+			return gWide // a declared name and its array type: |b [256]int|
 		}
 		return gTight
 	}
@@ -925,7 +931,7 @@ if isSignOp(cur.text) && !isOperandEnd(pk, pt) {
 	return gapAfter(pk, pt) // a unary prefix operator
 }
 if cur.text == "*" && starAfterArrayType(toks, k) {
-	return gTight // a pointer element type crammed to its array: \.{[256]*Node}
+	return gTight // a pointer element type crammed to its array: [256]*Node|
 }
 return gWide
 
@@ -1407,7 +1413,7 @@ func (wv *Weaver) commentBody(secNum int, s string) string {
 	var b, lit strings.Builder
 	flush := func() {
 		if lit.Len() > 0 {
-			b.WriteString(lit.String()) // raw \TEX/, as cweb treats a comment
+			b.WriteString(lit.String()) // raw \TEX/, as \.{CWEB} treats a comment
 			lit.Reset()
 		}
 	}
@@ -2542,7 +2548,7 @@ func secList(secs, def map[int]bool) string {
 	return strings.Join(parts, ", ")
 }
 
-@ |writeBackMatter| emits the PDF bookmarks, the index, the list of named
+@ |writeBackMatter| emits the {\sc PDF} bookmarks, the index, the list of named
 sections, and the table of contents that close a woven document. The \.{\\Gdest}
 destination at the top of the section-names page (targeted by the ``Names of the
 sections'' bookmark) is numbered one past the last section, so it never collides
@@ -2558,10 +2564,10 @@ func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 	bw.WriteString("\\Gcon\n\\end\n")
 }
 
-@ |writeBookmarks| emits one |\Gbookmark| per starred section, in document
-order, so a PDF outline can be built whose nesting follows the \.{@@*}, \.{@@*1},
-\.{@@*2} depths. Each entry carries its depth (for the dvipdfmx route, which
-nests by level) and its number of direct children (for pdftex's count model). A
+@ |writeBookmarks| emits one \.{\\Gbookmark} per starred section, in document
+order, so a {\sc PDF} outline can be built whose nesting follows the \.{@@*}, \.{@@*1},
+\.{@@*2} depths. Each entry carries its depth (for the \.{dvipdfmx} route, which
+nests by level) and its number of direct children (for \.{pdftex}'s count model). A
 final top-level entry, \.{Names of the sections}, lists every section name as a
 collapsible child linking to its defining section, as cweave does.
 @<Write the PDF bookmarks@>=
@@ -2578,8 +2584,8 @@ func (wv *Weaver) writeBookmarks(bw *bufio.Writer) {
 	@<Emit the ``Names of the sections'' bookmarks@>
 }
 
-@ Each starred section becomes a bookmark carrying its depth (for the dvipdfmx
-route, which nests by level) and its number of direct children (for pdftex's
+@ Each starred section becomes a bookmark carrying its depth (for the \.{dvipdfmx}
+route, which nests by level) and its number of direct children (for \.{pdftex}'s
 count model). We track the shallowest depth seen, for the top-level entry below.
 @<Emit one bookmark per starred section@>=
 for i, s := range starred {
@@ -2616,7 +2622,7 @@ for _, n := range names {
 }
 bw.WriteString("\\fi\n")
 
-@ |bookmarkTitle| reduces a starred-section title to plain text safe for a PDF
+@ |bookmarkTitle| reduces a starred-section title to plain text safe for a {\sc PDF}
 outline: a |...| span keeps its inner text, \.{@@@@} becomes an at-sign, the
 \TEX/-special characters are dropped, and a known text-logo control sequence is
 replaced by its plain form --- as \.{CWEB}'s outline sanitizer does --- so that a
@@ -2777,7 +2783,7 @@ for _, it := range list {
 
 @ |writeSectionNames| emits the list of named sections with their defining and
 using section numbers. |sortedSectionNames| gives the shared ordering used both
-here and for the PDF outline children beneath ``Names of the sections''.
+here and for the {\sc PDF} outline children beneath ``Names of the sections''.
 @<Write the list of section names@>=
 func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	for _, n := range wv.sortedSectionNames() {
@@ -2907,7 +2913,7 @@ println(x)
 	}
 }
 
-@ The back matter ends with a top-level "Names of the sections" PDF outline
+@ The back matter ends with a top-level "Names of the sections" \sc {PDF} outline
 entry (\.{\\Goutsecname}) linking to a destination on the section-names page
 (numbered one past the last section), under which every section name is a
 collapsible child linking to its defining section, as cweave does. Here the
@@ -3500,7 +3506,7 @@ func g() { @@<chunk@@> }
 
 @ A section name wrapped across lines (a newline inside \.{@@<...@@>}) must match
 the same name written on one line, as in \.{CWEB}. Otherwise the reference
-resolves to section 0, which also crashes luatex's PDF backend.
+resolves to section 0, which also crashes luatex's {\sc PDF} backend.
 @(gweave_test.go@>=
 func TestWrappedSectionName(t *testing.T) {
 	out := weaveString(t, "@@* Start.\n@@c\nfunc main() { @@<do the\nthing@@> }\n@@ @@<do the thing@@>=\nx := 1\n")
