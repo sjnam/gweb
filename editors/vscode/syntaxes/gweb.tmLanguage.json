@@ -2,6 +2,15 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "GWEB",
   "scopeName": "source.gweb",
+  "injections": {
+    "L:meta.embedded.block.go": {
+      "comment": "Inside a code part, source.go pushes its own nested rules (a brace block, a function body) whose scope escapes this grammar's code-section end. Within those nested scopes the in-code control codes (a @<name@> reference whose name holds an apostrophe, in particular) would otherwise be scanned as Go, and the apostrophe would open a rune literal that never closes -- turning the rest of the file into a string. Re-inject the control codes and a line-bounded reading of Go's quote literals (which never span physical lines) so no stray quote can run past its own line.",
+      "patterns": [
+        { "include": "#in-code-codes" },
+        { "include": "#go-quote-bounded" }
+      ]
+    }
+  },
   "patterns": [
     { "include": "#change-control" },
     { "include": "#code-section" },
@@ -141,6 +150,33 @@
         { "include": "#at-punct" }
       ]
     },
+    "go-quote-bounded": {
+      "comment": "Go's interpreted-string and rune literals, read one physical line at a time (they never span lines in real Go). Each is matched whole when it closes on the line; a lone quote is swallowed as a single harmless character. This keeps source.go's own unbounded string/rune rules -- which would run to the next matching quote anywhere, even pages away -- from firing on a stray quote. Raw strings (backticks) may legitimately span lines and are left to source.go.",
+      "patterns": [
+        { "match": "'(?:\\\\.|[^'\\\\])*'", "name": "string.quoted.rune.go" },
+        { "match": "'", "name": "string.quoted.rune.go" },
+        { "match": "\"(?:\\\\.|[^\"\\\\])*\"", "name": "string.quoted.double.go" },
+        { "match": "\"", "name": "string.quoted.double.go" }
+      ]
+    },
+    "inline-go": {
+      "comment": "A flat, self-contained reading of Go for |...| inline spans. Unlike source.go it never pushes a multi-line block, so the closing | is always reachable even when the span shows a dangling brace such as |func f() {|. | is deliberately absent from the operator class so it can never be mistaken for the span's own closing bar.",
+      "patterns": [
+        { "include": "#in-code-codes" },
+        { "match": "//.*$", "name": "comment.line.double-slash.go" },
+        { "match": "`[^`]*`", "name": "string.quoted.raw.go" },
+        { "include": "#go-quote-bounded" },
+        { "match": "\\b(break|case|chan|const|continue|default|defer|else|fallthrough|for|func|go|goto|if|import|interface|map|package|range|return|select|struct|switch|type|var)\\b", "name": "keyword.control.go" },
+        { "match": "\\b(bool|byte|complex64|complex128|error|float32|float64|int|int8|int16|int32|int64|rune|string|uint|uint8|uint16|uint32|uint64|uintptr|any)\\b", "name": "storage.type.go" },
+        { "match": "\\b(true|false|iota|nil)\\b", "name": "constant.language.go" },
+        { "match": "\\b(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)\\b", "name": "support.function.builtin.go" },
+        { "match": "\\b\\d[\\d_]*(\\.[\\d_]*)?([eE][-+]?\\d+)?\\b|\\b0[xX][0-9a-fA-F_]+\\b", "name": "constant.numeric.go" },
+        { "match": "[a-zA-Z_\\p{L}][\\w\\p{L}]*(?=\\s*\\()", "name": "entity.name.function.go" },
+        { "match": "[a-zA-Z_\\p{L}][\\w\\p{L}]*", "name": "variable.other.go" },
+        { "match": "[-+*/%<>=!&^~:.]+", "name": "keyword.operator.go" },
+        { "match": "[{}()\\[\\]]", "name": "punctuation.definition.bracket.go" }
+      ]
+    },
     "inline-code": {
       "comment": "|...| inline Go code inside TeX commentary; \\| is a literal bar",
       "begin": "(?<!\\\\)\\|",
@@ -148,7 +184,7 @@
       "beginCaptures": { "0": { "name": "punctuation.definition.code.gweb" } },
       "endCaptures": { "0": { "name": "punctuation.definition.code.gweb" } },
       "contentName": "meta.embedded.inline.go",
-      "patterns": [{ "include": "source.go" }]
+      "patterns": [{ "include": "#inline-go" }]
     },
     "tex": {
       "comment": "Light TeX highlighting for the commentary/limbo",
