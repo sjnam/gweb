@@ -214,9 +214,9 @@ apply := func(fs []common.Format) {
 	for _, f := range fs {
 		switch {
 		case f.Macro:
-			wv.format[f.Original] = tkMacro // \.{@d}: typewriter, like a \.{CWEB} macro
+			wv.format[f.Original] = tkMacro // \.{@@d}: \.{typewriter}, like a \.{CWEB} macro
 		case f.Like == "TeX":
-			wv.format[f.Original] = tkTeXCS // \.{@f name TeX}: a custom control sequence
+			wv.format[f.Original] = tkTeXCS // \.{@@f name TeX}: a custom control sequence
 		default:
 			wv.format[f.Original] = classifyWord(f.Like)
 		}
@@ -312,7 +312,7 @@ func nextSignificant(toks []token, i int) int {
 	}
 	return -1
 }
-
+@#
 func prevSignificant(toks []token, i int) int {
 	for i--; i >= 0; i-- {
 		if toks[i].kind != tkSpace && toks[i].kind != tkNewline {
@@ -336,7 +336,7 @@ func scanDeclGroup(toks []token, i int, add func(string)) int {
 				atStart = true
 			}
 		case tkSpace:
-			// keep atStart
+			// keep |atStart|
 		case tkOp:
 			switch t.text {
 			case "(", "{", "[":
@@ -365,10 +365,10 @@ func scanDeclGroup(toks []token, i int, add func(string)) int {
 @ A \GO/ program's manifest integer constants are written as an |iota|
 enumeration: a parenthesized |const| group whose first entry seeds the counter
 with |iota|, the following ones inheriting the expression as it advances.
-$$\vbox{\halign{\.{#}\hfil\cr
-const (\cr
-\qquad tkIdent tokKind = iota\cr
-\qquad tkKeyword\cr
+$$\vbox{\halign{#\hfil\cr
+{\bf const}\ (\cr
+\qquad \.{tkIdent} \.{tokKind} $=$ \.{iota}\cr
+\qquad \.{tkKeyword}\cr
 \qquad \dots\cr
 )\cr}}$$
 These read like \CEE/'s |enum| members, or \.{CWEB}'s \.{@@d} macros, so \.{GWEB}
@@ -606,7 +606,7 @@ of tokens set with no space between them becomes one tight math ``chunk''
 line may fold there. Neither the horizontal spacing nor the indentation is copied
 from the source: |spaceBefore| decides each gap from the grammar (the \.{Spacing
 code by grammar} section) and the |indenter| decides each line's indent from the
-block structure (the \.{Structural indentation} section), so even cramped, ragged
+block structure (the {\bf Structural indentation} section), so even cramped, ragged
 source is laid out the way |gofmt| would. Among the state variables, |prevSigKind|
 and |prevSigText| track the most recent significant token --- so an identifier
 following |func|/|var|/|const|/|type| can be flagged as a definition, and a \.*
@@ -655,6 +655,7 @@ flushRun := func() {
 		run.Reset()
 	}
 }
+@#
 emit := func(s string) {
 	if pendingSpace {
 		flushRun()
@@ -703,6 +704,7 @@ flushLine := func() {
 	atLineStart = true
 	pendingSpace = false
 }
+@#
 forceBreak := func(blank bool) {
 	emitLine()
 	if blank {
@@ -780,29 +782,43 @@ for k, t := range toks {
 	}
 }
 
-@ A significant token first gets the space the grammar calls for --- a wide
-\.{\\GS} (a chunk boundary, where the line may wrap), a \.{\\Gthin} kept within the
-chunk, or nothing --- and records its index entry (a preceding declaration
-keyword, or a following |:=|, marks a definition). Then it is emitted in its
-effective class: a comment through |renderComment|, everything else through
-|renderToken|. A trailing comment is the one exception to the grammar space: it is
-set off from the code by the generous \.{\\GCS} gap \.{cweave} leaves before a
-comment, in place of the ordinary \.{\\GS}. The line's first token takes its
-indentation from the |indenter| and no leading space.
+@ Typesetting a significant token runs four small phases in order: it takes the
+space the grammar asks for, records its index entry, is emitted in its effective
+class, and then rolls itself forward as the look-behind the next token will
+consult.
 @<Typeset a significant token@>=
+@<Space the significant token@>
+@<Record the token's index entry@>
+@<Emit the token@>
+@<Advance the look-behind@>
+
+@ The gap is a wide \.{\\GS} (a chunk boundary, where the woven line may wrap), a
+\.{\\Gthin} kept within the chunk, or nothing at all. The first token of a line is
+the exception twice over: it takes its indentation from the |indenter| and gets no
+leading space; and a hand-placed layout code may already have fixed the gap, in
+which case we leave it alone.
+@<Space the significant token@>=
 if atLineStart {
 	indent = in.beginLine(t, toks, k)
 } else if manualGap {
 	manualGap = false // a hand-placed layout code already set the spacing here
 } else {
 	blockBrace := t.kind == tkOp && t.text == "{" && in.opensBlock()
-	switch spaceBefore(prevSigKind, prevSigText, prevUnary, t, blockBrace, in.inSquareBracket(), toks, k) {
+	switch spaceBefore(prevSigKind, prevSigText, prevUnary, t, blockBrace,
+		in.inSquareBracket(), toks, k,
+	) {
 	case gWide:
 		pendingSpace = true
 	case gThin:
 		emit("\\Gthin ")
 	}
 }
+
+@ An identifier or builtin earns an index entry under the current section --- a
+definition when a preceding declaration keyword or a following |:=| marks it as
+one, a use otherwise. The |qualifierOf| result is computed here because it settles
+both what to index and, in a moment, the token's effective display class.
+@<Record the token's index entry@>=
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if t.kind == tkIdent || t.kind == tkBuiltin {
 	def := forceDef || isDefinition(prevSigKind, prevSigText, toks, k)
@@ -815,6 +831,12 @@ if t.kind == tkIdent || t.kind == tkBuiltin {
 		}
 	}
 }
+
+@ A comment goes through |renderComment|, everything else through |renderToken| in
+its effective class. A trailing comment is the one exception to the grammar's
+spacing: it is set off from the code by the generous \.{\\GCS} gap \.{cweave}
+leaves before a comment, in place of the ordinary \.{\\GS}.
+@<Emit the token@>=
 if t.kind == tkComment {
 	if pendingSpace { // set a trailing comment off from the code with a generous gap, as cweave does
 		flushRun()
@@ -825,6 +847,11 @@ if t.kind == tkComment {
 } else {
 	emit(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
 }
+
+@ With the token set, it becomes the past: |advance| updates the |indenter|, and
+the previous-token fields --- including whether this token was a unary prefix or a
+pointer star --- roll forward for the next token to look back on.
+@<Advance the look-behind@>=
 in.advance(t)
 prevUnary = isUnaryPrefix(prevSigKind, prevSigText, t) ||
 	pointerStar(prevSigKind, prevSigText, t, toks, k)

@@ -48,7 +48,7 @@ type Format struct {
 	Original string
 	Like     string
 	NoIndex  bool
-	Macro    bool // \.{@@d}: typeset Original in typewriter (a \.{CWEB}-style macro)
+	Macro    bool // \.{@@d}: typeset Original in \.{typewriter} (a \.{CWEB}-style macro)
 }
 
 @ A |Section| is one numbered section of the web. Its three optional parts --
@@ -58,16 +58,16 @@ and in-code \.{@@}-codes still embedded; the consumers interpret them later.
 type Section struct {
 	Number  int    // 1-based section number
 	Line    int    // 1-based source line where the section begins
-	Starred bool   // true for \.{@@*} sections
-	Depth   int    // group depth for starred sections (-1 |==| \.{@@**}, 0 |==| \.{@@*}, n |==| \.{@@*n})
+	Starred bool   // |true| for \.{@@*} sections
+	Depth   int    // group depth for starred sections ($-1\equiv{}$\.{@@**}, $0\equiv{}$\.{@@*}, $n\equiv{}$\.{@@*n})
 	Title   string // starred-section title (text up to the first period)
-	Tex     string // commentary, raw \TEX/ with in-text\.{@@}-codes still embedded
+	Tex     string // commentary, raw \TEX/ with in-text \.{@@}-codes still embedded
 	Formats []Format
-	HasCode bool   // true if the section contributes code
+	HasCode bool   // |true| if the section contributes code
 	Name    string // named-section name, or \.{""} for an unnamed @@c section
-	IsFile  bool   // true if the name is an output file (\.{@@(file@@>=})
+	IsFile  bool   // |true| if the name is an output file (\.{@@(file@@>=})
 	Code    string // raw code text with in-code \.{@@}-codes still embedded
-	CodeLine int   // 1-based combined-source line where Code begins (0 if none)
+	CodeLine int   // 1-based combined-source line where |Code| begins (0 if none)
 }
 
 @ A |Web| is a fully parsed \.{GWEB} document: the limbo text, the global format
@@ -93,7 +93,7 @@ from before running the shared bookkeeping.
 func Parse(filename string) (*Web, error) {
 	return ParseWithChange(filename, "")
 }
-
+@#
 func ParseWithChange(filename, changeFile string) (*Web, error) {
 	lines, locs, err := expandIncludes(filename, 0)
 	if err != nil {
@@ -136,7 +136,7 @@ func ParseString(src string) *Web {
 	w.finish(src)
 	return w
 }
-
+@#
 func (w *Web) finish(src string) {
 	w.collectNames()
 	w.Warnings = append(w.Warnings, w.scanDiagnostics(src)...)
@@ -155,7 +155,7 @@ func (w *Web) Origin(line int) (file string, ln int) {
 	}
 	return w.file, line
 }
-
+@#
 func (w *Web) at(line int) string {
 	if i := line - 1; i >= 0 && i < len(w.locs) {
 		return w.locs[i].String()
@@ -344,11 +344,11 @@ func lineAt(src string, off int) int {
 	}
 	return 1 + strings.Count(src[:off], "\n")
 }
-
+@#
 func canonName(name string) string {
 	return strings.Join(strings.Fields(name), " ")
 }
-
+@#
 func indexFrom(s, sub string, from int) int {
 	if from >= len(s) {
 		return -1
@@ -415,11 +415,11 @@ type ctrl struct {
 	kind    ctrlKind
 	pos     int    // index of the leading `\.{@@}'
 	end     int    // index just past the control token
-	depth   int    // for cSection: -1 unstarred (or \.{@@**} top level), else starred depth
-	starred bool   // for cSection (distinguishes \.{@@**} from an unstarred section)
-	name    string // for cNamed
-	isFile  bool   // for cNamed (\.{@@(} vs \.{@@<})
-	noIndex bool   // for cFormat (\.{@@s})
+	depth   int    // for |cSection|: -1 unstarred (or \.{@@**} top level), else starred depth
+	starred bool   // for |cSection| (distinguishes \.{@@**} from an unstarred section)
+	name    string // for |cNamed|
+	isFile  bool   // for |cNamed| (\.{@@(} vs \.{@@<})
+	noIndex bool   // for |cFormat| (\.{@@s})
 }
 
 @ |scanStruct| finds the next structural control at or after |i|. It skips

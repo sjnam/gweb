@@ -26,7 +26,7 @@ type Format struct {
 //line common/common.w:50
 	NoIndex bool
 //line common/common.w:51
-	Macro bool // \.{@d}: typeset Original in typewriter (a \.{CWEB}-style macro)
+	Macro bool // \.{@d}: typeset Original in \.{typewriter} (a \.{CWEB}-style macro)
 //line common/common.w:52
 }
 
@@ -37,25 +37,25 @@ type Section struct {
 //line common/common.w:60
 	Line int // 1-based source line where the section begins
 //line common/common.w:61
-	Starred bool // true for \.{@*} sections
+	Starred bool // |true| for \.{@*} sections
 //line common/common.w:62
-	Depth int // group depth for starred sections (-1 |==| \.{@**}, 0 |==| \.{@*}, n |==| \.{@*n})
+	Depth int // group depth for starred sections ($-1\equiv{}$\.{@**}, $0\equiv{}$\.{@*}, $n\equiv{}$\.{@*n})
 //line common/common.w:63
 	Title string // starred-section title (text up to the first period)
 //line common/common.w:64
-	Tex string // commentary, raw \TEX/ with in-text\.{@}-codes still embedded
+	Tex string // commentary, raw \TEX/ with in-text \.{@}-codes still embedded
 //line common/common.w:65
 	Formats []Format
 //line common/common.w:66
-	HasCode bool // true if the section contributes code
+	HasCode bool // |true| if the section contributes code
 //line common/common.w:67
 	Name string // named-section name, or \.{""} for an unnamed @c section
 //line common/common.w:68
-	IsFile bool // true if the name is an output file (\.{@(file@>=})
+	IsFile bool // |true| if the name is an output file (\.{@(file@>=})
 //line common/common.w:69
 	Code string // raw code text with in-code \.{@}-codes still embedded
 //line common/common.w:70
-	CodeLine int // 1-based combined-source line where Code begins (0 if none)
+	CodeLine int // 1-based combined-source line where |Code| begins (0 if none)
 //line common/common.w:71
 }
 
@@ -575,15 +575,15 @@ type ctrl struct {
 //line common/common.w:417
 	end int // index just past the control token
 //line common/common.w:418
-	depth int // for cSection: -1 unstarred (or \.{@**} top level), else starred depth
+	depth int // for |cSection|: -1 unstarred (or \.{@**} top level), else starred depth
 //line common/common.w:419
-	starred bool // for cSection (distinguishes \.{@**} from an unstarred section)
+	starred bool // for |cSection| (distinguishes \.{@**} from an unstarred section)
 //line common/common.w:420
-	name string // for cNamed
+	name string // for |cNamed|
 //line common/common.w:421
-	isFile bool // for cNamed (\.{@(} vs \.{@<})
+	isFile bool // for |cNamed| (\.{@(} vs \.{@<})
 //line common/common.w:422
-	noIndex bool // for cFormat (\.{@s})
+	noIndex bool // for |cFormat| (\.{@s})
 //line common/common.w:423
 }
 
