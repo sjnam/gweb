@@ -2270,7 +2270,7 @@ func isNumberPart(c byte) bool {
 		c == 'x' || c == 'X' || c == 'o' || c == 'O' || c == 'b' || c == 'B' ||
 		c == 'p' || c == 'P'
 }
-
+@#
 func indexByte(s string, b byte, from int) int {
 	for i := from; i < len(s); i++ {
 		if s[i] == b {
@@ -2279,7 +2279,7 @@ func indexByte(s string, b byte, from int) int {
 	}
 	return -1
 }
-
+@#
 func indexStr(s, sub string, from int) int {
 	for i := from; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {
