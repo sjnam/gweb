@@ -2312,56 +2312,75 @@ func escMathOp(s string) string {
 
 @ |renderOp| typesets a \GO/ operator as a single tight math atom, using real math
 symbols where they exist. Because inter-token spacing comes from the source, the
-unary/binary distinction for |*|, |&|, and friends needs no grammar analysis.
+unary/binary distinction for |*|, |&|, and friends needs no grammar analysis. The
+cases fall into three families, spelled out in the sections just below; an operator
+named in none of them is set from its own characters --- a lone byte escaped, a
+longer run set tight.
 @<Render an operator as a math atom@>=
 func renderOp(s string) string {
 	switch s {
-	case "<=":
-		return "\\mathord{\\leq}"
-	case ">=":
-		return "\\mathord{\\geq}"
-	case "!=":
-		return "\\mathord{\\neq}"
-	case "==":
-		return "\\mathord{\\equiv}" // equality test, as \.{CWEB} (an equivalence sign)
-	case "!":
-		return "\\mathord{\\lnot}" // logical not, as \.{CWEB} (a negation sign)
-	case "&&":
-		return "\\mathord{\\land}" // logical and, as \.{CWEB} (a wedge)
-	case "||":
-		return "\\mathord{\\lor}" // logical or, as \.{CWEB} (a vee)
-	case "<-":
-		return "\\mathord{\\leftarrow}"
-	case "^":
-		return "\\mathord{\\oplus}" // bitwise xor, as \.{CWEB} (a circled plus)
-	case "^=":
-		return "\\mathord{\\oplus}\\mathord{=}" // xor-assign: \.{\^} is a circled plus too
-	case "&^":
-		return "\\mathord{\\&}\\mathord{\\oplus}" // bit clear (and-not): \.{\^} as circled plus
-	case "&^=":
-		return "\\mathord{\\&}\\mathord{\\oplus}\\mathord{=}" // and-not-assign
-	case "<<":
-		return "\\mathord{\\ll}" // left shift, as \.{CWEB} (a tight double angle)
-	case ">>":
-		return "\\mathord{\\gg}" // right shift
-	case "<<=":
-		return "\\mathord{\\ll}\\mathord{=}"
-	case ">>=":
-		return "\\mathord{\\gg}\\mathord{=}"
-	case "...":
-		return "\\mathord{\\ldots}"
-	case "[]":
-		// empty slice/array brackets: a thin space keeps them from jamming
-		return "\\mathord{[}\\,\\mathord{]}"
-	case "{}":
-		// empty braces (struct{}, interface{}, T{}): likewise a thin space
-		return "\\mathord{\\{}\\,\\mathord{\\}}"
+	@<Typeset a relation or a logical connective@>
+	@<Typeset a bitwise or shift operator@>
+	@<Typeset an ellipsis or an empty bracket pair@>
 	}
 	if len(s) == 1 {
 		return "\\mathord{" + escMathOp(s) + "}"
 	}
 	return tightMathOp(s)
 }
+
+@ The relations get their real math symbols, and the logical connectives borrow
+\.{CWEB}'s --- a wedge, a vee, a negation sign --- so the code reads like the
+mathematics it mirrors.
+@<Typeset a relation or a logical connective@>=
+case "<=":
+	return "\\mathord{\\leq}"
+case ">=":
+	return "\\mathord{\\geq}"
+case "!=":
+	return "\\mathord{\\neq}"
+case "==":
+	return "\\mathord{\\equiv}" // equality test, as \.{CWEB} (an equivalence sign)
+case "!":
+	return "\\mathord{\\lnot}" // logical not, as \.{CWEB} (a negation sign)
+case "&&":
+	return "\\mathord{\\land}" // logical and, as \.{CWEB} (a wedge)
+case "||":
+	return "\\mathord{\\lor}" // logical or, as \.{CWEB} (a vee)
+case "<-":
+	return "\\mathord{\\leftarrow}"
+
+@ Exclusive-or and bit-clear both build on \.{CWEB}'s circled plus for \.{\^}; the
+shifts are tight double angles. Each assignment form simply appends an \.{=}.
+@<Typeset a bitwise or shift operator@>=
+case "^":
+	return "\\mathord{\\oplus}" // bitwise xor, as \.{CWEB} (a circled plus)
+case "^=":
+	return "\\mathord{\\oplus}\\mathord{=}" // xor-assign: \.{\^} is a circled plus too
+case "&^":
+	return "\\mathord{\\&}\\mathord{\\oplus}" // bit clear (and-not): \.{\^} as circled plus
+case "&^=":
+	return "\\mathord{\\&}\\mathord{\\oplus}\\mathord{=}" // and-not-assign
+case "<<":
+	return "\\mathord{\\ll}" // left shift, as \.{CWEB} (a tight double angle)
+case ">>":
+	return "\\mathord{\\gg}" // right shift
+case "<<=":
+	return "\\mathord{\\ll}\\mathord{=}"
+case ">>=":
+	return "\\mathord{\\gg}\\mathord{=}"
+
+@ The ellipsis is a single math \.{\\ldots}; the empty bracket and brace pairs get a
+thin space so their two halves do not jam together.
+@<Typeset an ellipsis or an empty bracket pair@>=
+case "...":
+	return "\\mathord{\\ldots}"
+case "[]":
+	// empty slice/array brackets: a thin space keeps them from jamming
+	return "\\mathord{[}\\,\\mathord{]}"
+case "{}":
+	// empty braces (struct{}, interface{}, T{}): likewise a thin space
+	return "\\mathord{\\{}\\,\\mathord{\\}}"
 
 @ |tightMathOp| sets each character of an operator as an ordinary atom, so |==|
 or |&&| prints with its characters adjacent.

@@ -890,20 +890,21 @@ func ScanCode(code string) []Atom {
 }
 
 @ Each in-code \.{@@}-code flushes the pending text and appends its own atom (or,
-for the layout and prettyprinter hints, is simply recorded or dropped). The
-argument-terminated forms (\.{@@<...@@>}, \.{@@=...@@>}, and so on) read up to their
-closing \.{@@>}; an unterminated one ends the scan.
-
-The layout hints \.{@@,} \.{@@/} \.{@@\|} \.{@@\#} (a thin space, a line break, an
-optional line break, and a break preceded by a blank line) become |ALayout|
-atoms for \.{gweave} and are ignored by \.{gtangle}. \.{@@!} forces the next
-identifier to index as a definition, overriding the heuristic, and produces no
-output by itself. The \.{CWEB} prettyprinter hints \.{@@+} \.{@@[} \.{@@]} \.{@@;}
-(cancel break, expression brackets, invisible semicolon) have no effect here ---
-\.{GWEB} mirrors the source rather than reflowing it --- so they are accepted and
-dropped for portability.
+for the layout and prettyprinter hints, is simply recorded or dropped). The switch
+falls into three parts: the codes that fold or join text, the argument-terminated
+forms that read up to a closing \.{@@>}, and the one- and two-character layout and
+prettyprinter hints.
 @<Scan one in-code control code@>=
 switch d := code[i+1]; d {
+@<Fold a literal atsign, or join a paste@>
+@<Scan an argument-terminated code@>
+@<Record a layout hint, or drop a prettyprinter hint@>
+}
+
+@ A doubled \.{@@@@} folds to a single literal \.{@@} in the surrounding text;
+\.{@@\&} flushes the pending text and emits a paste atom, which later deletes the
+whitespace around it.
+@<Fold a literal atsign, or join a paste@>=
 case '@@':
 	buf.WriteByte('@@')
 	i += 2
@@ -911,6 +912,12 @@ case '&':
 	flush()
 	atoms = append(atoms, Atom{Kind: APaste})
 	i += 2
+
+@ The argument-terminated forms (\.{@@<...@@>}, \.{@@=...@@>}, and so on) read up to
+their closing \.{@@>}; an unterminated one ends the scan. A reference keeps the raw
+text between the brackets; a verbatim, \TEX/, or index atom keeps its own payload;
+and a \.{@@q} comment is read and thrown away.
+@<Scan an argument-terminated code@>=
 case '<':
 	end := indexFrom(code, "@@>", i+2)
 	if end < 0 {
@@ -955,6 +962,18 @@ case 'q':
 		continue
 	}
 	i = end + 2 // ignored material
+
+@ The layout hints \.{@@,} \.{@@/} \.{@@\|} \.{@@\#} (a thin space, a line break, an
+optional line break, and a break preceded by a blank line) become |ALayout|
+atoms for \.{gweave} and are ignored by \.{gtangle}. \.{@@!} forces the next
+identifier to index as a definition, overriding the heuristic, and produces no
+output by itself. The \.{CWEB} prettyprinter hints \.{@@+} \.{@@[} \.{@@]} \.{@@;}
+(cancel break, expression brackets, invisible semicolon) have no effect here ---
+\.{GWEB} mirrors the source rather than reflowing it --- so they are accepted and
+dropped for portability. A \.{@@\%} comment runs to the end of its line, a stray
+\.{@@>} is skipped, and any unknown \.{@@x} is dropped rather than left to corrupt
+the output.
+@<Record a layout hint, or drop a prettyprinter hint@>=
 case '%':
 	j := i + 2
 	for j < n && code[j] != '\n' {
@@ -975,7 +994,6 @@ case '+', '[', ']', ';':
 	i += 2 // \.{CWEB} prettyprinter hints, dropped
 default:
 	i += 2 // unknown \.{@@x}: drop it rather than corrupt the output
-}
 
 @* Change files.
 A change file (\.{CWEB}'s .{.ch} mechanism) patches the master source without
@@ -983,7 +1001,7 @@ editing it. It is a sequence of changes, each finding a block of lines in the
 master and substituting a replacement block.
 
 Text outside an \.{@@x...@@z} group is ignored (it serves as commentary). Changes
-are matched against the master source — after \.{@@i} includes are expanded — in
+are matched against the master source --- after \.{@@i} includes are expanded --- in
 the order they appear: \.{GWEB} scans the master line by line, and at the first
 line equal to a change's first match line it requires the whole match block
 to match, then substitutes the replacement lines.
