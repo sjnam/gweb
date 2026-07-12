@@ -157,7 +157,7 @@ type Weaver struct {
 	noIndex map[string]bool    // \.{@@s}: identifiers omitted from the index
 	isFile  map[string]bool    // \.{@@(file@@>=} outputs: names are literal file paths
 
-	xref *xref // identifier and section cross-references (built lazily)
+	xr *xref // identifier and section cross-references (built lazily)
 }
 
 @ |New| records the first defining section of each refinement and installs the
@@ -492,7 +492,7 @@ the real output. \.{gweave} emits the \.{gwebmac} macro package itself, so a
 from the limbo.
 @<Weave the document in two passes@>=
 func (wv *Weaver) Weave(out io.Writer) error {
-	wv.xref = newXref()
+	wv.xr = newXref()
 	scan := bufio.NewWriter(io.Discard)
 	for _, sec := range wv.w.Sections {
 		wv.writeSection(scan, sec)
@@ -583,7 +583,7 @@ Emitting it also records this section as a definition of the name.
 if sec.Name != "" {
 	name := wv.w.Resolve(sec.Name)
 	cont := wv.defNum[name] != sec.Number
-	wv.xref.addSectionDef(name, sec.Number)
+	wv.xr.addSectionDef(name, sec.Number)
 	macro := "\\GD"
 	if cont {
 		macro = "\\GDp" // continuation of an earlier definition
@@ -722,7 +722,7 @@ case common.ARef:
 		indent = in.beginGeneric()
 	}
 	name := wv.w.Resolve(a.Text)
-	wv.xref.addSectionUse(name, secNum)
+	wv.xr.addSectionUse(name, secNum)
 	emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
 	in.advanceGeneric()
 case common.AVerbatim:
@@ -734,7 +734,7 @@ case common.AVerbatim:
 case common.ATeX:
 	emit("\\hbox{" + a.Text + "}") // \.{@@t}: a \TEX/ box set amid the code, as in cweave
 case common.AIndex:
-	wv.xref.addManualIndex(a.Index, a.Text, secNum)
+	wv.xr.addManualIndex(a.Index, a.Text, secNum)
 case common.APaste:
 	pendingSpace = false // join: no space before the next token
 	manualGap = true     // ...and let no grammar space creep back in
@@ -803,9 +803,9 @@ if t.kind == tkIdent || t.kind == tkBuiltin {
 	forceDef = false
 	if indexable(t.text) && !wv.noIndexed(t.text, qual) {
 		if def {
-			wv.xref.addIdentDef(t.text, secNum)
+			wv.xr.addIdentDef(t.text, secNum)
 		} else {
-			wv.xref.addIdentUse(t.text, secNum)
+			wv.xr.addIdentUse(t.text, secNum)
 		}
 	}
 }
@@ -1271,7 +1271,7 @@ if c == '@@' && i+1 < n {
 		if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
 			end += i + 2
 			name := wv.w.Resolve(strings.TrimSpace(s[i+2 : end]))
-			wv.xref.addSectionUse(name, secNum)
+			wv.xr.addSectionUse(name, secNum)
 			fmt.Fprintf(&b, "\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name))
 			i = end + 2
 			continue
@@ -1279,7 +1279,7 @@ if c == '@@' && i+1 < n {
 	case '^', '.', ':':
 		if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
 			end += i + 2
-			wv.xref.addManualIndex(d, s[i+2:end], secNum)
+			wv.xr.addManualIndex(d, s[i+2:end], secNum)
 			i = end + 2
 			continue
 		}
@@ -1349,7 +1349,7 @@ case common.AText:
 	}
 case common.AIndex:
 	if record {
-		wv.xref.addManualIndex(a.Index, a.Text, secNum)
+		wv.xr.addManualIndex(a.Index, a.Text, secNum)
 	}
 case common.ATeX:
 	emit("\\hbox{" + a.Text + "}")
@@ -1357,7 +1357,7 @@ case common.AVerbatim:
 	emit("\\GST{" + escTT(a.Text) + "}")
 case common.ARef:
 	name := wv.w.Resolve(a.Text)
-	wv.xref.addSectionUse(name, secNum)
+	wv.xr.addSectionUse(name, secNum)
 	emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
 case common.APaste:
 	pendingSpace = false
@@ -1375,7 +1375,7 @@ if t.kind == tkSpace || t.kind == tkNewline {
 }
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndexed(t.text, qual) {
-	wv.xref.addIdentUse(t.text, secNum)
+	wv.xr.addIdentUse(t.text, secNum)
 }
 emit(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
 prevPrevSigText = prevSigText
@@ -2425,9 +2425,9 @@ func escProse(s string) string {
 		case '~':
 			b.WriteString("\\~{}")
 		case '<':
-			b.WriteString("$<$") // cmr (OT1) has no < glyph; use math
+			b.WriteString("$<$") // \.{cmr} \.{(OT1)} has no \.{<} glyph; use math
 		case '>':
-			b.WriteString("$>$") // likewise for >
+			b.WriteString("$>$") // likewise for \.{>}
 		case '|':
 			b.WriteString("$\\vert$")
 		default:
@@ -2727,13 +2727,13 @@ head := func(name string) string {
 	}
 	return "\\GID{" + escIdent(name) + "}"
 }
-for name, secs := range wv.xref.identUse {
+for name, secs := range wv.xr.identUse {
 	it := get(head(name), strings.ToLower(name))
 	for s := range secs {
 		it.secs[s] = true
 	}
 }
-for name, secs := range wv.xref.identDef {
+for name, secs := range wv.xr.identDef {
 	it := get(head(name), strings.ToLower(name))
 	for s := range secs {
 		it.secs[s] = true
@@ -2744,7 +2744,7 @@ for name, secs := range wv.xref.identDef {
 @ A manual entry --- \.{@@.} typewriter, \.{@@:} raw \TEX/, \.{@@\^} roman --- is
 rendered by its kind and recorded at the section where it appeared.
 @<Collect the manual index entries@>=
-for _, e := range wv.xref.manualIndex {
+for _, e := range wv.xr.manualIndex {
 	var render string
 	switch e.kind {
 	case '.':
@@ -2782,16 +2782,16 @@ here and for the PDF outline children beneath ``Names of the sections''.
 func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	for _, n := range wv.sortedSectionNames() {
 		fmt.Fprintf(bw, "\\GNS{%s}{%d}{%s}\n",
-			wv.renderName(n), wv.defNum[n], usedNote(wv.xref.sectionUses[n]))
+			wv.renderName(n), wv.defNum[n], usedNote(wv.xr.sectionUses[n]))
 	}
 }
 
 func (wv *Weaver) sortedSectionNames() []string {
 	names := map[string]bool{}
-	for n := range wv.xref.sectionDefs {
+	for n := range wv.xr.sectionDefs {
 		names[n] = true
 	}
-	for n := range wv.xref.sectionUses {
+	for n := range wv.xr.sectionUses {
 		names[n] = true
 	}
 	sorted := make([]string, 0, len(names))
@@ -2828,7 +2828,7 @@ func (wv *Weaver) crossRefNotes(name string, secNum int) string {
 		return "" // notes appear only under the first definition
 	}
 	var b strings.Builder
-	defs := wv.xref.sectionDefs[name]
+	defs := wv.xr.sectionDefs[name]
 	if len(defs) > 1 {
 		others := map[int]bool{}
 		for s := range defs {
@@ -2842,7 +2842,7 @@ func (wv *Weaver) crossRefNotes(name string, secNum int) string {
 		}
 		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(others, nil))
 	}
-	if uses := wv.xref.sectionUses[name]; len(uses) > 0 {
+	if uses := wv.xr.sectionUses[name]; len(uses) > 0 {
 		macro := "\\GU"
 		if len(uses) > 1 {
 			macro = "\\GUs"
