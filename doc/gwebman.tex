@@ -137,7 +137,7 @@ types are set.
 \cw{cweave} parses \CEE/ and re-derives every space, break, and indent from the
 grammar. \cw{gweave} reaches the same math-like result---a product \cw{a * b}
 spaced, a pointer \cw{*T} tight, relations set off, a keyword followed by a space
---- but from {\it local\/} rules only: it looks at each token and its neighbour,
+---but from {\it local\/} rules only: it looks at each token and its neighbour,
 never building a parse tree. The spacing is therefore \cw{cweave}'s, not
 \cw{gofmt}'s: where \cw{gofmt} tightens a higher-precedence factor (\cw{a*b + c}),
 \cw{gweave} spaces every operator alike, the way a formula is set. Indentation is

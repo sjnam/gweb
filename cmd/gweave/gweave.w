@@ -1677,7 +1677,7 @@ func (in *indenter) inSquareBracket() bool {
 @ A block-opening keyword (|func|, |if|, |for|, |switch|, \dots) arms a pending
 block: a brace that later turns up at its parenthesis depth opens a statement block
 rather than a composite literal. A single slot cannot see the whole picture, though
---- the signature |func f(g func() int) {| carries a nested |func| {\it type\/} whose
+---the signature |func f(g func() int) {| carries a nested |func| {\it type\/} whose
 own arming would bury the outer function's, so the body's brace, arriving at depth
 zero, would be misread. So the pending blocks form a stack. |opensBlock| asks whether
 the brace now at hand matches the innermost pending; |dropPendingFrom| discards those

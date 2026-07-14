@@ -542,7 +542,7 @@ func TestTangleIgnoresLayoutCodes(t *testing.T) {
 }
 
 @ An unknown \.{@@x} must drop exactly its two characters, not corrupt the rest
---- a guard against a former double-skip bug.
+---a guard against a former double-skip bug.
 @(gtangle_test.go@>=
 func TestTangleDropsUnknownCode(t *testing.T) {
 	const src = "@@ x\n@@c\npackage main\n\nvar a@@?bc = 1\n"
