@@ -909,17 +909,26 @@ func spaceBefore(pk tokKind, pt string, pUnary bool, cur token, blockBrace, inSl
 	return gWide
 }
 
-@ Most operators are handled by their text. An opening parenthesis or bracket
-clings to an operand it follows (a call or an index, the parenthesis getting a hair
-space as in \.{cweave}); after \.{func} its parameter list gets that same hair
-space (\.{func (x int)}), unless it is a method's receiver, which |isMethodReceiver|
-picks out for a full space (\.{func (r T) m()}). A lone \.{[]} takes a space after
-a name (\.{x []int}) but not after another bracket (\.{[][]int}). Anything left is
-a binary operator or relation, and gets a space.
+@ Punctuation and the empty bracket pairs settle at a glance; an open paren or
+bracket needs the call/type/receiver judgement calls below; anything left over
+falls to the sign-operator and pointer-star checks that close the function.
 @<Return the gap before an operator@>=
 switch cur.text {
+@<Gap before punctuation and an empty bracket pair@>
+@<Gap before an open paren or bracket@>
+}
+@<Gap before a sign operator, or a binary relation@>
+
+@ A lone \.{[]} takes a space after a name (\.{x []int}) but not after another
+bracket (\.{[][]int}). An empty call or parameter list, \.{()}, is never a
+receiver (a receiver always names itself), so it always gets the hair space, the
+same as a call's or a literal's non-empty \.{(}. Everything else here is plain
+punctuation that clings to whatever it follows.
+@<Gap before punctuation and an empty bracket pair@>=
 case ",", ";", ".", ")", "]", ":", "++", "--", "}", "{}":
 	return gTight
+case "()":
+	return gThin // a call's or func literal's empty parens, the same hair space as f(
 case "{":
 	if blockBrace {
 		return gWide
@@ -933,6 +942,14 @@ case "[]":
 		}
 	}
 	return gWide
+
+@ An opening parenthesis or bracket clings to an operand it follows (a call or an
+index, the parenthesis getting a hair space as in \.{cweave}); after \.{func} its
+parameter list gets that same hair space (\.{func (x int)}), unless it is a
+method's receiver, which |isMethodReceiver| picks out for a full space
+(\.{func (r T) m()}). An empty parameter list never reaches that check --- the
+case above already caught \.{()} --- so only a non-empty \.{(} can be a receiver's.
+@<Gap before an open paren or bracket@>=
 case "(", "[":
 	if pk == tkKeyword && pt == "func" && cur.text == "(" {
 		if isMethodReceiver(toks, k) {
@@ -953,7 +970,11 @@ case "(", "[":
 		return gTight
 	}
 	return gapAfter(pk, pt)
-}
+
+@ Anything left is a binary operator or relation, and gets a space --- unless it is
+a unary sign (\.*, \.\&, \.-, \.+, \.{<-}) with no operand before it to be binary
+with, or a pointer's star crammed against its array type.
+@<Gap before a sign operator, or a binary relation@>=
 if isSignOp(cur.text) && !isOperandEnd(pk, pt) {
 	return gapAfter(pk, pt) // a unary prefix operator
 }
@@ -977,7 +998,7 @@ func gapAfter(pk tokKind, pt string) int {
 		switch pt {
 		case ",", ";":
 			return gWide
-		case ".", "(", "[", "{", ")", "]", "}", "[]", "{}", "++", "--":
+		case ".", "(", "[", "{", ")", "]", "}", "[]", "{}", "()", "++", "--":
 			return gTight
 		}
 		return gWide // a binary operator or relation
@@ -988,7 +1009,8 @@ func gapAfter(pk tokKind, pt string) int {
 @ An {\it operand end\/} is a token a value can finish with, so that a following
 |*|, |&|, |-|, |+|, or |<-| is the binary form, not the unary. |isUnaryPrefix|
 makes the converse judgement about the token just emitted, so the next token's gap
-knows whether to cling to it.
+knows whether to cling to it. A closed |()| ends an operand just as |)| would, so a
+chained call or index after an empty call --- |f()(x)|, |f()[0]| --- stays tight.
 @<Space code tokens by grammar@>=
 func isOperandEnd(k tokKind, text string) bool {
 	switch k {
@@ -996,7 +1018,7 @@ func isOperandEnd(k tokKind, text string) bool {
 		return true
 	case tkOp:
 		switch text {
-		case ")", "]", "}", "{}", "++", "--":
+		case ")", "]", "}", "{}", "()", "++", "--":
 			return true
 		}
 	}
@@ -1113,7 +1135,9 @@ func starAfterArrayType(toks []token, k int) bool {
 @ |isMethodReceiver| decides whether the parenthesis just after \.{func} opens a
 method receiver rather than a function literal's parameters. A receiver is followed
 by the method name and then another parenthesis---\.{func (r T) Name(\dots)}---%
-whereas a literal's parameter list is followed by a result type or a body.
+whereas a literal's parameter list is followed by a result type or a body. That
+trailing parenthesis may itself be empty (\.{func (r T) Name()}), in which case it
+is the merged |()| token rather than a lone |(|.
 @<Space code tokens by grammar@>=
 func isMethodReceiver(toks []token, k int) bool {
 	depth := 0
@@ -1131,7 +1155,7 @@ func isMethodReceiver(toks []token, k int) bool {
 					return false
 				}
 				j = nextSignificant(toks, j+1)
-				return j >= 0 && toks[j].kind == tkOp && toks[j].text == "("
+				return j >= 0 && toks[j].kind == tkOp && (toks[j].text == "(" || toks[j].text == "()")
 			}
 		}
 	}
@@ -1953,7 +1977,7 @@ func continuesStmt(t token) bool {
 		return false
 	}
 	switch t.text {
-	case "(", "[", "{", ")", "]", "}", "[]", "{}", ",", ":", "++", "--":
+	case "(", "[", "{", ")", "]", "}", "[]", "{}", "()", ",", ":", "++", "--":
 		return false
 	}
 	return true
@@ -2216,8 +2240,8 @@ default:
 }
 
 @ The multi-character operators (longest first) and the greedy matcher that
-combines them into single tokens. The empty pairs |[]| and |{}| are kept whole
-so the typesetter can give them a thin space.
+combines them into single tokens. The empty pairs |[]|, |{}|, and |()| are kept
+whole so the typesetter can give them a thin space.
 @<Match a multi-character operator@>=
 var multiOps = []string{
 	"<<=", ">>=", "&^=", "...",
@@ -2225,6 +2249,7 @@ var multiOps = []string{
 	"<<", ">>", "&^", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=",
 	"[]", // the empty brackets of a slice/array type, kept as one token
 	"{}", // empty braces (struct{}, interface{}, T{}), kept as one token
+	"()", // an empty call or parameter list, kept as one token
 }
 
 func matchOp(src string, i int) int {
@@ -2425,8 +2450,9 @@ case "<<=":
 case ">>=":
 	return "\\mathord{\\gg}\\mathord{=}"
 
-@ The ellipsis is a single math \.{\\ldots}; the empty bracket and brace pairs get a
-thin space so their two halves do not jam together.
+@ The ellipsis is a single math \.{\\ldots}; the empty bracket, brace, and paren
+pairs get a thin space so their two halves do not jam together --- the same gap
+regardless of which bracket it is.
 @<Typeset an ellipsis or an empty bracket pair@>=
 case "...":
 	return "\\mathord{\\ldots}"
@@ -2436,6 +2462,9 @@ case "[]":
 case "{}":
 	// empty braces (struct{}, interface{}, T{}): likewise a thin space
 	return "\\mathord{\\{}\\,\\mathord{\\}}"
+case "()":
+	// an empty call or parameter list: the same thin space as [] and {}
+	return "\\mathord{(}\\,\\mathord{)}"
 
 @ |tightMathOp| sets each character of an operator as an ordinary atom, so |==|
 or |&&| prints with its characters adjacent.
@@ -3643,6 +3672,49 @@ func TestWeaveEmptyBrackets(t *testing.T) {
 	out4 := weaveString(t, "@@ x\n@@c\nv := T{x}\n")
 	if strings.Contains(out4, `\mathord{\{}\,`) {
 		t.Errorf("non-empty braces should not get a thin space:\n%s", out4)
+	}
+}
+
+@ An empty call or parameter list, \.{()}, gets the same thin space as \.{[]} and
+\.{\{\}} --- the gap this section fixes was cramped before. A non-empty \.{(x)}
+must stay tight, exactly as a non-empty \.{\{x\}} does above.
+@(gweave_test.go@>=
+func TestWeaveEmptyParens(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nvar _ = f()\n")
+	if !strings.Contains(out, `\mathord{(}\,\mathord{)}`) {
+		t.Errorf("empty parens () should get a thin space, like [] and {}:\n%s", out)
+	}
+	out2 := weaveString(t, "@@ x\n@@c\nvar _ = f(x)\n")
+	if strings.Contains(out2, `\mathord{(}\,`) {
+		t.Errorf("a non-empty call f(x) should not get a thin space:\n%s", out2)
+	}
+}
+
+@ A method receiver's own parentheses still get a full space even when the
+method's parameter list --- past the name --- is empty; |isMethodReceiver| must
+recognize that trailing \.{()} as a parameter list, not mistake the receiver for
+a function literal. A chained call or index after an empty call, \.{f()(x)} or
+\.{f()[0]}, stays as tight as it would after any other operand.
+@(gweave_test.go@>=
+func TestWeaveEmptyParensMethodReceiver(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nfunc (r *T) m() {}\n")
+	if !strings.Contains(out, `\GKW{func}$\GS $\mathord{(}`) {
+		t.Errorf("a receiver with empty params should still get a full space:\n%s", out)
+	}
+	out2 := weaveString(t, "@@ x\n@@c\nvar _ = f()[0]\n")
+	if strings.Contains(out2, `)}$\GS $\mathord{[}`) {
+		t.Errorf("indexing the result of an empty call should stay tight:\n%s", out2)
+	}
+}
+
+@ A statement ending in an empty call or parameter list, such as a bare function
+type, still closes its statement --- the next line must not be misread as its
+continuation and over-indented.
+@(gweave_test.go@>=
+func TestWeaveEmptyParensStatementEnd(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nfunc f() {\n\tvar g func()\n\tx := 1\n\t_ = g\n\t_ = x\n}\n")
+	if !strings.Contains(out, `\GL{1}{$\GID{x}$\GS $\mathord{:}\mathord{=}$\GS $\GNU{1}$}`) {
+		t.Errorf("a statement after a bare func() type must not over-indent:\n%s", out)
 	}
 }
 
