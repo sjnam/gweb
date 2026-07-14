@@ -276,7 +276,7 @@ references to undefined sections, and named sections that are defined but never
 used. All are warnings; \.{gtangle} still fails hard if it actually meets an
 undefined reference while expanding.
 
-The |defined| set holds only the sections that actually have a definition ---
+The |defined| set holds only the sections that actually have a definition---%
 not the full names known for abbreviation resolution, which also include names
 that appear only at references.
 @<Collect and resolve section names@>=
@@ -719,7 +719,7 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 @ |parseMacro| parses the body of an \.{@@d} directive. Where \.{CWEB}'s \.{@@d}
 names one macro and gives its replacement text, \GO/ has no preprocessor, so
 \.{GWEB} borrows the code for a lighter purpose: every whitespace-separated word
-of the body---the body runs to the next \.{@@}, so it may span several lines ---
+of the body---the body runs to the next \.{@@}, so it may span several lines---%
 is an identifier to set in typewriter, like a \.{CWEB} macro. A qualified name
 keeps its final component, so `\.{@@d http.StatusOK}' registers \.{StatusOK}, and
 `\.{@@d Push Pop Peek}' sets all three at once.
@@ -968,7 +968,7 @@ optional line break, and a break preceded by a blank line) become |ALayout|
 atoms for \.{gweave} and are ignored by \.{gtangle}. \.{@@!} forces the next
 identifier to index as a definition, overriding the heuristic, and produces no
 output by itself. The \.{CWEB} prettyprinter hints \.{@@+} \.{@@[} \.{@@]} \.{@@;}
-(cancel break, expression brackets, invisible semicolon) have no effect here ---
+(cancel break, expression brackets, invisible semicolon) have no effect here---%
 \.{GWEB} mirrors the source rather than reflowing it---so they are accepted and
 dropped for portability. A \.{@@\%} comment runs to the end of its line, a stray
 \.{@@>} is skipped, and any unknown \.{@@x} is dropped rather than left to corrupt

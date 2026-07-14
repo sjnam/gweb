@@ -21,7 +21,7 @@ algebraic operation as a small {\it concurrent process.\/}
 The representation is a {\it demand channel,\/} McIlroy's central device. A series is
 a pair of channels: a consumer sends a token on the request channel, and only then
 does the producer compute and send the next coefficient on the data channel. No
-process ever runs ahead of demand, so even series defined in terms of themselves ---
+process ever runs ahead of demand, so even series defined in terms of themselves---%
 $\exp$ as the solution of $X'=XF'$, or $\tan$ from $\tan'=1+\tan^2$---evaluate
 without runaway. The whole arithmetic of series becomes a network of goroutines
 joined by channels, and writing each operator is mostly a matter of transcribing

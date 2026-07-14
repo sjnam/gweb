@@ -322,7 +322,7 @@ func prevSignificant(toks []token, i int) int {
 	return -1
 }
 
-@ |scanDeclGroup| collects the names in a parenthesized declaration group ---
+@ |scanDeclGroup| collects the names in a parenthesized declaration group---%
 each entry that starts a line at the group's own nesting level---tracking brace
 and bracket depth so that struct fields and the like are not mistaken for names.
 @<Scan a declaration group@>=
@@ -479,7 +479,7 @@ func (wv *Weaver) noIndexed(name, qual string) bool {
 }
 
 @ |qualifierOf| gives the qualifier of the token now being typeset: the text of
-the significant token two back, when the one immediately before it is a |.| ---
+the significant token two back, when the one immediately before it is a |.|---%
 so in |foo.Bar| the |Bar| sees |foo|. Anything else (|x[i].Bar|, a bare name)
 yields no qualifier.
 @<The effective token class@>=
@@ -694,7 +694,7 @@ emitLine := func() {
 @ |flushLine| ends a source line, resetting the indent; |forceBreak| (\.{@@/}, or
 \.{@@\#} with a blank line first) ends the current woven line in the middle of a
 source line. It closes the |indenter|'s view of the line and leaves us at a line
-start, so the continuation's indentation is recomputed for the current nesting ---
+start, so the continuation's indentation is recomputed for the current nesting---%
 a break inside an open bracket steps its continuation in, rather than hanging at
 the statement's own margin.
 @<End or force-break a line@>=
@@ -868,7 +868,7 @@ are tight, a comma or semicolon takes a space only after it, and a keyword is
 followed by a space---with |map| the exception that runs straight into its
 bracket, and |func| taking before its parenthesis the same hair space a call's
 name does. Only the local context is needed: the previous significant token,
-and whether it was itself unary. No parser and no precedence table is required ---
+and whether it was itself unary. No parser and no precedence table is required---%
 the one thing this gives up against |gofmt|, which tightens spacing around
 higher-precedence operators, is that \.{gweave} spaces them all alike, as
 \.{cweave} does.
@@ -1112,7 +1112,7 @@ func starAfterArrayType(toks []token, k int) bool {
 
 @ |isMethodReceiver| decides whether the parenthesis just after \.{func} opens a
 method receiver rather than a function literal's parameters. A receiver is followed
-by the method name and then another parenthesis---\.{func (r T) Name(\dots)} ---
+by the method name and then another parenthesis---\.{func (r T) Name(\dots)}---%
 whereas a literal's parameter list is followed by a result type or a body.
 @<Space code tokens by grammar@>=
 func isMethodReceiver(toks []token, k int) bool {
@@ -1140,7 +1140,7 @@ func isMethodReceiver(toks []token, k int) bool {
 
 @ |renderToken| renders a single \GO/ token as a \TEX/ fragment, used inside
 math. Keywords and builtins are set bold (\.{\\GKW}), identifiers italic
-(\.{\\GID}). A typewriter macro---an \.{@@d} name or a predeclared constant ---
+(\.{\\GID}). A typewriter macro---an \.{@@d} name or a predeclared constant---%
 uses \.{\\GMAC}, which wraps \.{\\tentex} in an \.{\\hbox} so it works in the
 surrounding math mode; the sole exception is |nil|, \GO/'s null value, shown with
 a symbol (\.{\\Gnil}, a capital lambda) as cweave shows \CEE/'s \.{NULL}. An
@@ -3407,7 +3407,7 @@ func TestWeaveMultilineSignatureIndent(t *testing.T) {
 }
 
 @ Spacing is derived from the grammar, math-like, not copied from the source: a
-pointer type \.{*int} is tight, an index \.{xs[i]} is tight, but a product ---
+pointer type \.{*int} is tight, an index \.{xs[i]} is tight, but a product---%
 even the tight \.{a*b} |gofmt| writes to group a factor---is set spaced, as in
 \.{cweave}.
 @(gweave_test.go@>=

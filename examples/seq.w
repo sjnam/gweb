@@ -113,7 +113,7 @@ func Take[V any](s iter.Seq[V], n int) iter.Seq[V] {
 @* Running the pipeline.
 Now we assemble a pipeline and consume it. |Filter| narrows the infinite
 Fibonacci stream to its even members using an anonymous predicate, |Take| caps
-it at eight, and the |for n := range Take(even, 8)| loop pulls the values ---
+it at eight, and the |for n := range Take(even, 8)| loop pulls the values---%
 each computed only as it is demanded. The output is the eight numbers
 0, 2, 8, 34, 144, 610, 2584, 10946.
 @<Print the first even Fibonacci numbers@>=
