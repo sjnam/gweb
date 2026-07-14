@@ -3,11 +3,11 @@
 [![CI](https://github.com/sjnam/gweb/actions/workflows/ci.yml/badge.svg)](https://github.com/sjnam/gweb/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-GWEB is a [literate programming](https://www-cs-faculty.stanford.edu/~knuth/lp.html)
+**GWEB** is a [literate programming](https://www-cs-faculty.stanford.edu/~knuth/lp.html)
 system for the Go programming language, modeled closely on Donald Knuth and Silvio Levy's
 **CWEB**. You write a single `.w` source file that interleaves TeX
 documentation with Go code, and two tools turn it into either a program or a
-typeset document — exactly as CWEB does for C, with C replaced by Go:
+typeset document — exactly as **CWEB** does for C, with C replaced by Go:
 
 | CWEB       | GWEB       | purpose                                             |
 |------------|------------|-----------------------------------------------------|
@@ -23,6 +23,19 @@ typeset document — exactly as CWEB does for C, with C replaced by Go:
   mark other names typewriter too (e.g. another package's `@d http.StatusOK`), and
   override any of it with `@f`/`@s`.
 
+## Prerequisites
+
+**GWEB** assumes you already know **Go** and are comfortable with **TeX** — in
+particular *plain* TeX, since `gwebmac.tex` and this repository's macros are
+plain TeX, not LaTeX. Beyond that:
+
+* A **TeX distribution** (e.g. [TeX Live](https://tug.org/texlive/) or MacTeX)
+  must be installed, providing the `tex`, `pdftex`, and `luatex` engines the
+  woven output is typeset with.
+* For Korean output (`\input kotexgweb`; see [Usage](#usage)), the
+  **Noto Serif/Sans CJK KR** fonts must be installed locally — `kotexgweb.tex`
+  selects them by name.
+
 ## Build
 
 ```sh
@@ -30,7 +43,7 @@ make build        # builds bin/gtangle and bin/gweave
 make test         # runs the test suite
 ```
 
-As in CWEB, only the Go needed to build `gtangle` is committed; `gweave` and the
+As in **CWEB**, only the Go needed to build `gtangle` is committed; `gweave` and the
 weave engine are tangled from their `.w` sources on the fly. `make build` does
 this for you: it builds `gtangle` from the committed sources, runs it to generate
 the rest, then builds `gweave`. (`make generate` performs just the tangling step.)
@@ -74,11 +87,11 @@ gweave  foo.w     # -> foo.tex
 pdftex  foo.tex   # -> foo.pdf   (gwebmac.tex must be on TEXINPUTS)
 ```
 
-The `.w` extension may be omitted, as in CWEB — `gtangle foo` reads `foo.w` (and
+The `.w` extension may be omitted, as in **CWEB** — `gtangle foo` reads `foo.w` (and
 a bare change-file name gets `.ch`). Each command prints a brief cweb-style
 progress line, one `*N` per starred (chapter) section.
 
-For a hyperlinked PDF you can also go through DVI, exactly as CWEB does — request
+For a hyperlinked PDF you can also go through DVI, exactly as **CWEB** does — request
 the `\special{pdf:…}` back end with `\let\pdf+`, then convert with `dvipdfmx`:
 
 ```sh
@@ -86,33 +99,9 @@ tex "\let\pdf+ \input foo.tex"   # -> foo.dvi  (with pdf: specials)
 dvipdfmx foo.dvi                 # -> foo.pdf  (links + bookmarks)
 ```
 
-### Korean (and other non-English) documentation
-
-The woven output can be written in Korean by processing it with **`luatex`**
-(not `pdftex`) and putting one line in the `.w` file's limbo:
-
-```tex
-\input kotexgweb
-```
-
-[tex/kotexgweb.tex](tex/kotexgweb.tex) loads [luatexko](https://ctan.org/pkg/luatexko)
-and selects the Noto Serif/Sans CJK KR fonts (edit the `\sethangulfont` lines to
-change typefaces), translates gweave's fixed wording into Korean, and supplies a
-LuaTeX PDF back end so that blue cross-reference links and the PDF outline
-(bookmark) pane work, with Korean bookmark titles. Then:
-
-```sh
-gweave foo.w           # -> foo.tex
-luatex foo.tex         # -> foo.pdf   (kotexgweb.tex on TEXINPUTS)
-```
-
-gweave needs no flag; all the human-readable text it emits goes through macros
-(`\GU`, `\GNused`, `\Gsectionword`, …) that `kotexgweb.tex` overrides, so the same
-mechanism localizes to any language — write your own `\input` file modelled on it.
-
 Both commands accept `-o <dir>` to choose an output directory, and an optional
 **change file** as a second argument — `gtangle foo.w foo.ch` — which patches the
-master source without editing it (CWEB's `.ch` mechanism; see
+master source without editing it (**CWEB**'s `.ch` mechanism; see
 [doc/format.md](doc/format.md)). For example,
 `gtangle examples/wc.w examples/wc.ch` builds a CSV variant of the word counter. `gwebmac.tex`
 lives in [tex/](tex/); point `TEXINPUTS` at that directory, or copy the file
@@ -120,87 +109,19 @@ next to your document.
 
 The tangled Go always carries `//line` directives, so the Go compiler, `go vet`,
 and panic traces report errors at **`.w`** positions instead of `.go` ones — the
-Go counterpart of CWEB's `#line`, which `ctangle` likewise emits unconditionally:
+Go counterpart of **CWEB**'s `#line`, which `ctangle` likewise emits unconditionally:
 
 ```sh
 gtangle foo.w && go build .       # an error reads  foo.w:42: ...
 ```
 
-GWEB tangles its own sources the same way, so editing a `.w` reshuffles the line
+**GWEB** tangles its own sources the same way, so editing a `.w` reshuffles the line
 numbers in the bootstrap Go it commits — the price of keeping the generated code
 honest about its literate origin.
 
-## Try the examples
-
-```sh
-make example                 # tangle & weave every examples/*.w into .go and .pdf
-make -C examples NAME=wc     # just one example
-```
-
-* [examples/floyd.w](examples/floyd.w) — Floyd's partition problem, the classic
-  "toy problem" Knuth discusses in *Are Toy Problems Useful?*: partition
-  √1…√50 into two nearly-equal halves. A worked literate solution
-  (meet-in-the-middle search, Gray-code enumeration, compensated summation, and
-  a `math/big` verification).
-* [examples/pairsums.w](examples/pairsums.w) — HackerRank's *Pair Sums*: the
-  largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
-  and a prefix-sum twist turn it into the upper envelope of a family of lines,
-  solved with a **Li Chao tree** in O(n log n).
-* [examples/rps.w](examples/rps.w) — a Korean literate essay disguised as a
-  coffee bet, demonstrating `\input kotexgweb.tex`: how many rounds of
-  rock–paper–scissors does it take *N* players to settle who pays, and how should
-  they split into groups to finish fastest? Worked out in exact rationals with
-  `math/big` — expected-value recurrences, a full search over integer partitions,
-  a recursive strategy for 100 players, a proof that groups of four are optimal,
-  and a convexity check — with a companion `rps_test.go`. Korean, so typeset it
-  with **luatex**: `make -C examples NAME=rps TEXENGINE=luatex` (or `make example`).
-* [examples/seq.w](examples/seq.w) — a tiny lazy-sequence library (`Map`,
-  `Filter`, `Take` over infinite Fibonacci numbers), showing off the Go features
-  C has no answer to: first-class functions and closures, anonymous functions,
-  generics, and Go 1.23 range-over-func iterators.
-* [examples/sham.w](examples/sham.w) — a GWEB port of Knuth's Stanford GraphBase
-  demo `sham`: count the symmetric Hamiltonian cycles of the knight's graph on an
-  8×9 board, by folding the graph in half and backtracking with `goto` labels. It
-  builds on [go-sgb](https://github.com/sjnam/go-sgb), a Go port of the SGB, so
-  running it needs that module (`go get github.com/sjnam/go-sgb`); the commentary
-  is newly written. Shows GWEB handling an external dependency and a real Knuth
-  program.
-* [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
-  channel networks (sum, product, composition, reciprocal, functional inverse,
-  and differential equations like `exp`), after McIlroy's *Squinting at Power
-  Series*.
-* [examples/torture.w](examples/torture.w) is a deliberately mangled but
-  compiling 1-indexed Fenwick tree — inconsistent indentation and cramped code
-  on every line — so weaving it shows off how the grammar-driven prettyprinter
-  cleans up careless source.
-* [examples/wc.w](examples/wc.w) — a literate word-count program; its tangled
-  output matches the system `wc`. It also shows `@f` setting a user type in bold.
-
-`make test` (the non-`-short` run) tangles every example and `go build`s the
-result, so the examples are guaranteed to stay compilable.
-
-You can find more GWEB examples at [gweb-examples](https://github.com/sjnam/gweb-examples).
-
-## The `.w` file format
-
-A source file is a sequence of **sections**. Text before the first section is
-*limbo* (TeX preamble for `gweave`, ignored by `gtangle`). Control codes begin
-with `@`; write `@@` for a literal `@`. The most important codes:
-
-| code          | meaning                                                    |
-|---------------|------------------------------------------------------------|
-| `@ `          | begin an ordinary section                                  |
-| `@*`, `@*N`   | begin a starred (chapter) section at depth 0 / N           |
-| `@c`          | begin the Go code of an unnamed section (the program)      |
-| `@<name@>=`   | define a named section ("refinement")                      |
-| `@<name@>`    | reference a named section (tangled in place, linked woven) |
-| `@(file@>=`   | send the following code to an additional output file       |
-| `@i file`     | include another `.w` file                                  |
-| `@d`,`@f`,`@s`| definition / formatting directives                         |
-| `@^ @. @:`    | index entries (roman / typewriter / custom)                |
-| `\|Go code\|` | inline Go code inside prose                                |
-
-The full list is in [doc/format.md](doc/format.md).
+For a tour of the bundled examples, the full `.w` file-format reference, and
+non-English (e.g. Korean) documentation, see the manual — `doc/gwebman.tex`
+(`make manual`).
 
 ## How it is organized
 
@@ -212,8 +133,8 @@ gweb.w           the master web: @i-includes the three below (woven, not tangled
 cmd/gtangle      gtangle.w -> gtangle: front end + the tangle engine        ◇
 cmd/gweave       gweave.w  -> gweave: front end + the weave engine (lexer,   ✦
                  pretty-printer, cross-references)
-common           common.w -> the shared parser (CWEB's common.w)            ◇
-tex/gwebmac.tex  TeX macros for woven output (CWEB's cwebmac.tex)
+common           common.w -> the shared parser (**CWEB**'s common.w)            ◇
+tex/gwebmac.tex  TeX macros for woven output (**CWEB**'s cwebmac.tex)
 tex/kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
 man/             gtangle.1 and gweave.1 man pages
 doc/             format reference and the gwebman.tex manual
@@ -222,58 +143,8 @@ editors/vscode   VS Code language support for .w files
 install.sh       installer for the commands, gwebmac.tex, and man pages
 ```
 
-## Editor support
-
-A VS Code extension in [editors/vscode/](editors/vscode/) supports `.w` files:
-syntax highlighting (the control codes, embedded **Go** in code parts and `|…|`
-spans, the TeX commentary), **Go to Definition and Hover inside code parts** —
-forwarded to your Go extension through the `//line` source map gtangle leaves
-in its output, so a jump from one web into code defined in another lands in
-that web's `.w` — plus `@<section name@>` navigation and re-tangling on save.
-To use it, install the `.vsix` from the
-[releases page](https://github.com/sjnam/gweb/releases)
-(Extensions view → *Install from VSIX…*), then fully relaunch.
-
-See [editors/vscode/README.md](editors/vscode/README.md) for details.
-
-## Self-hosting
-
-Like CWEB, GWEB is written in itself. Each `.w` source sits next to its output:
-[common/common.w](common/common.w) (the shared parser),
-[cmd/gtangle/gtangle.w](cmd/gtangle/gtangle.w) (the command and the tangle
-engine), and [cmd/gweave/gweave.w](cmd/gweave/gweave.w) (the command and the
-weave engine) are the source of truth; the `.go` beside them is tangled from
-them. GWEB is a set of commands, not a library, so each engine lives in its
-command's `main` package rather than a separate importable one.
-
-```sh
-make tangle       # re-tangle the .w sources back into the Go tree
-make bootstrap    # tangle into a scratch tree and verify it is byte-for-byte
-                  # identical to the committed sources (the fixpoint)
-```
-
-Editing workflow: change a `.w`, run `make tangle`, then commit both. The
-`bootstrap` target is the self-hosting proof — a freshly built `gtangle`
-reproduces its own committed source exactly. The tests live in the `.w` sources
-too (a `Tests` chapter per web), so they are tangled and git-ignored along with
-the rest of the generated Go: no `_test.go` is committed.
-
-`gweb.w` (at the repo doc) is a master that `@i`-includes the three component
-webs in reading order, so `gweave` can typeset the whole system as one document:
-
-```sh
-make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program
-```
-
-The result is GWEB documenting itself — the same pretty-printed code, index, and
-cross-references it produces for any other program.
-
-The user manual, `doc/gwebman.tex` — a guide for readers who already know CWEB,
-typeset in the small-book format of Knuth and Levy's `cwebman` — builds with:
-
-```sh
-make manual       # -> build/gwebman.pdf
-```
+For editor support and how **GWEB**'s self-hosting (`make tangle`, `make
+bootstrap`, `make selfdoc`) works, see the manual as well.
 
 ## Design notes and limitations
 
@@ -283,7 +154,7 @@ make manual       # -> build/gwebman.pdf
 * **Pretty-printing.** `gweave` highlights tokens (bold keywords, italic
   identifiers, typewriter strings, real math symbols for `≤ ≥ ≠ ←`, …) and
   *mirrors the source's own spacing* rather than re-deriving layout from a full
-  Go grammar the way CWEB does for C. Because gofmt-formatted Go already encodes
+  Go grammar the way **CWEB** does for C. Because gofmt-formatted Go already encodes
   the grammar in its spacing, mirroring it reproduces gofmt exactly — including
   the tricky cases (`*T` vs `a * b`, `[]T` vs `a[i]`, precedence spacing like
   `a*b + c`) — without any parsing. Long code lines wrap at the inter-token
@@ -298,16 +169,16 @@ make manual       # -> build/gwebman.pdf
   step through `@i` includes and change-file edits makes every location point
   back to the file (and line) you actually wrote.
 * **Page layout follows cweave.** `gwebmac.tex` gives the woven document the same
-  furniture CWEB produces: run-in bold section headings (with a page break before
+  furniture **CWEB** produces: run-in bold section headings (with a page break before
   each major starred section), `§sec  JOBNAME … GROUPTITLE  page` running heads, a
   title-less index that sits under your own `@* Index.` section, a *Names of the
   Sections* list, and a contents page (centered title, `Section`/`Page` columns,
-  dotted leaders). The index is set in two columns. As in CWEB, the contents page
+  dotted leaders). The index is set in two columns. As in **CWEB**, the contents page
   is produced at the *end* in a single TeX pass; move it to the front when binding
   if you prefer. The font set mirrors `cwebmac.tex` (medium-caps `\mc`, the
   `cmtex10` string font, …), and a few `cwebmac` prose helpers are available in
   commentary: `\CEE/`, `\GO/`, `\UNIX/`, `\TEX/`, and `\\{id}` for an italic
-  identifier (though the GWEB idiom for inline code is `|id|`).
+  identifier (though the **GWEB** idiom for inline code is `|id|`).
 * **Hyperlinks and bookmarks.** Every section number shown as a reference, in the
   index, in a cross-reference note, or on the contents page is a blue link to that
   section; clicking it jumps there (for the underlined index entries, to where the
@@ -315,9 +186,9 @@ make manual       # -> build/gwebman.pdf
   tree), nested by their `@*`, `@*1`, `@*2` depths. Two back ends produce these:
   `pdftex`/`luatex` in PDF mode use the engine's own primitives, while the DVI
   route emits `\special{pdf:…}` commands for `dvipdfmx` when you ask for them with
-  `\let\pdf+` (the same convention as CWEB). With a plain DVI engine and no
+  `\let\pdf+` (the same convention as **CWEB**). With a plain DVI engine and no
   `\let\pdf+`, the links and bookmarks are simply omitted.
 
 ## License
 
-GWEB is released under the [MIT License](LICENSE).
+**GWEB** is released under the [MIT License](LICENSE).

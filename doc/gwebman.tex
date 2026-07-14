@@ -183,9 +183,32 @@ package.
 
 \section{\.{GWEB} is written in itself}
 Like \.{CWEB}, \.{GWEB} is a literate program: each tool is tangled from a \cw{.w} web
-kept beside its \GO/. The committed \GO/ is byte-for-byte reproducible from those
-sources---a fixpoint the test suite checks on every change---so the program
-you read and the program that runs cannot drift apart.
+kept beside its \GO/. \cw{common/common.w} (the shared parser),
+\cw{cmd/gtangle/gtangle.w} (the command and the tangle engine), and
+\cw{cmd/gweave/gweave.w} (the command and the weave engine) are the source of
+truth; the \GO/ beside them is tangled from them and is byte-for-byte
+reproducible---a fixpoint \cw{make bootstrap} checks on every change---so the
+program you read and the program that runs cannot drift apart. \.{GWEB} is a set
+of commands, not a library, so each engine lives in its command's \cw{main}
+package rather than a separate importable one.
+\begincode
+make tangle       # re-tangle the .w sources back into the Go tree
+make bootstrap    # tangle into a scratch tree and verify it is byte-for-byte
+                  # identical to the committed sources (the fixpoint)
+|endcode
+\noindent Editing workflow: change a \cw{.w}, run \cw{make tangle}, then commit
+both. The tests live in the \cw{.w} sources too (a {\it Tests\/} chapter per
+web), so they are tangled and git-ignored along with the rest of the generated
+\GO/: no \cw{\_test.go} is committed.
+
+\cw{gweb.w}, at the repository root, is a master web that \cw{@i}-includes the
+three component webs above in reading order, so \cw{gweave} can typeset the
+whole system as one document:
+\begincode
+make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program
+|endcode
+\noindent The result is \.{GWEB} documenting itself---the same pretty-printed
+code, index, and cross-references it produces for any other program.
 
 \chapter{The woven document}
 \noindent
@@ -310,8 +333,11 @@ luatex foo.tex
 fonts, translates \cw{gweave}'s wording into Korean, and supplies a LuaTeX PDF
 back end so the blue cross-reference links and the bookmark outline---with
 Korean titles---keep working; \cw{gweave} itself needs no special flag. The
-\cw{rps} example is a complete web built this way, and \cw{kotexgweb.tex} is
-the file to copy as a model for a language of your own.
+fonts are selected by name, not embedded, so they must already be installed
+locally; edit the \cw{\bs sethangulfont} lines in \cw{kotexgweb.tex} if you
+want different typefaces. The \cw{rps} example is a complete web built this
+way, and \cw{kotexgweb.tex} is the file to copy as a model for a language of
+your own.
 
 \chapter{Running the programs}
 \begincode
@@ -357,41 +383,77 @@ binaries in your \cw{GOBIN}.
 For the full installation---the commands, \cw{gwebmac.tex} placed in your \TeX\
 tree so \cw{pdftex foo.tex} just works, and the man pages---run
 \cw{./install.sh} from a checkout (\cw{./install.sh --uninstall} removes it;
-\cw{make install} calls the script). The repository also includes a
-VS\thinspace Code syntax highlighter for \cw{.w} files under \cw{editors/vscode},
-and this manual is built with \cw{make manual}.
+\cw{make install} calls the script). This manual is built with \cw{make
+manual}.
+
+\chapter{Editor support}
+\noindent A VS\thinspace Code extension under \cw{editors/vscode} supports
+\cw{.w} files: syntax highlighting (the control codes, embedded \GO/ in code
+parts and \cw{|}$\ldots$\cw{|} spans, the \TeX\ commentary), and {\bf Go to
+Definition and Hover inside code parts}---forwarded to your \GO/ extension
+through the \cw{//line} source map \cw{gtangle} leaves in its output, so a
+jump from one web into code defined in another lands in that web's \cw{.w}---%
+plus \cw{@<section name@>} navigation and completion, and re-tangling on save.
+
+To use it, install the \cw{.vsix} from the
+\pdfURL{releases page}{https://github.com/sjnam/gweb/releases} (Extensions
+view $\to$ {\it Install from VSIX\dots\/}), then fully relaunch. See
+\cw{editors/vscode/README.md} for details.
 
 \chapter{The bundled examples}
-The \cw{examples/} directory holds six worked webs, from simple to rich; \cw{make
+The \cw{examples/} directory holds eight worked webs, from simple to rich; \cw{make
 example} tangles and weaves them all, or \cw{make -C examples NAME=wc} just one:
 
-\bull \cw{wc.w}---a word counter whose tangled output matches the system
-\cw{wc}; shows \cw{@f} and a change file (\cw{wc.ch});
+\bull \cw{floyd.w}---Floyd's partition problem, the classic ``toy problem''
+Knuth discusses in {\it Are Toy Problems Useful?}: partition
+$\sqrt1,\ldots,\sqrt{50}$ into two nearly-equal halves. A worked literate
+solution (meet-in-the-middle search, Gray-code enumeration, compensated
+summation, and a \cw{math/big} verification);
 
-\bull \cw{seq.w}---composable lazy iterators over infinite Fibonacci numbers
-(generics, closures, range-over-func);
+\bull \cw{pairsums.w}---HackerRank's {\it Pair Sums\/}: the largest pair-product
+sum over all subarrays. The identity ${\rm value} = (S^2-Q)/2$ and a prefix-sum
+twist turn it into the upper envelope of a family of lines, solved with a
+{\sl Li Chao tree\/} in $O(n\log n)$;
 
-\bull \cw{squint.w}---lazy power series as demand-driven channel networks,
-after McIlroy's {\it Squinting at Power Series};
+\bull \cw{rps.w}---a Korean literate essay disguised as a coffee bet: how many
+rounds of rock--paper--scissors does it take $N$ players to settle who pays,
+and how should they split into groups to finish fastest? Worked out in exact
+rationals with \cw{math/big}---expected-value recurrences, a full search over
+integer partitions, a recursive strategy for 100 players, a proof that groups
+of four are optimal, and a convexity check---with a companion
+\cw{rps\_test.go}; woven with \cw{luatex} and \cw{kotexgweb.tex} (see {\it Weaving
+in another language\/});
 
-\bull \cw{floyd.w}---Floyd's partition problem, after Knuth's essay {\it Are
-Toy Problems Useful?} (meet-in-the-middle search and a \cw{math/big} check);
+\bull \cw{seq.w}---a tiny lazy-sequence library (\cw{Map}, \cw{Filter},
+\cw{Take} over infinite Fibonacci numbers), showing off the \GO/ features
+\CEE/ has no answer to: first-class functions and closures, anonymous
+functions, generics, and \GO/ 1.23 range-over-func iterators;
 
-\bull \cw{pairsums.w}---the largest pair-product sum over all subarrays.
-The identity ${\rm value} = (S^2−Q)/2$ and a prefix-sum twist turn it into
-the upper envelope of a family of lines, solved with a {\sl Li Chao tree\/}
-in $O(n\log n).$
+\bull \cw{sham.w}---a \.{GWEB} port of Knuth's Stanford GraphBase demo
+\cw{sham}: count the symmetric Hamiltonian cycles of the knight's graph on an
+$8\times9$ board, by folding the graph in half and backtracking with \cw{goto}
+labels. It builds on \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}, a \GO/
+port of the SGB, so running it needs that module (\cw{go get
+github.com/sjnam/go-sgb}); the commentary is newly written. Shows \.{GWEB}
+handling an external dependency and a real Knuth program;
 
-\bull \cw{rps.w}---a Korean essay on a rock-paper-scissors coffee bet: the
-expected number of rounds for $N$ players to settle a loser, and the best way to
-split them into groups, in exact \cw{math/big} rationals (with a companion
-\cw{rps\_test.go}); woven with \cw{luatex} and \cw{kotexgweb.tex} (see {\it Weaving
-in another language\/}).
+\bull \cw{squint.w}---lazy power series as demand-driven channel networks
+(sum, product, composition, reciprocal, functional inverse, and differential
+equations like \cw{exp}), after McIlroy's {\it Squinting at Power Series};
 
 \bull \cw{torture.w}---a deliberately mangled but compiling 1-indexed Fenwick
 tree, its indentation inconsistent and its code cramped on every line, so that
 weaving it shows off how the grammar-driven prettyprinter cleans up careless
 source.
+
+\bull \cw{wc.w}---a word counter whose tangled output matches the system
+\cw{wc}; shows \cw{@f} and a change file (\cw{wc.ch}) that builds a CSV
+variant.
+
+\noindent \cw{make test} (the non-\cw{-short} run) tangles every example and
+\cw{go build}s the result, so the examples are guaranteed to stay compilable.
+More \.{GWEB} examples live at
+\pdfURL{gweb-examples}{https://github.com/sjnam/gweb-examples}.
 
 \noindent \.{GWEB} also documents itself: \cw{make selfdoc} weaves the system's own
 \cw{.w} sources into a single PDF, and \cw{make manual} builds this document.
