@@ -116,12 +116,14 @@ install-tools: generate
 
 # Tangle and weave the bundled examples (needs a TeX engine for the PDFs).
 example: build
-	$(MAKE) -C examples NAME=wc
-	$(MAKE) -C examples NAME=seq
 	$(MAKE) -C examples NAME=floyd
 	$(MAKE) -C examples NAME=pairsums
+	$(MAKE) -C examples NAME=rps TEXENGINE=luatex	
+	$(MAKE) -C examples NAME=seq
+	$(MAKE) -C examples NAME=sham
 	$(MAKE) -C examples NAME=squint
-	$(MAKE) -C examples NAME=rps TEXENGINE=luatex
+	$(MAKE) -C examples NAME=torture
+	$(MAKE) -C examples NAME=wc	
 
 clean:
 	rm -rf $(BIN) build $(GEN_GO)

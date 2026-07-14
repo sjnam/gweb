@@ -137,25 +137,15 @@ make example                 # tangle & weave every examples/*.w into .go and .p
 make -C examples NAME=wc     # just one example
 ```
 
-* [examples/wc.w](examples/wc.w) — a literate word-count program; its tangled
-  output matches the system `wc`. It also shows `@f` setting a user type in bold.
-* [examples/seq.w](examples/seq.w) — a tiny lazy-sequence library (`Map`,
-  `Filter`, `Take` over infinite Fibonacci numbers), showing off the Go features
-  C has no answer to: first-class functions and closures, anonymous functions,
-  generics, and Go 1.23 range-over-func iterators.
-* [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
-  channel networks (sum, product, composition, reciprocal, functional inverse,
-  and differential equations like `exp`), after McIlroy's *Squinting at Power
-  Series*.
-* [examples/pairsums.w](examples/pairsums.w) — HackerRank's *Pair Sums*: the
-  largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
-  and a prefix-sum twist turn it into the upper envelope of a family of lines,
-  solved with a **Li Chao tree** in O(n log n).
 * [examples/floyd.w](examples/floyd.w) — Floyd's partition problem, the classic
   "toy problem" Knuth discusses in *Are Toy Problems Useful?*: partition
   √1…√50 into two nearly-equal halves. A worked literate solution
   (meet-in-the-middle search, Gray-code enumeration, compensated summation, and
   a `math/big` verification).
+* [examples/pairsums.w](examples/pairsums.w) — HackerRank's *Pair Sums*: the
+  largest pair-product sum over all subarrays. The identity value = (S²−Q)/2
+  and a prefix-sum twist turn it into the upper envelope of a family of lines,
+  solved with a **Li Chao tree** in O(n log n).
 * [examples/rps.w](examples/rps.w) — a Korean literate essay disguised as a
   coffee bet, demonstrating `\input kotexgweb.tex`: how many rounds of
   rock–paper–scissors does it take *N* players to settle who pays, and how should
@@ -164,10 +154,27 @@ make -C examples NAME=wc     # just one example
   a recursive strategy for 100 players, a proof that groups of four are optimal,
   and a convexity check — with a companion `rps_test.go`. Korean, so typeset it
   with **luatex**: `make -C examples NAME=rps TEXENGINE=luatex` (or `make example`).
+* [examples/seq.w](examples/seq.w) — a tiny lazy-sequence library (`Map`,
+  `Filter`, `Take` over infinite Fibonacci numbers), showing off the Go features
+  C has no answer to: first-class functions and closures, anonymous functions,
+  generics, and Go 1.23 range-over-func iterators.
+* [examples/sham.w](examples/sham.w) — a GWEB port of Knuth's Stanford GraphBase
+  demo `sham`: count the symmetric Hamiltonian cycles of the knight's graph on an
+  8×9 board, by folding the graph in half and backtracking with `goto` labels. It
+  builds on [go-sgb](https://github.com/sjnam/go-sgb), a Go port of the SGB, so
+  running it needs that module (`go get github.com/sjnam/go-sgb`); the commentary
+  is newly written. Shows GWEB handling an external dependency and a real Knuth
+  program.
+* [examples/squint.w](examples/squint.w) — lazy power series as demand-driven
+  channel networks (sum, product, composition, reciprocal, functional inverse,
+  and differential equations like `exp`), after McIlroy's *Squinting at Power
+  Series*.
 * [examples/torture.w](examples/torture.w) is a deliberately mangled but
   compiling 1-indexed Fenwick tree — inconsistent indentation and cramped code
   on every line — so weaving it shows off how the grammar-driven prettyprinter
   cleans up careless source.
+* [examples/wc.w](examples/wc.w) — a literate word-count program; its tangled
+  output matches the system `wc`. It also shows `@f` setting a user type in bold.
 
 `make test` (the non-`-short` run) tangles every example and `go build`s the
 result, so the examples are guaranteed to stay compilable.
