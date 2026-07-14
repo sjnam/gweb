@@ -102,7 +102,7 @@ exponential space on one side. We precompute and {\it sort\/} all $2^{21}\approx
 2$~million subset sums of~$A$; then, for each of the $2^{22}\approx4$~million
 subset sums of~$B$, a single binary search finds the $A$-subset that best
 completes it. The total work is on the order of $2^{22}\log 2^{21}$ operations
-instead of $2^{50}$ --- comfortably inside Floyd's budget.
+instead of $2^{50}$---comfortably inside Floyd's budget.
 
 Each table entry remembers three things: the fractional part of the subset sum
 (the key we search on), the full sum (needed to pick the integer knob later),
@@ -252,7 +252,7 @@ modulo~1 (the integer part being the squares' job). The desired fractional part
 is
 $$\hbox{|wantA|}=\bigl(\hbox{frac}(target)-\hbox{frac}(Bsum)\bigr)\bmod 1,$$
 so we binary-search the sorted |Afracs| for it. Because fractional parts live on
-a circle --- $0.999\ldots$ is adjacent to $0.000\ldots$ --- the best entry is one
+a circle---$0.999\ldots$ is adjacent to $0.000\ldots$---the best entry is one
 of the {\it two circular neighbors\/} of the insertion point, so we evaluate
 both, wrapping from the end of the table to the front and vice versa.
 @<Define the |probe| helper@>=
@@ -276,7 +276,7 @@ probe := func(Bsum float64, Bmask uint32) {
 	}
 }
 
-@ Now we sweep all $2^{22}$ subsets of $B$ in Gray-code order --- the same
+@ Now we sweep all $2^{22}$ subsets of $B$ in Gray-code order---the same
 single-bit-flip trick as |genAll|, but {\it streaming}: each subset sum is
 probed against the table and then discarded, so $B$ is never stored. The empty
 subset is probed first, before the loop. Unlike Knuth's 1976 program, which had
@@ -378,7 +378,7 @@ bigDiff := new(big.Float).SetPrec(200).Sub(bigG, bigO)
 @ Finally we print. The two groups and their |float64| sums always appear; the
 verbose flag adds the timings, the |float64| residual, and the high-precision
 sums and their difference. The difference comes out to about $-1.43\times
-10^{-13}$ --- the exact optimum Knuth reported in his 1996 addendum, more than
+10^{-13}$---the exact optimum Knuth reported in his 1996 addendum, more than
 5000 times better than his original 1976 ten-second solution.
 @<Verify in high precision and report@>=
 if *verbose {

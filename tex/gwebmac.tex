@@ -153,8 +153,8 @@
       \special{pdf: dest (\romannumeral#1) [ @thispage /FitH @ypos ]}\hss}}%
   \fi\fi}
 % The destination for the `Names of the sections' page. It is emitted only when
-% that list is (\ifGsecs), so \nosecs leaves no stray whatsit --- and hence no
-% blank page --- on the sheet the index ejects into.
+% that list is (\ifGsecs), so \nosecs leaves no stray whatsit---and hence no
+% blank page---on the sheet the index ejects into.
 \def\Gsecdest#1{\ifGsecs\Gdest{#1}\fi}
 \def\Glink#1#2{%
   \ifGpdf

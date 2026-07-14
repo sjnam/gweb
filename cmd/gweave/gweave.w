@@ -203,7 +203,7 @@ for _, s := range w.Sections {
 winning: the display class of identifier |a| in \.{@@f a b} is the class |b|
 would be typeset in, while \.{@@d} asks for typewriter. One right-hand side is
 magic: \.{@@f a TeX} does not borrow a class but asks that |a| be set as a custom
-control sequence |\a| of your own devising, exactly as \.{cweave} does --- so
+control sequence |\a| of your own devising, exactly as \.{cweave} does---so
 after \.{\\def\\x\#1\{x\_\{\#1\}\}} the directive \.{@@f x1 TeX} makes the code
 identifier |x1| come out as $x_1$. Finally, as in cweave, a name declared with
 \.{\|type\|} is set bold like the predeclared types, and a constant declared in
@@ -234,8 +234,8 @@ wv.detectIotaConsts()
 
 @ \.{cweave} sets names declared with \.{\|type\|} in bold, like the predeclared
 types, and \.{GWEB} does the same. |detectDecls| scans the code for declarations
-introduced by |keyword| --- both \.{keyword NAME ...} and the block form
-\.{keyword (...)} --- and records each declared name with |kind|. This is a
+introduced by |keyword|---both \.{keyword NAME ...} and the block form
+\.{keyword (...)}---and records each declared name with |kind|. This is a
 heuristic scan, not a full \GO/ parse, but it covers the forms that occur in
 practice; a type name you want left in italic can be reset with \.{@@f NAME int},
 and any name can be set in typewriter with \.{@@d}.
@@ -247,7 +247,7 @@ func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
 }
 
 @ |noteFormat| files a detected name under its display |kind|, but never overrides
-an explicit \.{@@f}/\.{@@s}/\.{@@d} directive --- those are installed first --- and
+an explicit \.{@@f}/\.{@@s}/\.{@@d} directive---those are installed first---and
 the blank identifier |_| names nothing.
 @<Detect type declarations@>=
 func (wv *Weaver) noteFormat(name string, kind tokKind) {
@@ -260,7 +260,7 @@ func (wv *Weaver) noteFormat(name string, kind tokKind) {
 }
 
 @ |scanAllCode| is the traversal the detectors share: it re-lexes every code part
-of every section --- a scan independent of the rendering pass --- and hands each
+of every section---a scan independent of the rendering pass---and hands each
 token list to |visit|.
 @<Detect type declarations@>=
 func (wv *Weaver) scanAllCode(visit func([]token)) {
@@ -323,7 +323,7 @@ func prevSignificant(toks []token, i int) int {
 }
 
 @ |scanDeclGroup| collects the names in a parenthesized declaration group ---
-each entry that starts a line at the group's own nesting level --- tracking brace
+each entry that starts a line at the group's own nesting level---tracking brace
 and bracket depth so that struct fields and the like are not mistaken for names.
 @<Scan a declaration group@>=
 func scanDeclGroup(toks []token, i int, add func(string)) int {
@@ -372,7 +372,7 @@ $$\vbox{\halign{#\hfil\cr
 \qquad \dots\cr
 )\cr}}$$
 These read like \CEE/'s |enum| members, or \.{CWEB}'s \.{@@d} macros, so \.{GWEB}
-sets them in typewriter --- the same class as |nil|, |true|, and |false|.
+sets them in typewriter---the same class as |nil|, |true|, and |false|.
 |detectIotaConsts| registers each such name as a typewriter macro, everywhere it
 is used, just as |detectDecls| registers |type| names as bold.
 @<Detect |iota| constant declarations@>=
@@ -608,9 +608,9 @@ from the source: |spaceBefore| decides each gap from the grammar (the \.{Spacing
 code by grammar} section) and the |indenter| decides each line's indent from the
 block structure (the {\bf Structural indentation} section), so even cramped, ragged
 source is laid out the way |gofmt| would. Among the state variables, |prevSigKind|
-and |prevSigText| track the most recent significant token --- so an identifier
+and |prevSigText| track the most recent significant token---so an identifier
 following |func|/|var|/|const|/|type| can be flagged as a definition, and a \.*
-after an operand told from a product --- and |prevPrevSigText| keeps the one before
+after an operand told from a product---and |prevPrevSigText| keeps the one before
 that, so a qualifier like |foo| in |foo.Bar| can be recovered.
 @<Render a code part@>=
 func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
@@ -814,7 +814,7 @@ if atLineStart {
 	}
 }
 
-@ An identifier or builtin earns an index entry under the current section --- a
+@ An identifier or builtin earns an index entry under the current section---a
 definition when a preceding declaration keyword or a following |:=| marks it as
 one, a use otherwise. The |qualifierOf| result is computed here because it settles
 both what to index and, in a moment, the token's effective display class.
@@ -849,8 +849,8 @@ if t.kind == tkComment {
 }
 
 @ With the token set, it becomes the past: |advance| updates the |indenter|, and
-the previous-token fields --- including whether this token was a unary prefix or a
-pointer star --- roll forward for the next token to look back on.
+the previous-token fields---including whether this token was a unary prefix or a
+pointer star---roll forward for the next token to look back on.
 @<Advance the look-behind@>=
 in.advance(t)
 prevUnary = isUnaryPrefix(prevSigKind, prevSigText, t) ||
@@ -865,7 +865,7 @@ author happened to leave a blank between them. The rules are the math-like ones
 \.{cweave} uses: a binary operator or a relation takes a space on each side, a
 unary prefix operator binds tight to its operand, the brackets and the selector dot
 are tight, a comma or semicolon takes a space only after it, and a keyword is
-followed by a space --- with |map| the exception that runs straight into its
+followed by a space---with |map| the exception that runs straight into its
 bracket, and |func| taking before its parenthesis the same hair space a call's
 name does. Only the local context is needed: the previous significant token,
 and whether it was itself unary. No parser and no precedence table is required ---
@@ -874,7 +874,7 @@ higher-precedence operators, is that \.{gweave} spaces them all alike, as
 \.{cweave} does.
 
 @ Three widths of gap: |gTight| (no space), |gThin| (a \.{\\Gthin} kept within the
-math chunk --- cweave's hair space before a call's parenthesis) and |gWide| (a
+math chunk---cweave's hair space before a call's parenthesis) and |gWide| (a
 breakable \.{\\GS} that ends the chunk, where a long line may fold).
 @<Space code tokens by grammar@>=
 const (
@@ -963,7 +963,7 @@ if cur.text == "*" && starAfterArrayType(toks, k) {
 return gWide
 
 @ |gapAfter| is the space a token leaves after it, consulted when |cur| itself does
-not force the decision --- the leading space of a unary operator or an open bracket
+not force the decision---the leading space of a unary operator or an open bracket
 simply follows whatever came before.
 @<Space code tokens by grammar@>=
 func gapAfter(pk tokKind, pt string) int {
@@ -1022,25 +1022,25 @@ func isUnaryPrefix(pk tokKind, pt string, cur token) bool {
 }
 
 @ A \.* after an operand is the one genuine ambiguity: a product or a pointer type.
-The programmer's own spacing usually settles it, and reliably --- for the two read
+The programmer's own spacing usually settles it, and reliably---for the two read
 quite differently. A pointer type keeps a space {\it before\/} the star and runs
 straight into its type after it: \.{p~*int}, \.{w~*W}. A product has either no space
 at all (\.{a*b}, the form |gofmt| uses to group a higher-precedence factor) or a
 space on each side (\.{a~*~b}); either way it is set spaced, the \.{cweave} way. So
 |pointerStar| clings the star to its right when the source put a blank before it but
-none after. That leaves \.{*a**b} a product of two dereferences --- the middle star
-is tight on its left --- so it comes out \.{*a~*~*b}, as in \.{cweave}. This appeal
+none after. That leaves \.{*a**b} a product of two dereferences---the middle star
+is tight on its left---so it comes out \.{*a~*~*b}, as in \.{cweave}. This appeal
 to the source is the escape hatch \.{cweave} spells
 \.{@@[}\thinspace\dots\thinspace\.{@@]}: where intent must be marked, the author's
 spacing marks it.
 
 @ Spacing alone cannot settle every star, though. The element type of an array runs
-tight against the brackets --- |gofmt| writes \.{[256]*Node}, the star crammed on
+tight against the brackets---|gofmt| writes \.{[256]*Node}, the star crammed on
 both sides, exactly as it writes the product \.{a[i]*b}. Here the deciding fact is
 grammatical, not typographic: the \.] before the star closes an {\it array type\/},
 not an {\it index}, so the star is a pointer. |starAfterArrayType| makes that call,
-and the star clings right whenever either signal --- a leading blank, or a preceding
-array-type bracket --- says pointer.
+and the star clings right whenever either signal---a leading blank, or a preceding
+array-type bracket---says pointer.
 @<Space code tokens by grammar@>=
 func pointerStar(pk tokKind, pt string, cur token, toks []token, k int) bool {
 	if cur.kind != tkOp || cur.text != "*" || !isOperandEnd(pk, pt) {
@@ -1058,8 +1058,8 @@ func pointerStar(pk tokKind, pt string, cur token, toks []token, k int) bool {
 between a declared name and its type (\.{b [256]int}) but never before an index
 (\.{a[i]}). The star after the matching \.] needs the grammatical judgement
 |arrayType| makes for the bracket opening at |open|. A \.[ that follows no operand
-at all --- at the start of a type, or after \.*, \.{map}, \.{chan}, a comma, an open
-paren --- always begins a type. A \.[ that does follow an operand is an index when
+at all---at the start of a type, or after \.*, \.{map}, \.{chan}, a comma, an open
+paren---always begins a type. A \.[ that does follow an operand is an index when
 crammed against it and an array type when the source keeps them apart. Stacked
 brackets defer to the innermost, so the whole run agrees: \.{[3][4]int} is a type
 throughout, \.{m[3][4]} an index chain throughout.
@@ -1112,7 +1112,7 @@ func starAfterArrayType(toks []token, k int) bool {
 
 @ |isMethodReceiver| decides whether the parenthesis just after \.{func} opens a
 method receiver rather than a function literal's parameters. A receiver is followed
-by the method name and then another parenthesis --- \.{func (r T) Name(\dots)} ---
+by the method name and then another parenthesis---\.{func (r T) Name(\dots)} ---
 whereas a literal's parameter list is followed by a result type or a body.
 @<Space code tokens by grammar@>=
 func isMethodReceiver(toks []token, k int) bool {
@@ -1140,7 +1140,7 @@ func isMethodReceiver(toks []token, k int) bool {
 
 @ |renderToken| renders a single \GO/ token as a \TEX/ fragment, used inside
 math. Keywords and builtins are set bold (\.{\\GKW}), identifiers italic
-(\.{\\GID}). A typewriter macro --- an \.{@@d} name or a predeclared constant ---
+(\.{\\GID}). A typewriter macro---an \.{@@d} name or a predeclared constant ---
 uses \.{\\GMAC}, which wraps \.{\\tentex} in an \.{\\hbox} so it works in the
 surrounding math mode; the sole exception is |nil|, \GO/'s null value, shown with
 a symbol (\.{\\Gnil}, a capital lambda) as cweave shows \CEE/'s \.{NULL}. An
@@ -1293,7 +1293,7 @@ if c == '|' {
 @ In prose, \.{@@@@} is a literal at-sign, \.{@@<...@@>} is a section reference
 (set as a \.{\\GX} link and recorded as a use), an index entry \.{@@\^},
 \.{@@.}, or \.{@@:} is recorded and removed, and a \.{@@q...@@>} source comment is
-dropped. Everything else --- the user's \TEX/ --- falls through unchanged.
+dropped. Everything else---the user's \TEX/---falls through unchanged.
 @<Handle a control code in prose@>=
 if c == '@@' && i+1 < n {
 	switch d := s[i+1]; d {
@@ -1346,7 +1346,7 @@ run started, so the next blank counts. The whole fragment is wrapped in \.{\\GPB
 which supplies the enclosing \.{\$...\$} only when \TEX/ is not already in math
 mode. So a \.{\|...\|} the author placed inside a \.{\$...\$} (as \.{CWEB} allows),
 or inside a text-mode \.{\\halign} cell of a \.{\$\$...\$\$} display, comes out
-right either way --- \TEX/ itself, not \.{gweave}, decides the mode.
+right either way---\TEX/ itself, not \.{gweave}, decides the mode.
 @<Render an inline code fragment@>=
 func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	var st lexState
@@ -1512,8 +1512,8 @@ if s[i] == '|' {
 
 @ \.{CWEB} sets the \.* of a block comment's \.{/*} and \.{*/} as a math \.{\\ast},
 which rides on the axis rather than high up where the roman star sits; we follow
-suit. Either delimiter may be missing --- a continuation line of a multi-line
-comment can carry only one, or neither --- so each is peeled off on its own, and
+suit. Either delimiter may be missing---a continuation line of a multi-line
+comment can carry only one, or neither---so each is peeled off on its own, and
 the blank beside it is trimmed so the \.{\\,} sets the gap.
 @<Render a code comment@>=
 func blockCommentDelims(text string) (open, close, body string) {
@@ -1619,7 +1619,7 @@ Unlike \.{cweave}, which parses \CEE/ and lays out each construct by its grammar
 That is exact for |gofmt|'d code but reproduces sloppy code just as sloppily.
 Instead we derive each line's indentation from the block structure, the way
 |gofmt| does: a running stack of open brackets, with the special cases a plain
-brace-counter would miss --- |switch|/|select| case bodies, dedented labels and
+brace-counter would miss---|switch|/|select| case bodies, dedented labels and
 closers, and a statement continued across a line by a trailing operator.
 
 @ An |indentFrame| is one open bracket. |openerIndent| is the level its content is
@@ -1681,7 +1681,7 @@ rather than a composite literal. A single slot cannot see the whole picture, tho
 own arming would bury the outer function's, so the body's brace, arriving at depth
 zero, would be misread. So the pending blocks form a stack. |opensBlock| asks whether
 the brace now at hand matches the innermost pending; |dropPendingFrom| discards those
-armed at a parenthesis depth |d| or deeper --- a |func| type that a closing
+armed at a parenthesis depth |d| or deeper---a |func| type that a closing
 parenthesis leaves without ever a brace, or any keyword whose statement simply ended.
 @<Track structural indentation@>=
 type pendingBlock struct {
@@ -1706,7 +1706,7 @@ func (in *indenter) dropPendingFrom(d int) {
 
 @ |beginLine| chooses the indentation for a line whose first significant token is
 |t|. A continuation line of an open literal is emitted verbatim at column zero. A
-fresh statement --- one the previous line did not continue --- resets |stmtDepth| to
+fresh statement---one the previous line did not continue---resets |stmtDepth| to
 the current bracket depth, so |contExtra| only fires while the statement stays at
 that depth.
 @<Track structural indentation@>=
@@ -1726,7 +1726,7 @@ func (in *indenter) beginLine(t token, toks []token, k int) int {
 with its opener; a bare label is pulled one level in; a |case|/|default| sits at the
 switch body's level; and any other line takes its frame's content level, plus one
 more if it continues the previous line's statement. |contentOf| is that content
-level --- one past |openerIndent|, except that a |switch| body's own level (where a
+level---one past |openerIndent|, except that a |switch| body's own level (where a
 stray comment before the first case sits) is |openerIndent| itself.
 @<Track structural indentation@>=
 func (in *indenter) lineIndent(t token, toks []token, k int) int {
@@ -1790,7 +1790,7 @@ sources. Parentheses and brackets are never blocks; when one closes it discards 
 pending keyword the parentheses swallowed unbraced, so a nested |func| type in a
 signature no longer masks the outer function's own pending block. (A composite literal
 inside a ${\bf for}\ldots{\bf range}$ header could be mistaken for the block, but only |for|
-allows one unparenthesized, and only when it spans lines would the misread show --- a
+allows one unparenthesized, and only when it spans lines would the misread show---a
 corner rare enough to leave be.)
 @<Update the bracket stack for a token@>=
 switch t.kind {
@@ -1831,7 +1831,7 @@ case tkOp:
 
 @ A block's body is indented from the enclosing block's content level when the brace
 sits at statement level, but from the current line when it opens inside an open
-expression --- a function literal passed as an argument, say, whose body should not
+expression---a function literal passed as an argument, say, whose body should not
 also pay for the enclosing parentheses.
 @<Track structural indentation@>=
 func (in *indenter) blockOpenerIndent() int {
@@ -1873,7 +1873,7 @@ func (in *indenter) popFrame() {
 }
 
 @ A line that carried at least one token continues its statement when that token was
-an operator that cannot end one --- \GO/'s own automatic-semicolon rule. |endLine|
+an operator that cannot end one---\GO/'s own automatic-semicolon rule. |endLine|
 records the verdict for the next line. |beginGeneric| and |advanceGeneric| are the
 section-reference and verbatim counterparts of |beginLine| and |advance|, treating
 that material as an ordinary statement token.
@@ -1906,8 +1906,8 @@ func (in *indenter) advanceGeneric() {
 }
 
 @ The remaining predicates are small enough to read at a glance. |isLabel| spots a
-statement label |Name:| alone on its line --- an identifier, a colon, then the
-line's end --- so it can be pulled in a level; requiring the colon to end the line
+statement label |Name:| alone on its line---an identifier, a colon, then the
+line's end---so it can be pulled in a level; requiring the colon to end the line
 keeps a composite-literal key (|Name: value|, value and all) from being mistaken
 for one. |continuesStmt| lists the operators that, at a line's end, leave its
 statement open.
@@ -2027,7 +2027,7 @@ var goConstants = map[string]bool{"nil": true, "true": true, "false": true, "iot
 
 @ |classifyWord| maps a word to its class; the character-class predicates follow
 the \GO/ spec closely enough for typesetting. The predeclared constants |nil|,
-|true|, and |false| are set in typewriter rather than bold --- they are constant
+|true|, and |false| are set in typewriter rather than bold---they are constant
 values, not types, so they read like the other constants.
 @<Classify a word; character predicates@>=
 func classifyWord(w string) tokKind {
@@ -2115,7 +2115,7 @@ if end >= 0 && (nl < 0 || end < nl) {
 
 @ With no comment or string open, the next character decides the token: a
 newline, a run of blanks, a line or block comment, an interpreted or raw string,
-or --- the default --- a word, number, or operator.
+or---the default---a word, number, or operator.
 @<Scan the next token@>=
 c := src[i]
 switch {
@@ -2369,7 +2369,7 @@ func escMathOp(s string) string {
 symbols where they exist. Because inter-token spacing comes from the source, the
 unary/binary distinction for |*|, |&|, and friends needs no grammar analysis. The
 cases fall into three families, spelled out in the sections just below; an operator
-named in none of them is set from its own characters --- a lone byte escaped, a
+named in none of them is set from its own characters---a lone byte escaped, a
 longer run set tight.
 @<Render an operator as a math atom@>=
 func renderOp(s string) string {
@@ -2385,7 +2385,7 @@ func renderOp(s string) string {
 }
 
 @ The relations get their real math symbols, and the logical connectives borrow
-\.{CWEB}'s --- a wedge, a vee, a negation sign --- so the code reads like the
+\.{CWEB}'s---a wedge, a vee, a negation sign---so the code reads like the
 mathematics it mirrors.
 @<Typeset a relation or a logical connective@>=
 case "<=":
@@ -2671,7 +2671,7 @@ bw.WriteString("\\fi\n")
 @ |bookmarkTitle| reduces a starred-section title to plain text safe for a {\sc PDF}
 outline: a |...| span keeps its inner text, \.{@@@@} becomes an at-sign, the
 \TEX/-special characters are dropped, and a known text-logo control sequence is
-replaced by its plain form --- as \.{CWEB}'s outline sanitizer does --- so that a
+replaced by its plain form---as \.{CWEB}'s outline sanitizer does---so that a
 title like \.{\\TEX/ escaping} shows ``TeX escaping'' in the bookmark list, not a
 stray ``/ escaping''.
 @<Reduce a title for the outline@>=
@@ -2701,7 +2701,7 @@ func bookmarkTitle(raw string) string {
 	return strings.TrimSpace(b.String())
 }
 
-@ A control word --- a backslash and a run of letters --- that names one of the
+@ A control word---a backslash and a run of letters---that names one of the
 known text logos is replaced by its plain form, swallowing the \.{/} that
 terminates the (slash-delimited) macro; \.{CWEB} sanitizes its outline the same
 way. Any other control word (\.{\\web} reduces to ``web'', dropping the \.{\\web}
@@ -2793,7 +2793,7 @@ for name, secs := range wv.xr.identDef {
 	}
 }
 
-@ A manual entry --- \.{@@.} typewriter, \.{@@:} raw \TEX/, \.{@@\^} roman --- is
+@ A manual entry---\.{@@.} typewriter, \.{@@:} raw \TEX/, \.{@@\^} roman---is
 rendered by its kind and recorded at the section where it appeared.
 @<Collect the manual index entries@>=
 for _, e := range wv.xr.manualIndex {
@@ -3035,7 +3035,7 @@ func TestWeaveTeXBoxInCode(t *testing.T) {
 @ Inner-\CEE/ code (a \.{\|...\|} span in prose) is scanned like a code part, so the
 control texts \.{CWEB} allows there are honored, not lexed as \GO/: an index
 entry records (and prints nothing inline), a \.{@@t} box and \.{@@=} verbatim are set,
-and a \.{@@q} comment vanishes --- none of it leaking as stray tokens.
+and a \.{@@q} comment vanishes---none of it leaking as stray tokens.
 @(gweave_test.go@>=
 func TestWeaveInnerCControlCodes(t *testing.T) {
 	out := weaveString(t, "@@ A |x @@^ROM@@> @@.TT@@> @@t\\bf B@@> @@=V@@> @@q Z @@> y| end.\n@@c\npackage main\n")
@@ -3355,7 +3355,7 @@ func TestWeaveIotaConst(t *testing.T) {
 }
 
 @ Indentation is derived from the block structure, not the source whitespace, so
-this deliberately flush-left fragment --- a range loop with a nested |if| --- is
+this deliberately flush-left fragment---a range loop with a nested |if|---is
 laid out the way |gofmt| would, each \.{\\GL} carrying its structural level.
 @(gweave_test.go@>=
 func TestWeaveStructuralIndent(t *testing.T) {
@@ -3408,7 +3408,7 @@ func TestWeaveMultilineSignatureIndent(t *testing.T) {
 
 @ Spacing is derived from the grammar, math-like, not copied from the source: a
 pointer type \.{*int} is tight, an index \.{xs[i]} is tight, but a product ---
-even the tight \.{a*b} |gofmt| writes to group a factor --- is set spaced, as in
+even the tight \.{a*b} |gofmt| writes to group a factor---is set spaced, as in
 \.{cweave}.
 @(gweave_test.go@>=
 func TestWeaveGrammarSpacing(t *testing.T) {
@@ -3604,8 +3604,8 @@ func TestCommentInlineCode(t *testing.T) {
 @ Every \.{\|...\|} from a \TEX/ part is wrapped in \.{\\GPB}, never in bare
 dollars of \.{gweave}'s own choosing: \.{\\GPB} adds the \.{\$...\$} at typeset
 time only when \TEX/ is not already in math, so a span inside a \.{\$...\$} the
-author opened --- or inside a text-mode \.{\\halign} cell of a \.{\$\$...\$\$}
-display --- comes out right without \.{gweave} guessing the mode. (The
+author opened---or inside a text-mode \.{\\halign} cell of a \.{\$\$...\$\$}
+display---comes out right without \.{gweave} guessing the mode. (The
 \.{\\ifmmode} logic itself is exercised by weaving and typesetting \.{torture.w}.)
 @(gweave_test.go@>=
 func TestInlineCodeUsesGPB(t *testing.T) {

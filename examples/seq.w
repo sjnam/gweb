@@ -9,14 +9,14 @@ features that have no counterpart in C, and that a literate document most enjoys
 showing off:
 
 \smallskip
-\item{$\bullet$} first-class functions and closures --- functions are
+\item{$\bullet$} first-class functions and closures---functions are
 values that can capture and carry local state, be passed as arguments, and be
 returned from other functions;
-\item{$\bullet$} anonymous functions --- the |func(...) {...}| literals
+\item{$\bullet$} anonymous functions---the |func(...) {...}| literals
 that make the closures above;
-\item{$\bullet$} generics --- type parameters like |[A, B any]|, so one
+\item{$\bullet$} generics---type parameters like |[A, B any]|, so one
 |Map| works for every element type;
-\item{$\bullet$} range-over-func iterators (Go~1.23) --- a function can
+\item{$\bullet$} range-over-func iterators (Go~1.23)---a function can
 {\it be\/} a sequence, driven directly by |for v := range seq|.
 \smallskip
 
@@ -24,7 +24,7 @@ that make the closures above;
 |func(yield func(V) bool)|: a {\it producer\/} that hands each value to a
 |yield| callback and stops early if |yield| returns |false|. Because a producer
 is an ordinary closure, sequences can be infinite and are computed only on
-demand --- nothing is materialised into a slice.
+demand---nothing is materialised into a slice.
 @c
 package main
 
@@ -45,8 +45,8 @@ func main() {
 @* A sequence is a closure.
 The Fibonacci numbers are an infinite sequence, so they could never be returned
 as a slice; as a lazy |iter.Seq[int]| they are no trouble at all. |fibs| returns
-a closure that keeps the running pair |a|,|b| as captured local state --- the
-kind of stateful function value C simply cannot express --- and offers each |a|
+a closure that keeps the running pair |a|,|b| as captured local state---the
+kind of stateful function value C simply cannot express---and offers each |a|
 to |yield| until the consumer asks it to stop. The loop condition {\it is\/} the
 yield call: |for yield(a)| runs until |yield| returns |false|.
 @<The Fibonacci generator@>=
@@ -61,7 +61,7 @@ func fibs() iter.Seq[int] {
 
 @* Composing sequences.
 The real payoff is composition. Each combinator takes a sequence and returns a
-{\it new\/} sequence --- another closure --- that wraps the old one. None of them
+{\it new\/} sequence---another closure---that wraps the old one. None of them
 does any work when called; the computation happens only when the final sequence
 is ranged over. This is the same pipeline style as Unix filters, but type-safe
 and built entirely from function values.

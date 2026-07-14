@@ -9,9 +9,9 @@
 A power series
 $$F(x)=\sum_{i\ge0}F_i\,x^i=F_0+F_1x+F_2x^2+\cdots$$
 is an infinite object, but its coefficients $F_0,F_1,F_2,\ldots$ arrive one at a
-time, and almost every interesting operation on series --- sum, product,
+time, and almost every interesting operation on series---sum, product,
 composition, reciprocal, functional inverse, even the solution of a differential
-equation --- can be computed coefficient by coefficient, never looking further
+equation---can be computed coefficient by coefficient, never looking further
 ahead than it must. That is exactly the shape of a {\it lazy stream,\/} and this
 package follows M.~Douglas McIlroy's lovely paper {\sl Squinting at Power Series\/}
 ({\sl Software---Practice and Experience\/} {\bf 20} (1990), 661--683) in
@@ -22,7 +22,7 @@ The representation is a {\it demand channel,\/} McIlroy's central device. A seri
 a pair of channels: a consumer sends a token on the request channel, and only then
 does the producer compute and send the next coefficient on the data channel. No
 process ever runs ahead of demand, so even series defined in terms of themselves ---
-$\exp$ as the solution of $X'=XF'$, or $\tan$ from $\tan'=1+\tan^2$ --- evaluate
+$\exp$ as the solution of $X'=XF'$, or $\tan$ from $\tan'=1+\tan^2$---evaluate
 without runaway. The whole arithmetic of series becomes a network of goroutines
 joined by channels, and writing each operator is mostly a matter of transcribing
 its defining equation.
@@ -87,7 +87,7 @@ func mkPS(ctx context.Context) PS {
 Four little methods are the entire vocabulary of the network; every operator below
 is built from them. A consumer drives a series with |get|: it places a demand and
 then waits for the coefficient. Each half of the exchange races against the
-context, so a cancelled network never blocks --- |get| simply reports |ok| false.
+context, so a cancelled network never blocks---|get| simply reports |ok| false.
 @<Private subroutines@>=
 func (F PS) get() (v *big.Rat, ok bool) {
 	select {
@@ -105,7 +105,7 @@ func (F PS) get() (v *big.Rat, ok bool) {
 
 @ A producer is the mirror image. |awaitReq| blocks until a demand arrives; |send|
 hands over one coefficient to a demand already received; and |put| does both in
-order --- wait, then deliver. The single most important fact about |put| is that a
+order---wait, then deliver. The single most important fact about |put| is that a
 process can {\it produce a term before demanding any input,\/} which is what lets the
 self-referential definitions later on get started instead of deadlocking.
 @<Private subroutines@>=
@@ -347,7 +347,7 @@ func Integ(c *big.Rat, F PS) PS {
 }
 
 @* Splitting a series.
-Several operations need to read one series in more than one place at once --- a
+Several operations need to read one series in more than one place at once---a
 product feeds both of its tails back in, a reciprocal refers to itself. A bare
 channel cannot be read twice, so |Split| turns one series into |n| independent
 streams, each delivering every coefficient of |F|. The branches may run at
@@ -419,7 +419,7 @@ go func() {
 }()
 
 @ A demand for an already-buffered term is served at once. A demand that runs off
-the end of the buffer must wait for |F| to produce its next coefficient --- but we
+the end of the buffer must wait for |F| to produce its next coefficient---but we
 {\it must not\/} block the server to fetch it, because in a recursive definition
 (|Exp|, |Recip|, |Rev|) producing that very term will circle back and demand
 earlier terms through this same splitter. So the fetch happens in its own goroutine;
@@ -588,8 +588,8 @@ func Msubst(F PS, c *big.Rat, n int) PS {
 @* Tying recursive knots.
 |Fix| returns the series $X$ satisfying $X=f(X)$: it splits a fresh $X$, lets |f|
 build its network from one copy, and copies the result back onto $X$. For this to
-work the definition must be {\it productive\/} --- |f|'s network must deliver its
-first term before it demands one --- and beginning with |Integ|, which emits the
+work the definition must be {\it productive\/}---|f|'s network must deliver its
+first term before it demands one---and beginning with |Integ|, which emits the
 constant of integration up front, guarantees exactly that. This is how a
 differential equation becomes a stream.
 @<Public subroutines@>=
@@ -604,7 +604,7 @@ func Fix(ctx context.Context, f func(PS) PS) PS {
 solution of $X'=X\,F'$, i.e. the fixed point
 $$X=1+\int X\,F'\,dx.$$
 Because |Integ| supplies the leading~$1$ before reading anything, the loop is
-productive and converges term by term --- Picard's iteration, run as dataflow.
+productive and converges term by term---Picard's iteration, run as dataflow.
 @<Public subroutines@>=
 func Exp(F PS) PS {
 	D := Deriv(F)
@@ -651,7 +651,7 @@ func TestRecip(t *testing.T) {
 |Rev| returns the $R$ with $F(R(x))=x$. Writing $R=x\bar R$, equation~(8) gives
 $$\bar R={1\over F_1}\,\bigl(1-x\,\bar R^2\,\bar{\bar F}(R)\bigr).$$
 $R$ appears three times on the right (twice in $\bar R^2$, once inside the
-composition), so the network splits it four ways --- three for its own definition,
+composition), so the network splits it four ways---three for its own definition,
 one for the caller.
 @<Public subroutines@>=
 func Rev(F PS) PS {
@@ -698,7 +698,7 @@ for {
 	}
 }
 
-@ Finally, |tail| drops the constant term of |F|, yielding $\bar F$ --- the
+@ Finally, |tail| drops the constant term of |F|, yielding $\bar F$---the
 operation McIlroy writes as an overbar, used above to form $\bar R$ from $R$.
 @<Private subroutines@>=
 func tail(F PS) PS {

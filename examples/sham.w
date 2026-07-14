@@ -63,8 +63,8 @@ contiguous slice, ``mate of $v$'' is just the vertex at index $N-1-v$, and a
 comparison of vertices is a comparison of their indices.
 
 We walk the lower half of the squares and rewrite their arcs. An arc that stays
-within a class --- its tip's mate has the {\it higher\/} index, so the tip is
-already the class representative --- keeps its tip and is marked with length~$0$.
+within a class---its tip's mate has the {\it higher\/} index, so the tip is
+already the class representative---keeps its tip and is marked with length~$0$.
 An arc whose tip belongs to the upper half is redirected to that tip's mate (the
 lower-index representative) and marked with length~$1$, recording that it
 crosses to the opposite side. Halving |g.N| then discards the upper half.
@@ -118,7 +118,7 @@ vertex number: |deg| is the current number of usable arcs (it shrinks as
 vertices are taken and grows back on backtracking); |taken| marks the vertices
 already on the path; and |ark| records, by path position, the arc chosen at each
 step. After clearing the self-loops we count each vertex's degree and remember a
-vertex |x| of smallest degree to start from --- a small fan-out near the start
+vertex |x| of smallest degree to start from---a small fan-out near the start
 keeps the search tree thin.
 @<Prepare the graph for backtracking and find a minimum-degree vertex@>=
 n := int(g.N)
@@ -175,7 +175,7 @@ for b := x.Arcs; b.Next != nil; b = b.Next {
 @*The backtrack search.
 |findPaths| enumerates every simple path that begins with arc |a|, ends at |z|,
 visits all $n-1$ vertices other than |x|, and never uses |x|. It is a classic
-backtracker, written here --- as in the original --- with explicit labels and
+backtracker, written here---as in the original---with explicit labels and
 |goto|s rather than nested loops, because the control flow (advance, try the
 next edge, restore state, back up) maps onto labels very directly.
 

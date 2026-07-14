@@ -7,7 +7,7 @@ Define the {\it value\/} of an array to be the sum, over every pair of positions
 $i<j$, of the products of their entries:
 $$\mathop{\rm value}(A)=\sum_{i<j}A_iA_j.$$
 (Equal numbers in different positions count as different pairs.) Given one array,
-we want the largest value attained by any of its nonempty {\it subarrays\/} --- its
+we want the largest value attained by any of its nonempty {\it subarrays\/}---its
 contiguous stretches. A single element has no pairs and so has value~$0$, which is
 the floor of the answer.
 
@@ -62,7 +62,7 @@ always an exact integer. We will maximize $S^2-Q$ and halve the winner at the en
 
 @ Let $P_k=A_0+\cdots+A_{k-1}$ and $R_k=A_0^2+\cdots+A_{k-1}^2$ be the prefix sums of
 the entries and of their squares ($P_0=R_0=0$). The subarray spanning positions
-$i,\ldots,j-1$ --- prefix indices $i<j$ --- has $S=P_j-P_i$ and $Q=R_j-R_i$, hence
+$i,\ldots,j-1$---prefix indices $i<j$---has $S=P_j-P_i$ and $Q=R_j-R_i$, hence
 $$S^2-Q=(P_j-P_i)^2-(R_j-R_i).$$
 Now fix the right end $j$ and look at it as a function of the left end~$i$:
 $$(P_j-P_i)^2-(R_j-R_i)=\underbrace{(P_j^2-R_j)}_{\hbox{\sevenrm fixed by }j}
@@ -98,8 +98,8 @@ func newLiChao(lo, hi int64) *liChao {
 
 @ To |add| a line, compare it with the node's incumbent at the two ends $lo$ and
 $mid$. If the newcomer wins at the midpoint, keep it here and demote the old line.
-Whichever line is now the loser can still be best on at most one side --- the side
-where it also lost the endpoint test --- so it recurses into exactly that child. The
+Whichever line is now the loser can still be best on at most one side---the side
+where it also lost the endpoint test---so it recurses into exactly that child. The
 midpoint is computed with an arithmetic shift, which floors toward $-\infty$ and so
 behaves correctly for the negative coordinates we have here.
 @<The line and the Li Chao tree@>=
@@ -127,7 +127,7 @@ func (t *liChao) add(nw line) {
 }
 
 @ A query takes the incumbent's height at $x$ and improves it with the one child
-whose segment contains~$x$ --- the only place a better line could be hiding.
+whose segment contains~$x$---the only place a better line could be hiding.
 @<The line and the Li Chao tree@>=
 func (t *liChao) query(x int64) int64 {
 	best := t.ln.at(x)

@@ -6,8 +6,8 @@
 
 @* Introduction. @q torture @>
 This program implements a {\sl 1-indexed Fenwick tree.\/} However, to test
-\.{gweave}, I intentionally made the code --- including the indentation and the
-code on each line --- a mess, even though it compiles and runs. Of course, there
+\.{gweave}, I intentionally made the code---including the indentation and the
+code on each line---a mess, even though it compiles and runs. Of course, there
 is almost no explanation in the \TEX/ part. @^ Fenwick@> @.tree@>
 \pdfURL{codeforces 1093E}{https://codeforces.com/problemset/problem/1093/E} 
 @c

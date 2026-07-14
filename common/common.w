@@ -719,7 +719,7 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 @ |parseMacro| parses the body of an \.{@@d} directive. Where \.{CWEB}'s \.{@@d}
 names one macro and gives its replacement text, \GO/ has no preprocessor, so
 \.{GWEB} borrows the code for a lighter purpose: every whitespace-separated word
-of the body --- the body runs to the next \.{@@}, so it may span several lines ---
+of the body---the body runs to the next \.{@@}, so it may span several lines ---
 is an identifier to set in typewriter, like a \.{CWEB} macro. A qualified name
 keeps its final component, so `\.{@@d http.StatusOK}' registers \.{StatusOK}, and
 `\.{@@d Push Pop Peek}' sets all three at once.
@@ -784,7 +784,7 @@ func extractLimboFormats(src string) (string, []Format) {
 }
 
 @ An \.{@@f}/\.{@@s} directive is exactly its control code and two identifiers, so
-several may share a line --- as \.{cweave}'s own manual does with \.{@@f x1 TeX
+several may share a line---as \.{cweave}'s own manual does with \.{@@f x1 TeX
 @@f x2 TeX}. We therefore scan just those two words and let the loop pick up any
 directive that follows, rather than swallowing the rest of the line. A \.{@@d}
 lists identifiers to set in typewriter, so it runs to the next \.{@@} (it may span
@@ -813,7 +813,7 @@ if k := skipBlanks(src, j, n); k < n && src[k] == '\n' {
 i = j
 
 @ |endOfFormatArgs| returns the index just past the second whitespace-delimited
-word starting at |p| --- the |l| and |r| of an \.{@@f}/\.{@@s} directive. |skipBlanks|
+word starting at |p|---the |l| and |r| of an \.{@@f}/\.{@@s} directive. |skipBlanks|
 runs past spaces and tabs; a directive that ends its line meets a newline next.
 @<Parse the definition-part directives@>=
 func endOfFormatArgs(src string, p, n int) int {
@@ -969,7 +969,7 @@ atoms for \.{gweave} and are ignored by \.{gtangle}. \.{@@!} forces the next
 identifier to index as a definition, overriding the heuristic, and produces no
 output by itself. The \.{CWEB} prettyprinter hints \.{@@+} \.{@@[} \.{@@]} \.{@@;}
 (cancel break, expression brackets, invisible semicolon) have no effect here ---
-\.{GWEB} mirrors the source rather than reflowing it --- so they are accepted and
+\.{GWEB} mirrors the source rather than reflowing it---so they are accepted and
 dropped for portability. A \.{@@\%} comment runs to the end of its line, a stray
 \.{@@>} is skipped, and any unknown \.{@@x} is dropped rather than left to corrupt
 the output.
@@ -1001,7 +1001,7 @@ editing it. It is a sequence of changes, each finding a block of lines in the
 master and substituting a replacement block.
 
 Text outside an \.{@@x...@@z} group is ignored (it serves as commentary). Changes
-are matched against the master source --- after \.{@@i} includes are expanded --- in
+are matched against the master source---after \.{@@i} includes are expanded---in
 the order they appear: \.{GWEB} scans the master line by line, and at the first
 line equal to a change's first match line it requires the whole match block
 to match, then substitutes the replacement lines.
@@ -1372,7 +1372,7 @@ func TestLimboFormatsOneLine(t *testing.T) {
 }
 
 @ A \.{@@q...@@>} comment speaks to the reader of the \.{.w} file alone, so it is
-dropped everywhere --- from the limbo and from code alike --- and the text on
+dropped everywhere---from the limbo and from code alike---and the text on
 either side simply joins. Its own words (here \.{SECRET}) never reach the output.
 @(common_test.go@>=
 func TestQComment(t *testing.T) {
@@ -1390,8 +1390,8 @@ func TestQComment(t *testing.T) {
 	}
 }
 
-@ A \.{@@d} names several identifiers at once --- its body runs to the next
-\.{@@} and may span lines --- and each word becomes its own typewriter |Format|.
+@ A \.{@@d} names several identifiers at once---its body runs to the next
+\.{@@} and may span lines---and each word becomes its own typewriter |Format|.
 A qualified name keeps its final component.
 @(common_test.go@>=
 func TestMacroMultipleNames(t *testing.T) {
