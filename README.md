@@ -128,19 +128,23 @@ non-English (e.g. Korean) documentation, see the manual — `doc/gwebman.tex`
 Each `.w` source sits next to the Go it generates. Only the Go that bootstraps
 `gtangle` is committed (◇ below); the rest (✦) is tangled by `make`.
 
-| Path                | Contents                                                          | Go |
-|---------------------|--------------------------------------------------------------------|:--:|
-| `gweb.w`            | the master web: `@i`-includes the three components below (woven, not tangled) | |
-| `cmd/gtangle`       | `gtangle.w` → `gtangle`: front end + the tangle engine              | ◇ |
-| `cmd/gweave`        | `gweave.w` → `gweave`: front end + the weave engine (lexer, pretty-printer, cross-references) | ✦ |
-| `common`            | `common.w` → the shared parser (**CWEB**'s `common.w`)              | ◇ |
-| `tex/gwebmac.tex`   | TeX macros for woven output (**CWEB**'s `cwebmac.tex`)              |    |
-| `tex/kotexgweb.tex` | Korean (luatexko) localization + fonts + LuaTeX PDF back end        |    |
-| `man/`              | `gtangle.1` and `gweave.1` man pages                                |    |
-| `doc/`              | format reference and the `gwebman.tex` manual                       |    |
-| `examples/`         | worked examples                                                     |    |
-| `editors/vscode`    | VS Code language support for `.w` files                             |    |
-| `install.sh`        | installer for the commands, `gwebmac.tex`, and man pages            |    |
+```text
+gweb.w             the master web: @i-includes the three below (woven, not tangled)
+cmd/
+├── gtangle/       gtangle.w -> gtangle: front end + the tangle engine        ◇
+└── gweave/        gweave.w -> gweave: front end + the weave engine (lexer,        ✦
+                   pretty-printer, cross-references)
+common/            common.w -> the shared parser (CWEB's common.w)        ◇
+tex/
+├── gwebmac.tex    TeX macros for woven output (CWEB's cwebmac.tex)
+└── kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
+man/               gtangle.1 and gweave.1 man pages
+doc/               format reference and the gwebman.tex manual
+examples/          worked examples
+editors/
+└── vscode/        VS Code language support for .w files
+install.sh         installer for the commands, gwebmac.tex, and man pages
+```
 
 For editor support and how **GWEB**'s self-hosting (`make tangle`, `make
 bootstrap`, `make selfdoc`) works, see the manual as well.
