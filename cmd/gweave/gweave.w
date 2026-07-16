@@ -2401,6 +2401,7 @@ func renderOp(s string) string {
 	switch s {
 	@<Typeset a relation or a logical connective@>
 	@<Typeset a bitwise or shift operator@>
+	@<Typeset an increment or decrement@>
 	@<Typeset an ellipsis or an empty bracket pair@>
 	}
 	if len(s) == 1 {
@@ -2449,6 +2450,15 @@ case "<<=":
 	return "\\mathord{\\ll}\\mathord{=}"
 case ">>=":
 	return "\\mathord{\\gg}\\mathord{=}"
+
+@ The postfix \.{++} and \.{--} borrow \.{CWEB}'s \.{\\GPP} and \.{\\GMM}: a pair of
+small, raised, tightly kerned signs that read as one operator rather than two full
+plus or minus glyphs jammed side by side.
+@<Typeset an increment or decrement@>=
+case "++":
+	return "\\mathord{\\GPP}"
+case "--":
+	return "\\mathord{\\GMM}"
 
 @ The ellipsis is a single math \.{\\ldots}; the empty bracket, brace, and paren
 pairs get a thin space so their two halves do not jam together --- the same gap
@@ -3177,6 +3187,7 @@ func f(ch chan int) {
 		ch <- i
 	}
 	if !done && i >= 1 {
+		i--
 	}
 	switch x {
 	default:
@@ -3187,7 +3198,8 @@ func f(ch chan int) {
 		`\neq`:                     "!= should render as \\neq",
 		`\geq`:                     ">= should render as \\geq",
 		`\mathord{\leftarrow}`:     "<- should render as a left arrow",
-		`\mathord{+}\mathord{+}`:   "++ should render tight",
+		`\mathord{\GPP}`:           "++ should render as cweave's tight \\GPP symbol",
+		`\mathord{\GMM}`:           "-- should render as cweave's tight \\GMM symbol",
 		`$\GKW{if}$\GS `:           "a source space after if becomes a breakable \\GS",
 		`\GKW{default}\mathord{:}`: "default: should be tight (no space before colon)",
 	}

@@ -63,6 +63,15 @@
 \newmuskip\Gthinmuskip \Gthinmuskip=1.5mu % gweave's thin space before "(" and "["
 \def\Gthin{\mskip\Gthinmuskip}          % (narrower than \, which is 3mu)
 
+% "++" and "--" as tight, small, raised symbols, exactly as cweave sets them:
+% seven-point signs kerned together so the pair reads as one operator, not two.
+\newbox\GPPbox % the "++" symbol
+\setbox\GPPbox=\hbox{\kern.5pt\raise1pt\hbox{\sevenrm+\kern-1pt+}\kern.5pt}
+\def\GPP{\copy\GPPbox}
+\newbox\GMMbox % the "--" symbol
+\setbox\GMMbox=\hbox{\kern.5pt\raise1pt\hbox{\sevensy\char0\kern-1pt\char0}\kern.5pt}
+\def\GMM{\copy\GMMbox}
+
 % ---- running headers --------------------------------------------------------
 % The document title is the upper-cased job name; the current group title is set
 % by each starred section. Each section deposits a \mark of the form
