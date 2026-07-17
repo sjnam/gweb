@@ -1,3 +1,7 @@
+@d os.Stdin os.Stdout os.Stderr
+@s strings.Builder int
+@s testing.T int
+
 \def\title{Common code for GTANGLE and GWEAVE (Version 0.7.0)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Common code for {\ttitlefont GTANGLE} and
