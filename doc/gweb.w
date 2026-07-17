@@ -4,6 +4,7 @@
 
 @d os.Stdin os.Stdout os.Stderr
 @s testing.T int
+@s strings.Builder int
 
 \def\title{GWEB (Version 0.7.0)}
 \def\topofcontents{\null\vfill

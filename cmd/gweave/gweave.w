@@ -663,9 +663,12 @@ flushRun := func() {
 emit := func(s string) {
 	if pendingGap != gTight {
 		flushRun()
-		if pendingGap == gBlock {
+		switch pendingGap {
+		case gBlock:
 			line.WriteString("\\GBS ")
-		} else {
+		case gWord:
+			line.WriteString("\\GW ")
+		default:
 			line.WriteString("\\GS ")
 		}
 		pendingGap = gTight
@@ -814,13 +817,11 @@ if atLineStart {
 } else if manualGap {
 	manualGap = false // a hand-placed layout code already set the spacing here
 } else {
-	switch gapBetween(prevCat, curCat) {
-	case gWide:
-		pendingGap = gWide
-	case gBlock:
-		pendingGap = gBlock
+	switch g := gapBetween(prevCat, curCat); g {
 	case gThin:
 		emit("\\Gthin ")
+	case gWide, gWord, gBlock:
+		pendingGap = g
 	}
 }
 
@@ -894,22 +895,25 @@ higher-precedence operators, is that \.{gweave} spaces them all alike, as
 $$\vbox{\halign{\.{#}\hfil\quad&#\hfil\cr
 &{\rm gap before this category}\cr
 \noalign{\smallskip}
-binary op / relation&a full space on each side (|a + b|)\cr
+binary op / relation&a medium space on each side (|a + b|)\cr
+two adjacent words&a wider text space (|var foo Type|, |n int|), as \.{cweave}\cr
 unary prefix&clings to its operand (|*p|, |-1|, |!done|)\cr
 call \.( or empty \.{()}&a hair space (|f(x)|), as \.{cweave}\cr
 receiver \.(&a full space (|func (r T)|)\cr
 index \.[, selector \..&tight (|a[i]|, |x.f|)\cr
 array type \.[&a full space after a name (|b [256]int|)\cr
 comma, semicolon&tight before, a space after\cr
+\.{if}, \.{for}, \.{switch}, \.{select}&a structural space before the clause, as before the brace\cr
 block brace \.{\char123}\thinspace\.{\char125}&a wider structural space, both sides\cr
 literal brace \.{\char123}\thinspace\.{\char125}&tight (|T{a}|)\cr
 }}$$
 Every other pair falls to the default: a full space between words, and the ``space
 a token leaves after it'' for whatever follows an open bracket or a unary sign.
 
-@ Four widths of gap: |gTight| (no space), |gThin| (a \.{\\Gthin} kept within the
-math chunk---cweave's hair space before a call's parenthesis), |gWide| (a
-breakable \.{\\GS} that ends the chunk, where a long line may fold), and |gBlock|
+@ Five widths of gap: |gTight| (no space), |gThin| (a \.{\\Gthin} kept within the
+math chunk---cweave's hair space before a call's parenthesis), |gWide| (a breakable
+\.{\\GS}, cweave's math medmuskip, around an operator), |gWord| (a wider \.{\\GW}
+between two words---cweave's text interword space, as in \.{int foo}), and |gBlock|
 (a wider \.{\\GBS} that sets a statement block's braces off from the block's head
 and body, matching \.{cweave}'s more generous structural space).
 @<Space code tokens by grammar@>=
@@ -917,6 +921,7 @@ const (
 	gTight = iota
 	gThin
 	gWide
+	gWord
 	gBlock
 )
 
@@ -956,6 +961,7 @@ const (
 	catBinop                      // a binary operator or relation, including a product \.* (|binop|)
 	catFunc                       // the keyword |func|
 	catMap                        // the keyword |map|
+	catStmtKw                     // a block-heading statement keyword: |if|, |for|, |switch|, |select|
 	catKeyword                    // any other reserved word (|int_like|, |else_like|, \dots)
 )
 
@@ -969,14 +975,16 @@ func classify(cur token, pk tokKind, pt string, toks []token, k int,
 	blockBrace, inBlock, inSlice bool) spaceCat {
 	if cur.kind != tkOp {
 		switch {
-		case cur.kind == tkKeyword && cur.text == "func":
+		case cur.kind != tkKeyword:
+			return catExpr
+		case cur.text == "func":
 			return catFunc
-		case cur.kind == tkKeyword && cur.text == "map":
+		case cur.text == "map":
 			return catMap
-		case cur.kind == tkKeyword:
-			return catKeyword
+		case cur.text == "if" || cur.text == "for" || cur.text == "switch" || cur.text == "select":
+			return catStmtKw // a block head, set off from its clause like the block's brace
 		}
-		return catExpr
+		return catKeyword
 	}
 	@<Classify an operator token@>
 }
@@ -1120,8 +1128,9 @@ func gapBeforeLone(left spaceCat) int {
 @ |gapAfterCat| is the space a token leaves after it---\.{cweave}'s notion, used
 when the following token is an open bracket or a unary sign. The brackets, the
 selector dot, and the increment operators leave none; |map| and |func| run straight
-into what follows and an operand leaves no inherent space; a keyword, a comma, a
-colon, or a binary operator leaves a space.
+into what follows and an operand leaves no inherent space; a block-heading keyword
+sets off its clause with the same structural space its brace gets; a keyword, a
+comma, a colon, or a binary operator leaves a plain space.
 @<Space code tokens by grammar@>=
 func gapAfterCat(left spaceCat) int {
 	switch left {
@@ -1129,22 +1138,29 @@ func gapAfterCat(left spaceCat) int {
 		catMapBracket, catLitOpen, catBlockOpen, catClose, catCloseBracket, catBlockClose,
 		catLoneBrackets, catEmptyParen, catFunc, catMap, catExpr:
 		return gTight
+	case catStmtKw:
+		return gBlock
 	}
 	return gWide
 }
 
 @ |afterNonOp| gives the gap before an ordinary word: tight after a selector dot,
 an open bracket or paren, a lone \.{[]}, a composite literal's brace, or a slice
-colon; a full block space after a statement block's brace; a space after everything
-else.
+colon; a full block space after a statement block's brace or a block-heading keyword
+(so \.{if x \char123} reads evenly on both sides of the clause); the wider word
+space between two words, \.{cweave}'s text interword space (\.{var foo Type},
+\.{func bar}, \.{n int}); and the plain medmuskip after an operator, close bracket,
+comma, or colon.
 @<Space code tokens by grammar@>=
 func afterNonOp(left spaceCat) int {
 	switch left {
 	case catDot, catCallParen, catRecvParen, catOpen, catIndex, catArrayType,
 		catMapBracket, catLoneBrackets, catLitOpen, catSliceColon:
 		return gTight
-	case catBlockOpen:
+	case catBlockOpen, catStmtKw:
 		return gBlock
+	case catExpr, catKeyword, catFunc, catMap:
+		return gWord // two adjacent words, as \.{int foo} in \.{cweave}
 	}
 	return gWide
 }
@@ -3333,7 +3349,7 @@ func f(ch chan int) {
 		`\mathord{\leftarrow}`:     "<- should render as a left arrow",
 		`\mathord{\GPP}`:           "++ should render as cweave's tight \\GPP symbol",
 		`\mathord{\GMM}`:           "-- should render as cweave's tight \\GMM symbol",
-		`$\GKW{if}$\GS `:           "a source space after if becomes a breakable \\GS",
+		`$\GKW{if}$\GBS `:          "if is set off from its clause with the wider \\GBS",
 		`\GKW{default}\mathord{:}`: "default: should be tight (no space before colon)",
 	}
 	for sub, msg := range checks {
@@ -3395,6 +3411,25 @@ func TestWeaveThinSpaceBeforeParen(t *testing.T) {
 	}
 }
 
+@ Two adjacent words---a keyword and a name, a name and its type---get the wider
+\.{\\GW}, \.{cweave}'s text interword space (\.{var foo Type}, \.{n int}), while an
+operator keeps the narrower medmuskip \.{\\GS} (\.{a + b}).
+@(gweave_test.go@>=
+func TestWeaveWordSpacing(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nvar foo Type\nfunc bar(n int) T\nz := a + b\n")
+	checks := map[string]string{
+		`\GKW{var}$\GW $\GID{foo}$\GW $\GID{Type}`: "var, name, and type get the wider word space",
+		`\GKW{func}$\GW $\GID{bar}`:                "func and its name get the word space",
+		`\GID{n}$\GW $\GKW{int}`:                   "a parameter and its type get the word space",
+		`\GID{a}$\GS $\mathord{+}$\GS $\GID{b}`:    "an operator keeps the narrower medmuskip",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant %q in:\n%s", msg, sub, out)
+		}
+	}
+}
+
 @ A statement block's braces are set off with the wider \.{\\GBS} on every open
 side---before the opening \.{\char123}, after it, and before the closing
 \.{\char125}---while a composite literal's braces cling to their contents, as
@@ -3431,6 +3466,28 @@ func TestWeaveTypeSpacing(t *testing.T) {
 		`\GID{b}$\GS $\mathord{[}\GNU{256}`:                  "a named array type keeps its space: b [256]int",
 		`\GID{p}$\GS $\mathord{*}\GKW{int}`:                  "a spaced pointer clings after the star: p *int",
 		`\GID{a}\mathord{[}\GID{i}\mathord{]}`:               "an index clings to its operand: a[i]",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant %q in:\n%s", msg, sub, out)
+		}
+	}
+}
+
+@ A block-heading keyword---|if|, |for|, |switch|, |select|---is set off from its
+clause with the same wider \.{\\GBS} its brace gets, so \.{if x \char123} reads
+evenly on both sides of the clause. An ordinary keyword like |case| or |func| keeps
+the plain \.{\\GS}.
+@(gweave_test.go@>=
+func TestWeaveStmtHeadSpacing(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nfunc f() {\nif x { g() }\n"+
+		"for i := 0; i < n; i++ { h() }\nswitch v {\ncase 1:\n}\n}\n")
+	checks := map[string]string{
+		`\GKW{if}$\GBS $\GID{x}`:     "if is set off from its clause with a block space",
+		`\GKW{for}$\GBS $\GID{i}`:    "for is set off from its clause",
+		`\GKW{switch}$\GBS $\GID{v}`: "switch is set off from its clause",
+		`\GKW{case}$\GW $\GNU{1}`:    "case gets the word space, not a block head's",
+		`\GKW{func}$\GW $\GID{f}`:    "func gets the word space, not a block head's",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3709,7 +3766,7 @@ w * h
 func TestWeaveLayoutCodes(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar y = a@@,b\nvar z = c@@/d\nvar w = e@@|f\nvar v = g@@#h\n")
 	checks := map[string]string{
-		`\GID{a}\,$\GS $\GID{b}`: "@@, should add a thin space on top of the grammar's",
+		`\GID{a}\,$\GW $\GID{b}`: "@@, should add a thin space on top of the grammar's word space",
 		`\GL{0}{$\GID{d}$}`:      "@@/ should force a new line",
 		`\GSO `:                  "@@| should emit an optional break",
 		`\GBL`:                   "@@# should emit a blank line",
