@@ -1,10 +1,10 @@
-% Change file for the self-documentation. doc/gweb.w @i-includes the three
+% Change file for the self-documentation. gweb.w @i-includes the three
 % component webs; each carries, in its own limbo, a \def\title, \def\topofcontents,
 % and \def\botofcontents so it weaves nicely on its own. Spliced into the combined
 % document those would fight the master's own title and contents page, so here we
 % strip them---the same trick CWEB uses to fold its component webs into the
 % manual's appendices (comm-man.ch and friends). Apply with
-% `gweave doc/gweb.w doc/gweb.ch'; `make selfdoc' does this for you.
+% `gweave gweb.w gweb.ch'; `make selfdoc' does this for you.
 
 % ---- common.w ----------------------------------------------------------------
 @x

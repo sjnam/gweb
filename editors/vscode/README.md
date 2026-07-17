@@ -39,7 +39,7 @@ one. Names already defined sort first, with their definition lines shown.
 fresh. Only a web whose tangled `.go` already exists is re-tangled — the
 extension never creates one behind your back; run the **GWEB: Tangle current
 file** command for the first tangle (this also lets weave-only masters, like a
-`doc/gweb.w` that only `@i`-includes other webs, sit untangled).
+`gweb.w` that only `@i`-includes other webs, sit untangled).
 
 ## Requirements
 

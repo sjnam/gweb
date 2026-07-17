@@ -62,11 +62,11 @@ go install github.com/sjnam/gweb/cmd/gtangle@latest
 
 `gweave` is generated rather than committed, so install both from a checkout
 with `make install` (or `make install-tools` to put just the binaries in your
-`GOBIN`). Point `TEXINPUTS` at a copy of [tex/gwebmac.tex](tex/gwebmac.tex) so
+`GOBIN`). Point `TEXINPUTS` at a copy of [gwebmac.tex](gwebmac.tex) so
 the TeX engine can find it.
 
 For a full install — the commands **plus** `gwebmac.tex` (placed in your TeX tree
-so `pdftex foo.tex` just works) **plus** the man pages — use the install script:
+so `pdftex foo.tex` just works) **plus** the man page — use the install script:
 
 ```sh
 ./install.sh                       # into ~ (TEXMFHOME) and /usr/local (may need sudo)
@@ -102,9 +102,9 @@ dvipdfmx foo.dvi                 # -> foo.pdf  (links + bookmarks)
 Both commands accept `-o <dir>` to choose an output directory, and an optional
 **change file** as a second argument — `gtangle foo.w foo.ch` — which patches the
 master source without editing it (**CWEB**'s `.ch` mechanism; see
-[doc/format.md](doc/format.md)). For example,
+[format.md](format.md)). For example,
 `gtangle examples/wc.w examples/wc.ch` builds a CSV variant of the word counter. `gwebmac.tex`
-lives in [tex/](tex/); point `TEXINPUTS` at that directory, or copy the file
+lives at the repository root; point `TEXINPUTS` there, or copy the file
 next to your document.
 
 The tangled Go always carries `//line` directives, so the Go compiler, `go vet`,
@@ -120,7 +120,7 @@ numbers in the bootstrap Go it commits — the price of keeping the generated co
 honest about its literate origin.
 
 For a tour of the bundled examples, the full `.w` file-format reference, and
-non-English (e.g. Korean) documentation, see the manual — `doc/gwebman.tex`
+non-English (e.g. Korean) documentation, see the manual — `gwebman.tex`
 (`make manual`).
 
 ## How it is organized
@@ -135,15 +135,15 @@ cmd/
 └── gweave/        gweave.w -> gweave: front end + the weave engine (lexer,        ✦
                    pretty-printer, cross-references)
 common/            common.w -> the shared parser (CWEB's common.w)        ◇
-tex/
-├── gwebmac.tex    TeX macros for woven output (CWEB's cwebmac.tex)
-└── kotexgweb.tex  Korean (luatexko) localization + fonts + LuaTeX PDF back end
-man/               gtangle.1 and gweave.1 man pages
-doc/               format reference and the gwebman.tex manual
+gwebmac.tex        TeX macros for woven output (CWEB's cwebmac.tex)
+kotexgweb.tex      Korean (luatexko) localization + fonts + LuaTeX PDF back end
+gweb.1             the man page for both commands (CWEB's cweb.1)
+format.md          the .w file-format reference
+gwebman.tex        the GWEB manual
 examples/          worked examples
 editors/
 └── vscode/        VS Code language support for .w files
-install.sh         installer for the commands, gwebmac.tex, and man pages
+install.sh         installer for the commands, gwebmac.tex, and the man page
 ```
 
 For editor support and how **GWEB**'s self-hosting (`make tangle`, `make

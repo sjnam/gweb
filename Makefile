@@ -14,7 +14,7 @@ BIN ?= bin
 #
 # Each command is a single web: cmd/gtangle/gtangle.w is the gtangle front end
 # plus the tangle engine, cmd/gweave/gweave.w the gweave front end plus the weave
-# engine, and common/common.w the shared parser. doc/gweb.w is the weave-only
+# engine, and common/common.w the shared parser. gweb.w is the weave-only
 # master (it just @i-includes the three, so it is not tangled).
 WEBS   = common/common.w cmd/gtangle/gtangle.w cmd/gweave/gweave.w
 # The non-committed Go that `generate' produces (removed by `clean').
@@ -61,19 +61,19 @@ bootstrap:
 
 # Weave GWEB's own sources into a typeset PDF of the whole system. gweb.w is the
 # master that @i-includes the three component webs in reading order. Needs a
-# TeX engine (pdftex) that can find tex/gwebmac.tex.
+# TeX engine (pdftex) that can find gwebmac.tex.
 selfdoc: build
 	@mkdir -p build
-	$(BIN)/gweave -o build doc/gweb.w doc/gweb.ch
-	cd build && TEXINPUTS="$(CURDIR)/tex:" pdftex -interaction=nonstopmode gweb.tex
+	$(BIN)/gweave -o build gweb.w gweb.ch
+	cd build && TEXINPUTS="$(CURDIR):" pdftex -interaction=nonstopmode gweb.tex
 	@echo "selfdoc: wrote build/gweb.pdf"
 
 # The GWEB manual: a plain-TeX document that \input's gwebmac, formatted in the
 # manner of Knuth and Levy's cwebman.tex. Needs a TeX engine that can find
-# tex/gwebmac.tex.
+# gwebmac.tex.
 manual:
 	@mkdir -p build
-	cd build && TEXINPUTS="$(CURDIR)/tex:" pdftex -interaction=nonstopmode "$(CURDIR)/doc/gwebman.tex"
+	cd build && TEXINPUTS="$(CURDIR):" pdftex -interaction=nonstopmode "$(CURDIR)/gwebman.tex"
 	@echo "manual: wrote build/gwebman.pdf"
 
 test: generate
@@ -84,7 +84,7 @@ test: generate
 # The current version is read from common.w's Version constant, then replaced --
 # in every tracked .w/.tex/.ch/.md that carries it -- with VERSION. That is why
 # it exists: the version now lives in each component web's \title and
-# \topofcontents, in doc/gweb.ch (which must keep matching those lines), and in
+# \topofcontents, in gweb.ch (which must keep matching those lines), and in
 # the manual, besides common.w's constant; this moves them together. The
 # committed Go is regenerated afterwards. Review the diff, then commit, tag, and
 # release by hand (make bootstrap && make test first).
@@ -99,7 +99,7 @@ bump:
 	@$(MAKE) --no-print-directory generate >/dev/null
 	@echo "bumped to $(VERSION); verify with 'make bootstrap test', then commit, tag, push"
 
-# Full install: the commands, gwebmac.tex, and the man pages. Pass options
+# Full install: the commands, gwebmac.tex, and the man page. Pass options
 # through, e.g.  make install ARGS=--prefix=$$HOME/.local . May need sudo for a
 # system prefix. See install.sh --help.
 install:
@@ -109,7 +109,7 @@ install:
 uninstall:
 	./install.sh --uninstall $(ARGS)
 
-# Just the two commands, the Go way (into $GOBIN); no macros or man pages.
+# Just the two commands, the Go way (into $GOBIN); no macros or man page.
 # gweave's source is generated first, since it is not committed.
 install-tools: generate
 	$(GO) install ./cmd/gtangle ./cmd/gweave

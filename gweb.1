@@ -1,0 +1,187 @@
+.TH GWEB 1 "2026-07-17" "GWEB" "GWEB Manual"
+.SH NAME
+gtangle, gweave \- translate GWEB to Go and/or TeX
+.SH SYNOPSIS
+.B gtangle
+.RB [ \-o
+.IR dir ]
+.IR webfile [ .w ]
+.RI [ changefile [ .ch ]]
+.PD 0
+.P
+.PD
+.B gweave
+.RB [ \-o
+.IR dir ]
+.IR webfile [ .w ]
+.RI [ changefile [ .ch ]]
+.SH DESCRIPTION
+The
+.B gtangle
+program converts a GWEB source document into a Go program that may be compiled
+in the usual way. It expands the named\-section references in program order and
+runs
+.BR gofmt (1)
+on the result. The output file includes
+.B //line
+directives so that debugging can be done in terms of the GWEB source file; as
+with CWEB's
+.B #line
+specifications, they are always emitted.
+.PP
+The
+.B gweave
+program converts the same GWEB file into a TeX file that may be formatted and
+printed in the usual way. It takes appropriate care of typographic details like
+page layout and the use of indentation,
+.IR italics ,
+.BR boldface ,
+etc., and it supplies extensive cross\-index information that it gathers
+automatically.
+.PP
+GWEB allows you to prepare a single document containing all the information
+that is needed both to produce a compilable Go program and to produce a
+well\-formatted document describing the program in as much detail as the writer
+may desire. The user of GWEB ought to be familiar with TeX as well as Go. GWEB
+is modeled closely on Knuth and Levy's CWEB, with C replaced by Go:
+.B gtangle
+is the analogue of
+.BR ctangle (1),
+.B gweave
+of
+.BR cweave (1).
+.SH USAGE
+The command line should have one or two names on it. The first is taken as the
+GWEB input file (and
+.B .w
+is added if there is no extension). If there is a second name, it is a change
+file (and
+.B .ch
+is added if there is no extension). The change file overrides parts of the GWEB
+file, as described in the documentation.
+.PP
+.B gtangle
+writes the unnamed
+.B @c
+sections to the input's base name with a
+.B .go
+extension. Sections introduced with
+.BI @( file @>=
+are written to their own named files instead, so one web can emit several files
+(and a
+.BR go.mod ).
+.B gweave
+writes the input's base name with a
+.B .tex
+extension. Use
+.B \-o
+to send the output elsewhere.
+.PP
+The woven file begins with
+.B \einput gwebmac
+\(em
+.B gweave
+supplies this line itself \(em so the
+.B .w
+file need not. Process the result with a TeX engine that can find
+.IR gwebmac.tex :
+.PP
+.RS
+.EX
+pdftex file.tex          # -> file.pdf, with hyperlinks and bookmarks
+.EE
+.RE
+.PP
+For the DVI route, request the dvipdfmx hyperlink back end with
+.BR \elet\epdf+ ,
+exactly as in CWEB:
+.PP
+.RS
+.EX
+tex "\elet\epdf+ \einput file.tex"
+dvipdfmx file.dvi        # -> file.pdf, with hyperlinks and bookmarks
+.EE
+.RE
+.PP
+A plain
+.B tex
+run with no
+.B \epdf
+produces a DVI without links.
+.PP
+As they run, both programs print a banner line and a brief progress report to
+standard error, one
+.BI * N
+per starred (chapter) section.
+.SH OPTIONS
+The options are common to both
+.B gtangle
+and
+.BR gweave :
+.TP
+.BI \-o " dir"
+Write output files to
+.I dir
+instead of the input file's directory. For
+.BR gtangle ,
+the directory (and any subdirectories named by
+.BI @( file @>=
+targets) is created if necessary.
+.TP
+.B \-version
+Print the version and exit.
+.SH ENVIRONMENT
+.TP
+.B TEXINPUTS
+Point this at a directory holding
+.IR gwebmac.tex ,
+or copy the file next to your document, so the TeX engine can find the macro
+package. The installer places
+.I gwebmac.tex
+in your TeX tree, so this is not normally needed. See
+.BR tex (1)
+for the details of the searching.
+.SH FILES
+The location of the files mentioned below varies from system to system. Use the
+.B kpsewhich
+utility to find their locations.
+.TP
+.I gwebmac.tex
+The TeX macros
+.B \einput
+in the first line of the
+.B gweave
+output file (the analogue of CWEB's
+.IR cwebmac.tex ).
+.TP
+.I kotexgweb.tex
+Korean localization: fonts and the LuaTeX PDF back end. Add
+.B \einput kotexgweb
+to a web's limbo to use it.
+.TP
+.I gwebman.tex
+The GWEB user manual, together with the
+.B .w
+file\-format reference in
+.IR format.md .
+.SH "SEE ALSO"
+.BR gofmt (1),
+.BR pdftex (1),
+.BR dvipdfmx (1),
+.BR tex (1)
+.PP
+.BR ctangle (1),
+.BR cweave (1),
+.BR cweb (1)
+\(em the C system GWEB is modeled on.
+.PP
+The GWEB manual and source: <https://github.com/sjnam/gweb>.
+.SH AUTHORS
+Don Knuth wrote WEB for TeX and Pascal. Silvio Levy designed and developed CWEB
+by adapting the WEB conventions to C; Knuth began using CWEB and made further
+refinements.
+.PD 0
+.P
+.PD
+GWEB adapts those conventions to Go and is maintained by sjnam
+<https://github.com/sjnam>.
