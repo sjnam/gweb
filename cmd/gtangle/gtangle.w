@@ -269,6 +269,15 @@ func nonEmpty(pieces []codePiece) bool {
 result. A genuine web error (an undefined or circular reference) is fatal; a
 \.{gofmt} failure is not -- the unformatted \GO/ is kept and reported via
 |Output.Warning|.
+
+\.{gofmt} runs {\it twice}, on either side of |thinLineMarks|. The first pass
+does the formatting proper, on text where every line carries a mark, so it may
+reflow as it likes without loosening the map. But a mark is a comment, and a
+comment standing between two struct fields breaks the column block \.{gofmt}
+aligns fields in; with a mark on every line, no field ever gets aligned. Thinning
+removes those comments and so changes what \.{gofmt} itself would write --- the
+thinned text is no longer \.{gofmt}'s own output, and \.{gofmt -l} would report
+it. The second pass settles that: what we write is what \.{gofmt} writes.
 @<Render and gofmt one output@>=
 func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) {
 	o := &buffer{t: t, atLineStart: true}
@@ -276,12 +285,16 @@ func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) 
 		return Output{}, err
 	}
 	raw := o.bytes()
-	if formatted, err := format.Source(raw); err == nil {
-		return Output{File: file, Content: thinLineMarks(formatted)}, nil
-	} else {
+	formatted, err := format.Source(raw)
+	if err != nil {
 		return Output{File: file, Content: thinLineMarks(raw),
 			Warning: "gofmt could not format the output: " + err.Error()}, nil
 	}
+	thinned := thinLineMarks(formatted)
+	if again, err := format.Source(thinned); err == nil {
+		thinned = again
+	}
+	return Output{File: file, Content: thinned}, nil
 }
 
 @* Thinning the line marks.
@@ -342,28 +355,49 @@ func lineMarkLines(src []byte) (map[int]bool, bool) {
 @ The walk itself. |expLine| is the origin the next line would take on its own; a
 mark that agrees with it is dropped, any other mark is kept and resets the count.
 An ordinary line consumes one origin, exactly as \GO/ will count it.
+
+The one mark we keep although it is redundant is a mark with a blank line on each
+side---as where a \.{@@<...@@>} on its own line follows a blank one, the reference
+leaving nothing behind but its indentation. Dropping it would leave the two blanks
+adjacent, and \.{gofmt}, which allows at most one blank line in a row, would close
+the gap on the second pass. That would cost a line, and every origin counted from
+here to the next mark would be short by one. Keeping the mark keeps the blanks
+apart, so the second pass has no line to remove: it may align columns, but it
+cannot move a line, and the marks that survive stay true.
 @<Drop the redundant line marks@>=
 lines := strings.SplitAfter(string(src), "\n")
 out := make([]byte, 0, len(src))
 expFile, expLine, have := "", 0, false
+prevBlank := false
 for i, ln := range lines {
 	if !marks[i+1] {
 		out = append(out, ln...)
 		if have {
 			expLine++
 		}
+		prevBlank = blankLine(ln)
 		continue
 	}
 	file, n, ok := parseLineMark(ln)
-	if ok && have && file == expFile && n == expLine {
+	if ok && have && file == expFile && n == expLine && !betweenBlanks(prevBlank, lines, i) {
 		continue // the count already says this; the mark is redundant
 	}
 	if ok {
 		expFile, expLine, have = file, n, true
 	}
 	out = append(out, ln...)
+	prevBlank = false
 }
 return out
+
+@ |betweenBlanks| reports whether dropping the mark on line |i| would run the
+blank line before it into a blank line after it.
+@<Render and gofmt one output@>=
+func blankLine(s string) bool { return strings.TrimSpace(s) == "" }
+
+func betweenBlanks(prevBlank bool, lines []string, i int) bool {
+	return prevBlank && i+1 < len(lines) && blankLine(lines[i+1])
+}
 
 @ |parseLineMark| reads back a \.{//line file:N} directive. The file name may hold
 a colon, so the number is taken from the last one, as \GO/ itself does.
@@ -598,6 +632,9 @@ The tangle engine's tests, one section per case.
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"os"
@@ -772,6 +809,76 @@ func TestTangleThinsLineMarks(t *testing.T) {
 			t.Errorf("%q should report web line %d, got %d (found=%v)", c.text, c.line, got, ok)
 		}
 	}
+}
+
+@ What we write must be what \.{gofmt} writes: the tangled \GO/ is committed, and
+a tree that \.{gofmt} would still change does not pass its own check. Thinning
+runs after the formatting and takes comments out, which is exactly the kind of
+edit that can leave text \.{gofmt} wants to touch again---the fields of a struct
+align only once the marks between them are gone---so the fixpoint is worth
+asserting. The struct here is the case in point: its fields align, and the
+alignment must already be there.
+@(gtangle_test.go@>=
+func TestTangleOutputIsGofmtStable(t *testing.T) {
+	const src = "@@ x\n@@c\npackage main\n\ntype T struct {\n\tOriginal string\n" +
+		"\tLike string\n\tNoIndex bool\n}\n\n@@ y\n@@<More@@>=\nfunc f() {\n\t_ = T{}\n}\n" +
+		"\n@@ z\n@@c\n\n@@<More@@>\n"
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := outs[0].Content
+	want, err := format.Source(got)
+	if err != nil {
+		t.Fatalf("the output does not even parse: %v\n%s", err, got)
+	}
+	if !bytes.Equal(got, want) {
+		t.Errorf("gofmt would still change the output:\n%s", diffLines(string(got), string(want)))
+	}
+	if !strings.Contains(string(got), "Like     string") {
+		t.Errorf("the struct fields should be aligned:\n%s", got)
+	}
+}
+
+@ The blank-straddling mark, whose case is easy to miss. A reference that expands
+to nothing leaves its line blank, so two such references after a blank line give
+three blank lines in a row, each with a mark of its own between them. Thin every
+one of those marks away and the blanks fall together, whereupon \.{gofmt} closes
+the run---costing the lines the origins after it were counted from, which is why
+the marks between blanks stay. The web below puts |x := 1| on line 9; before the
+guard, \.{gofmt} moved it to the seventh.
+@(gtangle_test.go@>=
+func TestTangleOriginsAcrossEmptyRefs(t *testing.T) {
+	const src = "@@ x\n@@c\npackage main\n\nfunc main() {\n\n\t@@<A@@>\n\t@@<B@@>\n" +
+		"\tx := 1\n\t_ = x\n}\n\n@@ a\n@@<A@@>=\n\n@@ b\n@@<B@@>=\n"
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := outs[0].Content
+	want, err := format.Source(got)
+	if err != nil {
+		t.Fatalf("the output does not parse: %v\n%s", err, got)
+	}
+	if !bytes.Equal(got, want) {
+		t.Errorf("gofmt would still change the output:\n%s", diffLines(string(got), string(want)))
+	}
+	if line, ok := originOf(string(got), "x := 1"); !ok || line != 9 {
+		t.Errorf("x := 1 should report web line 9, got %d (found=%v)", line, ok)
+	}
+}
+
+@ |diffLines| shows the first line where two texts part, which is all the
+fixpoint tests need to say what \.{gofmt} would have done differently.
+@(gtangle_test.go@>=
+func diffLines(got, want string) string {
+	g, w := strings.Split(got, "\n"), strings.Split(want, "\n")
+	for i := 0; i < len(g) && i < len(w); i++ {
+		if g[i] != w[i] {
+			return fmt.Sprintf("line %d:\n  got  %q\n  want %q", i+1, g[i], w[i])
+		}
+	}
+	return fmt.Sprintf("got %d lines, want %d", len(g), len(w))
 }
 
 @ A raw string and a block comment are the two \GO/ tokens that may span a

@@ -13,36 +13,36 @@ const Version = "0.8.0"
 //line common/common.w:51
 type Format struct {
 	Original string
-	Like string
-	NoIndex bool
-	Macro bool // \.{@d}: typeset Original in \.{typewriter} (a \.{CWEB}-style macro)
+	Like     string
+	NoIndex  bool
+	Macro    bool // \.{@d}: typeset Original in \.{typewriter} (a \.{CWEB}-style macro)
 }
 
 //line common/common.w:62
 type Section struct {
-	Number int // 1-based section number
-	Line int // 1-based source line where the section begins
-	Starred bool // |true| for \.{@*} sections
-	Depth int // group depth for starred sections ($-1\equiv{}$\.{@**}, $0\equiv{}$\.{@*}, $n\equiv{}$\.{@*n})
-	Title string // starred-section title (text up to the first period)
-	Tex string // commentary, raw \TEX/ with in-text \.{@}-codes still embedded
-	Formats []Format
-	HasCode bool // |true| if the section contributes code
-	Name string // named-section name, or \.{""} for an unnamed @c section
-	IsFile bool // |true| if the name is an output file (\.{@(file@>=})
-	Code string // raw code text with in-code \.{@}-codes still embedded
-	CodeLine int // 1-based combined-source line where |Code| begins (0 if none)
+	Number   int    // 1-based section number
+	Line     int    // 1-based source line where the section begins
+	Starred  bool   // |true| for \.{@*} sections
+	Depth    int    // group depth for starred sections ($-1\equiv{}$\.{@**}, $0\equiv{}$\.{@*}, $n\equiv{}$\.{@*n})
+	Title    string // starred-section title (text up to the first period)
+	Tex      string // commentary, raw \TEX/ with in-text \.{@}-codes still embedded
+	Formats  []Format
+	HasCode  bool   // |true| if the section contributes code
+	Name     string // named-section name, or \.{""} for an unnamed @c section
+	IsFile   bool   // |true| if the name is an output file (\.{@(file@>=})
+	Code     string // raw code text with in-code \.{@}-codes still embedded
+	CodeLine int    // 1-based combined-source line where |Code| begins (0 if none)
 }
 
 //line common/common.w:82
 type Web struct {
-	Limbo string
-	Formats []Format // \.{@f}/\.{@s} directives found in limbo (apply globally)
+	Limbo    string
+	Formats  []Format // \.{@f}/\.{@s} directives found in limbo (apply globally)
 	Sections []*Section
 	Warnings []string // non-fatal diagnostics gathered while parsing/checking
-	file string // source filename, for diagnostics (\.{""} if unknown)
-	locs []srcLoc // origin (file, line) of each combined-source line
-	full []string // canonical (non-abbreviated) section names
+	file     string   // source filename, for diagnostics (\.{""} if unknown)
+	locs     []srcLoc // origin (file, line) of each combined-source line
+	full     []string // canonical (non-abbreviated) section names
 }
 
 //line common/common.w:97
@@ -310,23 +310,23 @@ type ctrlKind int
 const (
 	cEOF ctrlKind = iota
 	cSection
-	cCode // \.{@c} (or its synonym \.{@p})
+	cCode  // \.{@c} (or its synonym \.{@p})
 	cNamed // \.{@<name@>=} or \.{@(file@>=}
-	cDefn // \.{@d}
+	cDefn  // \.{@d}
 	cFormat
 
 //line common/common.w:416
 )
 
 type ctrl struct {
-	kind ctrlKind
-	pos int // index of the leading `\.{@}'
-	end int // index just past the control token
-	depth int // for |cSection|: -1 unstarred (or \.{@**} top level), else starred depth
-	starred bool // for |cSection| (distinguishes \.{@**} from an unstarred section)
-	name string // for |cNamed|
-	isFile bool // for |cNamed| (\.{@(} vs \.{@<})
-	noIndex bool // for |cFormat| (\.{@s})
+	kind    ctrlKind
+	pos     int    // index of the leading `\.{@}'
+	end     int    // index just past the control token
+	depth   int    // for |cSection|: -1 unstarred (or \.{@**} top level), else starred depth
+	starred bool   // for |cSection| (distinguishes \.{@**} from an unstarred section)
+	name    string // for |cNamed|
+	isFile  bool   // for |cNamed| (\.{@(} vs \.{@<})
+	noIndex bool   // for |cFormat| (\.{@s})
 }
 
 //line common/common.w:434
@@ -491,6 +491,7 @@ func parse(src string) *Web {
 			sec.Title = extractTitle(sec.Tex)
 		}
 
+//line common/common.w:593
 
 //line common/common.w:611
 		for ct.kind == cDefn || ct.kind == cFormat {
@@ -710,20 +711,20 @@ func skipBlanks(src string, p, n int) int {
 type AtomKind int
 
 const (
-	AText AtomKind = iota // ordinary \GO/ source text
-	ARef // \.{@<name@>} reference to a named section
-	AVerbatim // \.{@=text@>} passed verbatim to tangled output
-	ATeX // \.{@t text@>} \TEX/ text for the woven output
-	AIndex // \.{@\^/@./@}: index entry
-	APaste // \.{@\&} join (delete surrounding whitespace)
-	ALayout // \.{@}, \.{@/} \.{@|} \.{@\#} woven-output layout hints
-	AIndexDef // \.{@!} force the next identifier to index as a definition
+	AText     AtomKind = iota // ordinary \GO/ source text
+	ARef                      // \.{@<name@>} reference to a named section
+	AVerbatim                 // \.{@=text@>} passed verbatim to tangled output
+	ATeX                      // \.{@t text@>} \TEX/ text for the woven output
+	AIndex                    // \.{@\^/@./@}: index entry
+	APaste                    // \.{@\&} join (delete surrounding whitespace)
+	ALayout                   // \.{@}, \.{@/} \.{@|} \.{@\#} woven-output layout hints
+	AIndexDef                 // \.{@!} force the next identifier to index as a definition
 )
 
 type Atom struct {
-	Kind AtomKind
-	Text string // payload for |AText|/|AVerbatim|/|ATeX|/|AIndex|; name for |ARef|
-	Index byte // '\.{\^}','\.{.}','\.{:}' for AIndex; '\.{,}' '\.{/}' '\.{|}' '\.{\#}' for |ALayout|
+	Kind  AtomKind
+	Text  string // payload for |AText|/|AVerbatim|/|ATeX|/|AIndex|; name for |ARef|
+	Index byte   // '\.{\^}','\.{.}','\.{:}' for AIndex; '\.{,}' '\.{/}' '\.{|}' '\.{\#}' for |ALayout|
 }
 
 //line common/common.w:872
@@ -837,10 +838,10 @@ func ScanCode(code string) []Atom {
 
 //line common/common.w:1022
 type change struct {
-	match []string // lines to find in the master source
-	repl []string // lines to substitute for them
-	line int // 1-based line of the \.{@x} in the change file (for diagnostics)
-	replLine int // 1-based change-file line of the first replacement line
+	match    []string // lines to find in the master source
+	repl     []string // lines to substitute for them
+	line     int      // 1-based line of the \.{@x} in the change file (for diagnostics)
+	replLine int      // 1-based change-file line of the first replacement line
 }
 
 type srcLoc struct {
