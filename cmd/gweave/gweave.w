@@ -897,11 +897,11 @@ $$\vbox{\halign{\.{#}\hfil\quad&#\hfil\cr
 \noalign{\smallskip}
 binary op / relation&a medium space on each side (|a + b|)\cr
 two adjacent words&a wider text space (|var foo Type|, |n int|), as \.{cweave}\cr
+a name and its type&the same word space, whatever the type opens with (|c *Node|, |p []byte|)\cr
 unary prefix&clings to its operand (|*p|, |-1|, |!done|)\cr
 call \.( or empty \.{()}&a hair space (|f(x)|), as \.{cweave}\cr
 receiver \.(&a full space (|func (r T)|)\cr
 index \.[, selector \..&tight (|a[i]|, |x.f|)\cr
-array type \.[&a full space after a name (|b [256]int|)\cr
 comma, semicolon&tight before, a space after\cr
 \.{if}, \.{for}, \.{switch}, \.{select}&a structural space before the clause, as before the brace\cr
 block brace \.{\char123}\thinspace\.{\char125}&a wider structural space, both sides\cr
@@ -1104,7 +1104,12 @@ case catBlockOpen, catBlockClose:
 	return gBlock // a statement block's braces breathe, as in \.{cweave}
 case catEmptyParen, catCallParen:
 	return gThin // a call's parenthesis gets \.{cweave}'s hair space
-case catRecvParen, catArrayType, catSpacedPtr, catBinop:
+case catRecvParen, catBinop:
+	return gWide
+case catArrayType, catSpacedPtr:
+	if left == catExpr {
+		return gWord // a declared name and its array or pointer type: x [3]int, c *Node
+	}
 	return gWide
 case catLoneBrackets:
 	return gapBeforeLone(left)
@@ -1114,13 +1119,17 @@ case catUnary, catOpen:
 return afterNonOp(left) // a word: identifier, number, string, or keyword
 
 @ |gapBeforeLone| gives the gap before a \.{[]}: tight after any bracket, brace, or
-selector dot (\.{[][]int}, \.{a[i][]}), a space after anything else (\.{x []int}).
+selector dot (\.{[][]int}, \.{a[i][]}); the word space after a declared name and its
+slice type (\.{p []byte}), to match the other name-and-type gaps; a plain space
+after anything else.
 @<Space code tokens by grammar@>=
 func gapBeforeLone(left spaceCat) int {
 	switch left {
 	case catCloseBracket, catBlockClose, catLoneBrackets, catCallParen, catRecvParen,
 		catIndex, catArrayType, catMapBracket, catOpen, catDot:
 		return gTight
+	case catExpr:
+		return gWord // a declared name and its slice type: p []byte
 	}
 	return gWide
 }
@@ -3463,8 +3472,8 @@ func TestWeaveTypeSpacing(t *testing.T) {
 	checks := map[string]string{
 		`\mathord{)}$\GS $\mathord{[}\,\mathord{]}\GKW{int}`: "a slice result type is set off from the parameter list",
 		`\mathord{]}\mathord{[}\,\mathord{]}\GKW{int}`:       "a stacked slice type clings: [3][]int",
-		`\GID{b}$\GS $\mathord{[}\GNU{256}`:                  "a named array type keeps its space: b [256]int",
-		`\GID{p}$\GS $\mathord{*}\GKW{int}`:                  "a spaced pointer clings after the star: p *int",
+		`\GID{b}$\GW $\mathord{[}\GNU{256}`:                  "a named array type gets the name-and-type word space: b [256]int",
+		`\GID{p}$\GW $\mathord{*}\GKW{int}`:                  "a named pointer type gets the word space, clinging after the star: p *int",
 		`\GID{a}\mathord{[}\GID{i}\mathord{]}`:               "an index clings to its operand: a[i]",
 	}
 	for sub, msg := range checks {
@@ -3730,7 +3739,7 @@ func TestWeaveArrayPointer(t *testing.T) {
 		"func f(src *[256]*Node, b [256]*Node) {\nvar m [3][4]*int\nr := a[i]*b\n}\n")
 	checks := map[string]string{
 		`\mathord{]}\mathord{*}\GID{Node}`:                 "[256]*Node keeps *Node tight",
-		`\GID{b}$\GS $\mathord{[}`:                         "b [256] keeps the array-type space",
+		`\GID{b}$\GW $\mathord{[}`:                         "b [256] gets the name-and-type word space",
 		`\mathord{[}\GNU{3}\mathord{]}\mathord{[}\GNU{4}\mathord{]}\mathord{*}\GKW{int}`: "[3][4]*int stays tight throughout",
 		`\GID{i}\mathord{]}$\GS $\mathord{*}$\GS $\GID{b}`: "a[i]*b stays a spaced product",
 	}
