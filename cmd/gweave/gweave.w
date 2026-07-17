@@ -604,14 +604,16 @@ if sec.Name != "" {
 of tokens set with no space between them becomes one tight math ``chunk''
 ($\ldots$); where a space belongs, a breakable \.{\\GS} ends the chunk, so a long
 line may fold there. Neither the horizontal spacing nor the indentation is copied
-from the source: |spaceBefore| decides each gap from the grammar (the \.{Spacing
-code by grammar} section) and the |indenter| decides each line's indent from the
-block structure (the {\bf Structural indentation} section), so even cramped, ragged
-source is laid out the way |gofmt| would. Among the state variables, |prevSigKind|
-and |prevSigText| track the most recent significant token---so an identifier
-following |func|/|var|/|const|/|type| can be flagged as a definition, and a \.*
-after an operand told from a product---and |prevPrevSigText| keeps the one before
-that, so a qualifier like |foo| in |foo.Bar| can be recovered.
+from the source: each token is sorted into a spacing category and |gapBetween|
+reads the gap off the two neighbouring categories (the \.{Spacing code by grammar}
+section), while the |indenter| decides each line's indent from the block structure
+(the {\bf Structural indentation} section), so even cramped, ragged source is laid
+out the way |gofmt| would. Among the state variables, |prevCat| carries the
+previous token's category forward for the next gap; |prevSigKind| and |prevSigText|
+track the most recent significant token---so an identifier following
+|func|/|var|/|const|/|type| can be flagged as a definition, and a \.* after an
+operand told from a product---and |prevPrevSigText| keeps the one before that, so a
+qualifier like |foo| in |foo.Bar| can be recovered.
 @<Render a code part@>=
 func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	var out strings.Builder
@@ -621,7 +623,7 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	var in indenter
 	indent := 0
 	atLineStart := true
-	pendingSpace := false
+	pendingGap := gTight  // width of the space owed before the next token (gTight = none)
 	forceDef := false     // set by \.{@@!} to force the next identifier to index as a def
 	haveContent := false  // at least one code line has been emitted
 	blankPending := false // a blank source line is waiting to become a \.{\\GBK} gap
@@ -629,8 +631,8 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	prevSigKind := tkNewline
 	prevSigText := ""
 	prevPrevSigText := ""
-	prevUnary := false // the previous token was a unary prefix operator
-	manualGap := false // a layout code has set the next gap by hand
+	prevCat := catKeyword // the previous token's spacing category (any value; unused at a line start)
+	manualGap := false    // a layout code has set the next gap by hand
 
 	@<Accumulate a chunk into the current line@>
 	@<Emit the current line@>
@@ -645,7 +647,9 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 
 @ The rendered code is built up chunk by chunk. |flushRun| closes the current
 tight math chunk into the line, and |emit| adds a token's \TEX/ to the chunk,
-first turning a pending grammar space (|pendingSpace|) into a breakable \.{\\GS}.
+first turning a pending grammar space (|pendingGap|) into the breakable code
+space its width calls for: an ordinary \.{\\GS}, or the wider \.{\\GBS} that sets
+a statement block's braces apart.
 @<Accumulate a chunk into the current line@>=
 flushRun := func() {
 	if run.Len() > 0 {
@@ -657,10 +661,14 @@ flushRun := func() {
 }
 @#
 emit := func(s string) {
-	if pendingSpace {
+	if pendingGap != gTight {
 		flushRun()
-		line.WriteString("\\GS ")
-		pendingSpace = false
+		if pendingGap == gBlock {
+			line.WriteString("\\GBS ")
+		} else {
+			line.WriteString("\\GS ")
+		}
+		pendingGap = gTight
 	}
 	run.WriteString(s)
 	atLineStart = false
@@ -702,7 +710,7 @@ flushLine := func() {
 	emitLine()
 	indent = 0
 	atLineStart = true
-	pendingSpace = false
+	pendingGap = gTight
 }
 @#
 forceBreak := func(blank bool) {
@@ -712,7 +720,7 @@ forceBreak := func(blank bool) {
 	}
 	in.endLine()
 	atLineStart = true
-	pendingSpace = false
+	pendingGap = gTight
 	manualGap = false
 }
 
@@ -744,8 +752,8 @@ case common.ATeX:
 case common.AIndex:
 	wv.xr.addManualIndex(a.Index, a.Text, secNum)
 case common.APaste:
-	pendingSpace = false // join: no space before the next token
-	manualGap = true     // ...and let no grammar space creep back in
+	pendingGap = gTight // join: no space before the next token
+	manualGap = true    // ...and let no grammar space creep back in
 case common.ALayout:
 	switch a.Index {
 	case ',': // an explicit thin space, added on top of the grammar's own
@@ -758,7 +766,7 @@ case common.ALayout:
 		manualGap = true // this hand-placed break overrides the grammar's space
 		flushRun()
 		line.WriteString("\\GSO ")
-		pendingSpace = false
+		pendingGap = gTight
 		atLineStart = false
 	}
 case common.AIndexDef:
@@ -798,17 +806,19 @@ the exception twice over: it takes its indentation from the |indenter| and gets 
 leading space; and a hand-placed layout code may already have fixed the gap, in
 which case we leave it alone.
 @<Space the significant token@>=
+blockBrace := t.kind == tkOp && t.text == "{" && in.opensBlock()
+curCat := classify(t, prevSigKind, prevSigText, toks, k,
+	blockBrace, in.top().isBlock, in.inSquareBracket())
 if atLineStart {
 	indent = in.beginLine(t, toks, k)
 } else if manualGap {
 	manualGap = false // a hand-placed layout code already set the spacing here
 } else {
-	blockBrace := t.kind == tkOp && t.text == "{" && in.opensBlock()
-	switch spaceBefore(prevSigKind, prevSigText, prevUnary, t, blockBrace,
-		in.inSquareBracket(), toks, k,
-	) {
+	switch gapBetween(prevCat, curCat) {
 	case gWide:
-		pendingSpace = true
+		pendingGap = gWide
+	case gBlock:
+		pendingGap = gBlock
 	case gThin:
 		emit("\\Gthin ")
 	}
@@ -838,10 +848,10 @@ spacing: it is set off from the code by the generous \.{\\GCS} gap \.{cweave}
 leaves before a comment, in place of the ordinary \.{\\GS}.
 @<Emit the token@>=
 if t.kind == tkComment {
-	if pendingSpace { // set a trailing comment off from the code with a generous gap, as cweave does
+	if pendingGap != gTight { // set a trailing comment off from the code with a generous gap, as cweave does
 		flushRun()
 		line.WriteString("\\GCS ")
-		pendingSpace = false
+		pendingGap = gTight
 	}
 	emit(wv.renderComment(secNum, t.text))
 } else {
@@ -849,168 +859,301 @@ if t.kind == tkComment {
 }
 
 @ With the token set, it becomes the past: |advance| updates the |indenter|, and
-the previous-token fields---including whether this token was a unary prefix or a
-pointer star---roll forward for the next token to look back on.
+the previous-token fields---including this token's spacing category, which the next
+token's gap looks back on---roll forward.
 @<Advance the look-behind@>=
 in.advance(t)
-prevUnary = isUnaryPrefix(prevSigKind, prevSigText, t) ||
-	pointerStar(prevSigKind, prevSigText, t, toks, k)
+prevCat = curCat
 prevPrevSigText = prevSigText
 prevSigKind, prevSigText = t.kind, t.text
 
 @* Spacing code by grammar.
 Like \.{cweave}, and unlike the source-driven scheme it replaces, \.{gweave}
 decides the space between two code tokens from what they are, not from whether the
-author happened to leave a blank between them. The rules are the math-like ones
-\.{cweave} uses: a binary operator or a relation takes a space on each side, a
-unary prefix operator binds tight to its operand, the brackets and the selector dot
-are tight, a comma or semicolon takes a space only after it, and a keyword is
-followed by a space---with |map| the exception that runs straight into its
-bracket, and |func| taking before its parenthesis the same hair space a call's
-name does. Only the local context is needed: the previous significant token,
-and whether it was itself unary. No parser and no precedence table is required---%
-the one thing this gives up against |gofmt|, which tightens spacing around
+author happened to leave a blank between them. It does this in two steps, and the
+whole rule set lives in those two steps rather than being scattered across a pile of
+special cases. First, |classify| maps each token to one of two dozen {\it spacing
+categories\/}---the grammatical role that governs the gaps around it---resolving
+there the handful of ambiguities a token alone cannot settle: a statement block's
+brace from a composite literal's, a call's parenthesis from a grouping one, a
+pointer star from a product. Then |gapBetween| reads the gap straight off the two
+neighbouring categories.
+
+@ This is \.{cweave}'s own model, pared down. \.{cweave} carries each scrap through
+a bottom-up grammar of some forty categories and a hundred productions, each
+production emitting the spacing for the structure it recognizes; a category here is
+one of those scrap categories, named in the comments beside |spaceCat|. The
+difference is that |gofmt| has already normalized the layout before \.{gweave} sees
+it, so where \.{cweave} must {\it parse\/} C to know a scrap's category, \.{gweave}
+merely {\it classifies\/} an already-tidy token---no grammar, no precedence table.
+The one thing this gives up against |gofmt|, which tightens spacing around
 higher-precedence operators, is that \.{gweave} spaces them all alike, as
 \.{cweave} does.
 
-@ Three widths of gap: |gTight| (no space), |gThin| (a \.{\\Gthin} kept within the
-math chunk---cweave's hair space before a call's parenthesis) and |gWide| (a
-breakable \.{\\GS} that ends the chunk, where a long line may fold).
+@ The categories and the table read, in brief:
+$$\vbox{\halign{\.{#}\hfil\quad&#\hfil\cr
+&{\rm gap before this category}\cr
+\noalign{\smallskip}
+binary op / relation&a full space on each side (|a + b|)\cr
+unary prefix&clings to its operand (|*p|, |-1|, |!done|)\cr
+call \.( or empty \.{()}&a hair space (|f(x)|), as \.{cweave}\cr
+receiver \.(&a full space (|func (r T)|)\cr
+index \.[, selector \..&tight (|a[i]|, |x.f|)\cr
+array type \.[&a full space after a name (|b [256]int|)\cr
+comma, semicolon&tight before, a space after\cr
+block brace \.{\char123}\thinspace\.{\char125}&a wider structural space, both sides\cr
+literal brace \.{\char123}\thinspace\.{\char125}&tight (|T{a}|)\cr
+}}$$
+Every other pair falls to the default: a full space between words, and the ``space
+a token leaves after it'' for whatever follows an open bracket or a unary sign.
+
+@ Four widths of gap: |gTight| (no space), |gThin| (a \.{\\Gthin} kept within the
+math chunk---cweave's hair space before a call's parenthesis), |gWide| (a
+breakable \.{\\GS} that ends the chunk, where a long line may fold), and |gBlock|
+(a wider \.{\\GBS} that sets a statement block's braces off from the block's head
+and body, matching \.{cweave}'s more generous structural space).
 @<Space code tokens by grammar@>=
 const (
 	gTight = iota
 	gThin
 	gWide
+	gBlock
 )
 
-@ |spaceBefore| gives the gap that precedes token |cur|, given the previous
-significant token, whether that token was a unary prefix (so |cur| clings to it),
-and whether a following |cur|~=~\.{\char123} opens a statement block (spaced, as in
-\.{if x \char123}) rather than a composite literal (tight).
+@ Every token is first mapped to a |spaceCat|, its {\it spacing category\/}: the
+grammatical role that decides the gaps around it. The mapping is where the few
+context-dependent ambiguities are resolved, once---a statement block's brace from a
+composite literal's, a call's parenthesis from a grouping one, a pointer star from
+a product---so that the gap table that follows is a pure function of two
+categories. Each category corresponds to a \.{cweave} scrap category, noted in the
+comment; the difference is that |gofmt| has already fixed the layout, so |gweave|
+classifies a token where \.{cweave} must parse to reach the same scrap.
 @<Space code tokens by grammar@>=
-func spaceBefore(pk tokKind, pt string, pUnary bool, cur token, blockBrace, inSlice bool,
-	toks []token, k int) int {
-	if pUnary {
-		return gTight
-	}
-	if cur.kind == tkOp {
-		@<Return the gap before an operator@>
-	}
-	if pk == tkOp {
-		switch pt {
-		case ".", "(", "[", "{", "[]":
-			return gTight
-		case ":":
-			if inSlice {
-				return gTight // the second colon in a slice |a[i:j]|
-			}
+type spaceCat int
+
+const (
+	catExpr       spaceCat = iota // an operand: identifier, number, string, builtin, macro (cweave |exp|)
+	catClose                      // \.) a literal's brace, \.{\char123\char125} \.{++} \.{--}: an operand end (|exp|)
+	catCloseBracket               // \.] : an operand end that a following \.{[]} clings to, as \.{[3][]int} (|rpar|)
+	catBlockClose                 // a statement block's closing brace (|rbrace|)
+	catEmptyParen                 // \.{()} (|exp|)
+	catLoneBrackets               // \.{[]} (|lpar| |rpar|)
+	catComma                      // \., or \.; (|comma| / |semi|)
+	catDot                        // \.. a selector (part of |exp|)
+	catSliceColon                 // the \.: of a slice \.{a[i:j]} (|colon|)
+	catColon                      // the \.: of a label, case, or map key (|colon|)
+	catBlockOpen                  // a statement block's opening brace (|lbrace|)
+	catLitOpen                    // a composite literal's opening brace (|lbrace|)
+	catCallParen                  // the \.( of a call, or a func type's or literal's parameters (|lpar|)
+	catRecvParen                  // the \.( of a method receiver (|lpar|)
+	catIndex                      // the \.[ of an index (|lpar|)
+	catArrayType                  // the \.[ of an array type after a spaced name (|lpar|)
+	catMapBracket                 // the \.[ following |map| (|lpar|)
+	catOpen                       // a \.( or \.[ opening a type or a grouping, otherwise (|lpar|)
+	catUnary                      // a unary prefix \.\& \.- \.+ \.! \.{<-} \.\^ or a unary \.* (|unop|)
+	catPtrStar                    // a pointer \.* crammed against an array type (|ubinop|)
+	catSpacedPtr                  // a pointer \.* with a blank before it, \.{p *int} (|ubinop|)
+	catBinop                      // a binary operator or relation, including a product \.* (|binop|)
+	catFunc                       // the keyword |func|
+	catMap                        // the keyword |map|
+	catKeyword                    // any other reserved word (|int_like|, |else_like|, \dots)
+)
+
+@ |classify| resolves a token to its category, consulting the previous significant
+token and the |indenter|'s state exactly where a role is ambiguous: whether a brace
+opens a block (|blockBrace|) or closes one (|inBlock|), and whether a colon sits in
+a slice (|inSlice|). An ordinary word settles first; an operator hands off to the
+sections below.
+@<Space code tokens by grammar@>=
+func classify(cur token, pk tokKind, pt string, toks []token, k int,
+	blockBrace, inBlock, inSlice bool) spaceCat {
+	if cur.kind != tkOp {
+		switch {
+		case cur.kind == tkKeyword && cur.text == "func":
+			return catFunc
+		case cur.kind == tkKeyword && cur.text == "map":
+			return catMap
+		case cur.kind == tkKeyword:
+			return catKeyword
 		}
+		return catExpr
 	}
-	return gWide
+	@<Classify an operator token@>
 }
 
-@ Punctuation and the empty bracket pairs settle at a glance; an open paren or
-bracket needs the call/type/receiver judgement calls below; anything left over
-falls to the sign-operator and pointer-star checks that close the function.
-@<Return the gap before an operator@>=
+@ The brackets and punctuation settle from the token alone (a brace also needs to
+know whether it opens or closes a block, a colon whether it is a slice's); an open
+paren or bracket needs the role calls in the next two sections; anything left is a
+sign or a binary operator.
+@<Classify an operator token@>=
 switch cur.text {
-@<Gap before punctuation and an empty bracket pair@>
-@<Gap before an open paren or bracket@>
-}
-@<Gap before a sign operator, or a binary relation@>
-
-@ A lone \.{[]} takes a space after a name (\.{x []int}) but not after another
-bracket (\.{[][]int}). An empty call or parameter list, \.{()}, is never a
-receiver (a receiver always names itself), so it always gets the hair space, the
-same as a call's or a literal's non-empty \.{(}. Everything else here is plain
-punctuation that clings to whatever it follows.
-@<Gap before punctuation and an empty bracket pair@>=
-case ",", ";", ".", ")", "]", ":", "++", "--", "}", "{}":
-	return gTight
+case ",", ";":
+	return catComma
+case ".":
+	return catDot
+case ")", "{}", "++", "--":
+	return catClose
+case "]":
+	return catCloseBracket
+case "}":
+	if inBlock {
+		return catBlockClose
+	}
+	return catClose
 case "()":
-	return gThin // a call's or func literal's empty parens, the same hair space as f(
+	return catEmptyParen
+case "[]":
+	return catLoneBrackets
+case ":":
+	if inSlice {
+		return catSliceColon
+	}
+	return catColon
 case "{":
 	if blockBrace {
-		return gWide
+		return catBlockOpen
 	}
+	return catLitOpen
+case "(":
+	@<Classify an open parenthesis@>
+case "[":
+	@<Classify an open bracket@>
+}
+@<Classify a sign or a binary operator@>
+
+@ An open parenthesis is a call's when it follows an operand, a receiver's when it
+follows |func| and |isMethodReceiver| says so, a func type's or literal's (the same
+hair space as a call's) after any other |func|, and a plain grouping otherwise.
+@<Classify an open parenthesis@>=
+if pk == tkKeyword && pt == "func" {
+	if isMethodReceiver(toks, k) {
+		return catRecvParen
+	}
+	return catCallParen
+}
+if isOperandEnd(pk, pt) {
+	return catCallParen
+}
+return catOpen
+
+@ An open bracket is |map|'s after the keyword, an index when crammed against an
+operand, an array type when the source keeps a blank between the name and it
+(\.{b [256]int}), and a plain type/grouping opener otherwise.
+@<Classify an open bracket@>=
+if pk == tkKeyword && pt == "map" {
+	return catMapBracket
+}
+if isOperandEnd(pk, pt) {
+	if k > 0 && toks[k-1].kind == tkSpace {
+		return catArrayType
+	}
+	return catIndex
+}
+return catOpen
+
+@ A sign operator is unary when no operand precedes it; a \.* after an operand is a
+pointer---crammed against an array type, or spaced by the source---rather than a
+product. |starAfterArrayType| and |pointerStar| are the same judgements the old
+scheme made, now feeding one classification instead of the gap directly.
+@<Classify a sign or a binary operator@>=
+if isSignOp(cur.text) && !isOperandEnd(pk, pt) {
+	return catUnary
+}
+if cur.text == "*" && isOperandEnd(pk, pt) {
+	if starAfterArrayType(toks, k) {
+		return catPtrStar
+	}
+	if pointerStar(pk, pt, cur, toks, k) {
+		return catSpacedPtr
+	}
+}
+return catBinop
+
+@ |gapBetween| is the whole spacing rule in one table: the gap that goes between a
+token of category |left| and the following token of category |right|. An operand
+clings to a preceding unary or pointer operator---the one rule keyed on |left|;
+otherwise the gap is read off |right|, with the few cases that still look back at
+|left| spelled out in the section below.
+@<Space code tokens by grammar@>=
+func gapBetween(left, right spaceCat) int {
+	switch left {
+	case catUnary, catPtrStar, catSpacedPtr:
+		return gTight // the operand clings to a unary or pointer operator
+	}
+	@<Read the gap off the right-hand category@>
+}
+
+@ Most categories fix the gap outright. A lone \.{[]} clings to a preceding
+bracket, brace, or selector dot but takes a space after a name; an open bracket or
+a unary sign, whose leading gap follows whatever came before, defers to
+|gapAfterCat|; an ordinary word defers to |afterNonOp|.
+@<Read the gap off the right-hand category@>=
+switch right {
+case catComma, catDot, catColon, catSliceColon, catClose, catCloseBracket, catIndex,
+	catLitOpen, catMapBracket, catPtrStar:
 	return gTight
-case "[]":
-	if pk == tkOp {
-		switch pt {
-		case "]", "[]", "}", "[", "(", ".":
-			return gTight
-		}
+case catBlockOpen, catBlockClose:
+	return gBlock // a statement block's braces breathe, as in \.{cweave}
+case catEmptyParen, catCallParen:
+	return gThin // a call's parenthesis gets \.{cweave}'s hair space
+case catRecvParen, catArrayType, catSpacedPtr, catBinop:
+	return gWide
+case catLoneBrackets:
+	return gapBeforeLone(left)
+case catUnary, catOpen:
+	return gapAfterCat(left)
+}
+return afterNonOp(left) // a word: identifier, number, string, or keyword
+
+@ |gapBeforeLone| gives the gap before a \.{[]}: tight after any bracket, brace, or
+selector dot (\.{[][]int}, \.{a[i][]}), a space after anything else (\.{x []int}).
+@<Space code tokens by grammar@>=
+func gapBeforeLone(left spaceCat) int {
+	switch left {
+	case catCloseBracket, catBlockClose, catLoneBrackets, catCallParen, catRecvParen,
+		catIndex, catArrayType, catMapBracket, catOpen, catDot:
+		return gTight
 	}
 	return gWide
-
-@ An opening parenthesis or bracket clings to an operand it follows (a call or an
-index, the parenthesis getting a hair space as in \.{cweave}); after \.{func} its
-parameter list gets that same hair space (\.{func (x int)}), unless it is a
-method's receiver, which |isMethodReceiver| picks out for a full space
-(\.{func (r T) m()}). An empty parameter list never reaches that check --- the
-case above already caught \.{()} --- so only a non-empty \.{(} can be a receiver's.
-@<Gap before an open paren or bracket@>=
-case "(", "[":
-	if pk == tkKeyword && pt == "func" && cur.text == "(" {
-		if isMethodReceiver(toks, k) {
-			return gWide
-		}
-		return gThin // a literal's or type's ( gets the same hair space a call's does
-	}
-	if isOperandEnd(pk, pt) {
-		if cur.text == "(" {
-			return gThin
-		}
-		if cur.text == "[" && k > 0 && toks[k-1].kind == tkSpace {
-			return gWide // a declared name and its array type: |b [256]int|
-		}
-		return gTight
-	}
-	if pk == tkKeyword && pt == "map" {
-		return gTight
-	}
-	return gapAfter(pk, pt)
-
-@ Anything left is a binary operator or relation, and gets a space --- unless it is
-a unary sign (\.*, \.\&, \.-, \.+, \.{<-}) with no operand before it to be binary
-with, or a pointer's star crammed against its array type.
-@<Gap before a sign operator, or a binary relation@>=
-if isSignOp(cur.text) && !isOperandEnd(pk, pt) {
-	return gapAfter(pk, pt) // a unary prefix operator
 }
-if cur.text == "*" && starAfterArrayType(toks, k) {
-	return gTight // a pointer element type crammed to its array: [256]*Node|
-}
-return gWide
 
-@ |gapAfter| is the space a token leaves after it, consulted when |cur| itself does
-not force the decision---the leading space of a unary operator or an open bracket
-simply follows whatever came before.
+@ |gapAfterCat| is the space a token leaves after it---\.{cweave}'s notion, used
+when the following token is an open bracket or a unary sign. The brackets, the
+selector dot, and the increment operators leave none; |map| and |func| run straight
+into what follows and an operand leaves no inherent space; a keyword, a comma, a
+colon, or a binary operator leaves a space.
 @<Space code tokens by grammar@>=
-func gapAfter(pk tokKind, pt string) int {
-	switch pk {
-	case tkKeyword:
-		if pt == "map" || pt == "func" {
-			return gTight
-		}
-		return gWide
-	case tkOp:
-		switch pt {
-		case ",", ";":
-			return gWide
-		case ".", "(", "[", "{", ")", "]", "}", "[]", "{}", "()", "++", "--":
-			return gTight
-		}
-		return gWide // a binary operator or relation
+func gapAfterCat(left spaceCat) int {
+	switch left {
+	case catDot, catCallParen, catRecvParen, catOpen, catIndex, catArrayType,
+		catMapBracket, catLitOpen, catBlockOpen, catClose, catCloseBracket, catBlockClose,
+		catLoneBrackets, catEmptyParen, catFunc, catMap, catExpr:
+		return gTight
 	}
-	return gTight // an operand leaves no inherent space
+	return gWide
+}
+
+@ |afterNonOp| gives the gap before an ordinary word: tight after a selector dot,
+an open bracket or paren, a lone \.{[]}, a composite literal's brace, or a slice
+colon; a full block space after a statement block's brace; a space after everything
+else.
+@<Space code tokens by grammar@>=
+func afterNonOp(left spaceCat) int {
+	switch left {
+	case catDot, catCallParen, catRecvParen, catOpen, catIndex, catArrayType,
+		catMapBracket, catLoneBrackets, catLitOpen, catSliceColon:
+		return gTight
+	case catBlockOpen:
+		return gBlock
+	}
+	return gWide
 }
 
 @ An {\it operand end\/} is a token a value can finish with, so that a following
-|*|, |&|, |-|, |+|, or |<-| is the binary form, not the unary. |isUnaryPrefix|
-makes the converse judgement about the token just emitted, so the next token's gap
-knows whether to cling to it. A closed |()| ends an operand just as |)| would, so a
-chained call or index after an empty call --- |f()(x)|, |f()[0]| --- stays tight.
+|*|, |&|, |-|, |+|, or |<-| is the binary form, not the unary---|classify| makes
+that call to tell a |catUnary| from a |catBinop|. A closed |()| ends an operand
+just as |)| would, so a chained call or index after an empty call --- |f()(x)|,
+|f()[0]| --- stays tight.
 @<Space code tokens by grammar@>=
 func isOperandEnd(k tokKind, text string) bool {
 	switch k {
@@ -1031,16 +1174,6 @@ func isSignOp(s string) bool {
 		return true
 	}
 	return false
-}
-
-func isUnaryPrefix(pk tokKind, pt string, cur token) bool {
-	if cur.kind != tkOp {
-		return false
-	}
-	if cur.text == "!" {
-		return true
-	}
-	return isSignOp(cur.text) && !isOperandEnd(pk, pt)
 }
 
 @ A \.* after an operand is the one genuine ambiguity: a product or a pointer type.
@@ -3254,6 +3387,50 @@ func TestWeaveThinSpaceBeforeParen(t *testing.T) {
 		`\GID{f}\Gthin \mathord{(}`:    "a call f( gets a thin space",
 		`\GKW{func}\Gthin \mathord{(}`: "a func literal/type func( gets the same thin space",
 		`\GKW{func}$\GS $\mathord{(}`:  "a method receiver func ( gets a full space",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant %q in:\n%s", msg, sub, out)
+		}
+	}
+}
+
+@ A statement block's braces are set off with the wider \.{\\GBS} on every open
+side---before the opening \.{\char123}, after it, and before the closing
+\.{\char125}---while a composite literal's braces cling to their contents, as
+\.{cweave} sets them.
+@(gweave_test.go@>=
+func TestWeaveBlockBraceSpacing(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nfunc f() int { return g([]int{1, 2}) }\n")
+	checks := map[string]string{
+		`\GKW{int}$\GBS $\mathord{\{}`:    "a block's opening brace is set off from its head",
+		`\mathord{\{}$\GBS $\GKW{return}`: "a block's opening brace breathes before its body",
+		`\mathord{)}$\GBS $\mathord{\}}`:  "a block's closing brace breathes after its body",
+		`\GKW{int}\mathord{\{}\GNU{1}`:    "a composite literal's opening brace clings to its first element",
+		`\GNU{2}\mathord{\}}`:             "a composite literal's closing brace clings to its last element",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant %q in:\n%s", msg, sub, out)
+		}
+	}
+}
+
+@ The spacing categories are exercised token by token: a slice result type sits
+apart from the parameter list (\.{func() []T}, as |gofmt| spaces it) while a stacked
+slice type clings (\.{[3][]int}); a named array type keeps the source's blank
+(\.{b [256]int}) but an index clings (\.{a[i]}); and a spaced pointer keeps its
+blank before the star yet clings after (\.{p *int}).
+@(gweave_test.go@>=
+func TestWeaveTypeSpacing(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nfunc f(x int) []int { return nil }\n"+
+		"func g() [3][]int { return z }\nvar b [256]int\nvar p *int\nvar s = a[i]\n")
+	checks := map[string]string{
+		`\mathord{)}$\GS $\mathord{[}\,\mathord{]}\GKW{int}`: "a slice result type is set off from the parameter list",
+		`\mathord{]}\mathord{[}\,\mathord{]}\GKW{int}`:       "a stacked slice type clings: [3][]int",
+		`\GID{b}$\GS $\mathord{[}\GNU{256}`:                  "a named array type keeps its space: b [256]int",
+		`\GID{p}$\GS $\mathord{*}\GKW{int}`:                  "a spaced pointer clings after the star: p *int",
+		`\GID{a}\mathord{[}\GID{i}\mathord{]}`:               "an index clings to its operand: a[i]",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
