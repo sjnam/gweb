@@ -7,11 +7,11 @@
 @s common.Format int
 @s common.Section int
 
-\def\title{GTANGLE (Version 0.8.0)}
+\def\title{GTANGLE (Version 0.8.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
   \vskip 15pt
-  \centerline{(Version 0.8.0)}
+  \centerline{(Version 0.8.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}

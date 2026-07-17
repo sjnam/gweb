@@ -2,12 +2,12 @@
 @s strings.Builder int
 @s testing.T int
 
-\def\title{Common code for GTANGLE and GWEAVE (Version 0.8.0)}
+\def\title{Common code for GTANGLE and GWEAVE (Version 0.8.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Common code for {\ttitlefont GTANGLE} and
     {\ttitlefont GWEAVE}}
   \vskip 15pt
-  \centerline{(Version 0.8.0)}
+  \centerline{(Version 0.8.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\Gsmallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
@@ -33,7 +33,7 @@ import (
 	"strings"
 )
 
-const Version = "0.8.0"
+const Version = "0.8.5"
 
 @<Records shared across the web@>
 @<Parse a web from a file@>
