@@ -30,10 +30,13 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
+	"go/scanner"
+	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/sjnam/gweb/common"
@@ -172,7 +175,10 @@ string, so every piece remembers the \.{.w} line it began on -- the anchor for
 the \.{//line} directives. As in \.{CWEB}'s \.{ctangle}, those directives are always
 emitted (there is no switch to suppress them), so the \GO/ compiler, \.{go vet},
 and panic traces report positions in the literate \.{.w} source rather than in
-the generated \.{.go}.
+the generated \.{.go}. The buffer marks every line as it goes and
+|thinLineMarks| then drops the ones \GO/'s own line counting already implies, so
+what is written keeps a mark only where the origin jumps---\.{ctangle}'s density,
+with the same positions.
 @<The tangler and its code pieces@>=
 type Tangler struct {
 	w     *common.Web
@@ -271,11 +277,109 @@ func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) 
 	}
 	raw := o.bytes()
 	if formatted, err := format.Source(raw); err == nil {
-		return Output{File: file, Content: formatted}, nil
+		return Output{File: file, Content: thinLineMarks(formatted)}, nil
 	} else {
-		return Output{File: file, Content: raw,
+		return Output{File: file, Content: thinLineMarks(raw),
 			Warning: "gofmt could not format the output: " + err.Error()}, nil
 	}
+}
+
+@* Thinning the line marks.
+The buffer marks every line, which keeps the map exact no matter how \.{gofmt}
+reflows the text---but it leaves an output where nearly every other line is a
+directive. \GO/ counts lines the way \CEE/ does: \.{//line f:N} fixes the {\it
+next\/} line at |f:N| and each line after it advances by one, so a mark that only
+restates what the count already gives is redundant. |thinLineMarks| drops exactly
+those, leaving a mark just where the origin jumps---a new section, an expanded
+refinement---which is the density \.{ctangle} writes by hand.
+
+This runs {\it after\/} \.{gofmt}, on the text that will be written, so whatever
+\.{gofmt} did to the line structure is already accounted for; the marks that
+survive are the ones the final text really needs. Every line keeps the origin it
+had before: only redundant directives go, and a directive line carries no origin
+of its own.
+
+@ Which lines are marks is settled by \.{go/scanner}, not by matching text: a line
+inside a raw string literal can look exactly like a directive, and dropping it
+would corrupt the string. |PositionFor| with |adjusted| false reports the physical
+line---the scanner honours the very directives we are reading, so the adjusted
+position would be the \.{.w} line instead. If the text cannot be scanned cleanly
+(a \.{gofmt} failure leaves broken \GO/), nothing is touched.
+@<Render and gofmt one output@>=
+func thinLineMarks(src []byte) []byte {
+	marks, ok := lineMarkLines(src)
+	if !ok || len(marks) == 0 {
+		return src
+	}
+	@<Drop the redundant line marks@>
+}
+
+@ |lineMarkLines| returns the physical line numbers that begin a \.{//line}
+directive, and whether the scan was clean enough to trust.
+@<Render and gofmt one output@>=
+func lineMarkLines(src []byte) (map[int]bool, bool) {
+	fset := token.NewFileSet()
+	f := fset.AddFile("", fset.Base(), len(src))
+	var s scanner.Scanner
+	bad := false
+	s.Init(f, src, func(token.Position, string) { bad = true }, scanner.ScanComments)
+	marks := map[int]bool{}
+	for {
+		pos, tok, lit := s.Scan()
+		if tok == token.EOF {
+			break
+		}
+		if tok != token.COMMENT || !strings.HasPrefix(lit, "//line ") {
+			continue
+		}
+		if p := f.PositionFor(pos, false); p.Column == 1 {
+			marks[p.Line] = true
+		}
+	}
+	return marks, !bad
+}
+
+@ The walk itself. |expLine| is the origin the next line would take on its own; a
+mark that agrees with it is dropped, any other mark is kept and resets the count.
+An ordinary line consumes one origin, exactly as \GO/ will count it.
+@<Drop the redundant line marks@>=
+lines := strings.SplitAfter(string(src), "\n")
+out := make([]byte, 0, len(src))
+expFile, expLine, have := "", 0, false
+for i, ln := range lines {
+	if !marks[i+1] {
+		out = append(out, ln...)
+		if have {
+			expLine++
+		}
+		continue
+	}
+	file, n, ok := parseLineMark(ln)
+	if ok && have && file == expFile && n == expLine {
+		continue // the count already says this; the mark is redundant
+	}
+	if ok {
+		expFile, expLine, have = file, n, true
+	}
+	out = append(out, ln...)
+}
+return out
+
+@ |parseLineMark| reads back a \.{//line file:N} directive. The file name may hold
+a colon, so the number is taken from the last one, as \GO/ itself does.
+@<Render and gofmt one output@>=
+func parseLineMark(s string) (string, int, bool) {
+	rest := strings.TrimSuffix(strings.TrimSuffix(s, "\n"), "\r")
+	rest = strings.TrimPrefix(rest, "//line ")
+	i := strings.LastIndex(rest, ":")
+	if i < 0 {
+		return "", 0, false
+	}
+	n, err := strconv.Atoi(rest[i+1:])
+	if err != nil || n <= 0 {
+		return "", 0, false
+	}
+	return rest[:i], n, true
 }
 
 @ |expandPieces| expands a list of code pieces in order.
@@ -525,6 +629,68 @@ var area = @@<the |x| value@@>
 	got := string(outs[0].Content)
 	if !strings.Contains(got, "var area =") || !strings.Contains(got, "42") {
 		t.Errorf("name containing |x| should still match for tangling:\n%s", got)
+	}
+}
+
+@ |originOf| follows the \.{//line} marks of a tangled file the way \GO/ does---a
+mark fixes the next line, every line after it advances by one---and reports the
+web line that the first line containing |want| will be blamed for.
+@(gtangle_test.go@>=
+func originOf(src, want string) (int, bool) {
+	line := 0
+	for _, ln := range strings.Split(src, "\n") {
+		if rest, isMark := strings.CutPrefix(ln, "//line "); isMark {
+			if i := strings.LastIndex(rest, ":"); i >= 0 {
+				if n, err := strconv.Atoi(rest[i+1:]); err == nil {
+					line = n
+				}
+			}
+			continue
+		}
+		if strings.Contains(ln, want) {
+			return line, true
+		}
+		line++
+	}
+	return 0, false
+}
+
+@ A straight run of lines needs one mark, not one per line---\GO/'s own counting
+supplies the rest---and the positions it reports are unchanged.
+@(gtangle_test.go@>=
+func TestTangleThinsLineMarks(t *testing.T) {
+	const src = "@@ x\n@@c\npackage main\n\nfunc main() {\n\ta := 1\n\tb := 2\n" +
+		"\tc := 3\n\t_, _, _ = a, b, c\n}\n"
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(outs[0].Content)
+	if n := strings.Count(got, "//line "); n > 2 {
+		t.Errorf("a straight run wants one mark, got %d:\n%s", n, got)
+	}
+	for _, c := range []struct {
+		text string
+		line int
+	}{{"a := 1", 6}, {"b := 2", 7}, {"c := 3", 8}} {
+		if got, ok := originOf(got, c.text); !ok || got != c.line {
+			t.Errorf("%q should report web line %d, got %d (found=%v)", c.text, c.line, got, ok)
+		}
+	}
+}
+
+@ A line inside a raw string can look exactly like a mark; because |thinLineMarks|
+asks \.{go/scanner} rather than matching text, such a line is never mistaken for
+one and never dropped.
+@(gtangle_test.go@>=
+func TestTangleKeepsLineMarkLookalikeInString(t *testing.T) {
+	const src = "@@ x\n@@c\npackage main\n\nvar s = `\n//line fake.w:99\n`\n"
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(outs[0].Content); !strings.Contains(got, "//line fake.w:99") {
+		t.Errorf("a mark-lookalike inside a raw string must survive:\n%s", got)
 	}
 }
 
