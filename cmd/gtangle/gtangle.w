@@ -435,19 +435,46 @@ if err := t.expandPieces(def, o, append(stack, name)); err != nil {
 o.newline()
 
 @ The output |buffer| accumulates bytes. It tracks whether it is at the start of
-a line so it can prefix each line with a \.{//line} directive, and it supports
-the \.{@@\&} paste operation, which deletes the whitespace surrounding it.
+a line so it can prefix each line with a \.{//line} directive, enough of \GO/'s
+lexical state to know when such a line start falls {\it inside\/} a token that
+spans lines (|lex|, with |slash|, |star| and |esc| for the two-character and
+escaped forms), and it supports the \.{@@\&} paste operation, which deletes the
+whitespace surrounding it.
 @<The output buffer@>=
 type buffer struct {
 	t           *Tangler
 	b           []byte
 	pasteNext   bool
 	atLineStart bool
+	lex         goLex
+	slash       bool // a \./ is pending: \.{//} or \./\.* may be starting
+	star        bool // a \.* is pending inside a block comment: \.*\./ may close it
+	esc         bool // a backslash is pending inside a quoted string or rune
 }
 
+@ Only two \GO/ tokens may span a newline: a raw string and a block comment. A
+directive written at the start of a line inside either one is not a directive at
+all---inside a raw string it silently becomes part of the string's value, and
+inside a comment it is just text---so |writeText| marks a line only when the line
+really begins in code.
+@<The output buffer@>=
+type goLex int
+
+const (
+	lexCode goLex = iota
+	lexLineComment
+	lexBlockComment
+	lexQuote
+	lexRune
+	lexRaw
+)
+
+func (l goLex) spansLines() bool { return l == lexRaw || l == lexBlockComment }
+
 @ |writeText| copies a run of text, emitting a \.{//line} directive at the start
-of each non-blank line and honoring a pending paste (which trims the leading
-whitespace of the next text). It returns the updated combined-source line.
+of each non-blank line that begins in code, and honoring a pending paste (which
+trims the leading whitespace of the next text). It returns the updated
+combined-source line.
 @<The output buffer@>=
 func (o *buffer) writeText(s string, line int) int {
 	if o.pasteNext {
@@ -457,16 +484,83 @@ func (o *buffer) writeText(s string, line int) int {
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		if o.atLineStart && c != '\n' {
-			o.lineMark(line)
+			if !o.lex.spansLines() {
+				o.lineMark(line)
+			}
 			o.atLineStart = false
 		}
 		o.b = append(o.b, c)
+		o.track(c)
 		if c == '\n' {
 			line++
 			o.atLineStart = true
 		}
 	}
 	return line
+}
+
+@ |track| advances the lexical state by one byte of copied text. A quoted string
+or rune cannot legally reach a newline, so an unterminated one is closed there,
+as \GO/'s own scanner does.
+@<The output buffer@>=
+func (o *buffer) track(c byte) {
+	switch o.lex {
+	case lexCode:
+		@<Advance the lexical state in code@>
+	case lexLineComment:
+		if c == '\n' {
+			o.lex = lexCode
+		}
+	case lexBlockComment:
+		if o.star && c == '/' {
+			o.lex = lexCode
+		}
+		o.star = c == '*'
+	case lexQuote, lexRune:
+		@<Advance the lexical state in a quoted string or rune@>
+	case lexRaw:
+		if c == '`' {
+			o.lex = lexCode
+		}
+	}
+}
+
+@ In code, a \./ waits to see whether a comment is starting; a quote of any of the
+three kinds opens its token.
+@<Advance the lexical state in code@>=
+if o.slash {
+	o.slash = false
+	switch c {
+	case '/':
+		o.lex = lexLineComment
+		return
+	case '*':
+		o.lex = lexBlockComment
+		o.star = false
+		return
+	}
+}
+switch c {
+case '/':
+	o.slash = true
+case '"':
+	o.lex = lexQuote
+case '\'':
+	o.lex = lexRune
+case '`':
+	o.lex = lexRaw
+}
+
+@ @<Advance the lexical state in a quoted string or rune@>=
+switch {
+case o.esc:
+	o.esc = false
+case c == '\\':
+	o.esc = true
+case c == '\n':
+	o.lex = lexCode // unterminated: \GO/ ends it at the newline too
+case o.lex == lexQuote && c == '"', o.lex == lexRune && c == '\'':
+	o.lex = lexCode
 }
 
 @ The small mutators: |lineMark| writes a \.{//line} directive for the given
@@ -481,6 +575,7 @@ func (o *buffer) lineMark(line int) {
 
 func (o *buffer) newline() {
 	o.b = append(o.b, '\n')
+	o.track('\n')
 	o.atLineStart = true
 }
 
@@ -676,6 +771,27 @@ func TestTangleThinsLineMarks(t *testing.T) {
 		if got, ok := originOf(got, c.text); !ok || got != c.line {
 			t.Errorf("%q should report web line %d, got %d (found=%v)", c.text, c.line, got, ok)
 		}
+	}
+}
+
+@ A raw string and a block comment are the two \GO/ tokens that may span a
+newline. A mark written at the start of a line inside one would not be a mark at
+all---it would become part of the string's value, or text in the comment---so the
+buffer writes none there and the token comes through exactly as the web wrote it.
+@(gtangle_test.go@>=
+func TestTangleLeavesMultilineTokensAlone(t *testing.T) {
+	const src = "@@ x\n@@c\npackage main\n\nvar s = `\nplain\n\tindented\n`\n" +
+		"\nvar t = \"one line\"\n"
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(outs[0].Content)
+	if want := "`\nplain\n\tindented\n`"; !strings.Contains(got, want) {
+		t.Errorf("a raw string must come through verbatim, want %q in:\n%s", want, got)
+	}
+	if strings.Contains(got, "plain\n//line") || strings.Contains(got, "`\n//line") {
+		t.Errorf("no mark may be written inside a raw string:\n%s", got)
 	}
 }
 

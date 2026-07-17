@@ -317,15 +317,35 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 	return nil
 }
 
-//line cmd/gtangle/gtangle.w:441
+//line cmd/gtangle/gtangle.w:444
 type buffer struct {
 	t *Tangler
 	b []byte
 	pasteNext bool
 	atLineStart bool
+	lex goLex
+	slash bool // a \./ is pending: \.{//} or \./\.* may be starting
+	star bool // a \.* is pending inside a block comment: \.*\./ may close it
+	esc bool // a backslash is pending inside a quoted string or rune
 }
 
-//line cmd/gtangle/gtangle.w:452
+//line cmd/gtangle/gtangle.w:461
+type goLex int
+
+const (
+	lexCode goLex = iota
+	lexLineComment
+	lexBlockComment
+	lexQuote
+	lexRune
+	lexRaw
+
+//line cmd/gtangle/gtangle.w:470
+)
+
+func (l goLex) spansLines() bool { return l == lexRaw || l == lexBlockComment }
+
+//line cmd/gtangle/gtangle.w:479
 func (o *buffer) writeText(s string, line int) int {
 	if o.pasteNext {
 		s = strings.TrimLeft(s, " \t\n\r")
@@ -334,10 +354,13 @@ func (o *buffer) writeText(s string, line int) int {
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		if o.atLineStart && c != '\n' {
-			o.lineMark(line)
+			if !o.lex.spansLines() {
+				o.lineMark(line)
+			}
 			o.atLineStart = false
 		}
 		o.b = append(o.b, c)
+		o.track(c)
 		if c == '\n' {
 			line++
 			o.atLineStart = true
@@ -346,7 +369,68 @@ func (o *buffer) writeText(s string, line int) int {
 	return line
 }
 
-//line cmd/gtangle/gtangle.w:477
+//line cmd/gtangle/gtangle.w:506
+func (o *buffer) track(c byte) {
+	switch o.lex {
+	case lexCode:
+
+//line cmd/gtangle/gtangle.w:531
+		if o.slash {
+			o.slash = false
+			switch c {
+			case '/':
+				o.lex = lexLineComment
+				return
+			case '*':
+				o.lex = lexBlockComment
+				o.star = false
+				return
+			}
+		}
+		switch c {
+		case '/':
+			o.slash = true
+		case '"':
+			o.lex = lexQuote
+		case '\'':
+			o.lex = lexRune
+		case '`':
+			o.lex = lexRaw
+		}
+
+//line cmd/gtangle/gtangle.w:510
+	case lexLineComment:
+		if c == '\n' {
+			o.lex = lexCode
+		}
+	case lexBlockComment:
+		if o.star && c == '/' {
+			o.lex = lexCode
+		}
+		o.star = c == '*'
+	case lexQuote, lexRune:
+
+//line cmd/gtangle/gtangle.w:555
+		switch {
+		case o.esc:
+			o.esc = false
+		case c == '\\':
+			o.esc = true
+		case c == '\n':
+			o.lex = lexCode // unterminated: \GO/ ends it at the newline too
+		case o.lex == lexQuote && c == '"', o.lex == lexRune && c == '\'':
+			o.lex = lexCode
+		}
+
+//line cmd/gtangle/gtangle.w:521
+	case lexRaw:
+		if c == '`' {
+			o.lex = lexCode
+		}
+	}
+}
+
+//line cmd/gtangle/gtangle.w:571
 func (o *buffer) lineMark(line int) {
 	file, ln := o.t.w.Origin(line)
 	o.b = append(o.b, fmt.Sprintf("//line %s:%d\n", file, ln)...)
@@ -354,6 +438,7 @@ func (o *buffer) lineMark(line int) {
 
 func (o *buffer) newline() {
 	o.b = append(o.b, '\n')
+	o.track('\n')
 	o.atLineStart = true
 }
 
