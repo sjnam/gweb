@@ -910,7 +910,8 @@ unary prefix&clings to its operand (|*p|, |-1|, |!done|)\cr
 call \.( or empty \.{()}&a hair space (|f(x)|), as \.{cweave}\cr
 receiver \.(&a full space (|func (r T)|)\cr
 index \.[, selector \..&tight (|a[i]|, |x.f|)\cr
-comma, semicolon&tight before, a thin space after\cr
+comma&tight before, a thin space after (|a, b|)\cr
+header semicolon&tight before, a full clause space after, as \.{cweave} breaks a \.{for} header\cr
 \.{if}, \.{for}, \.{switch}, \.{select}&a structural space before the clause, as before the brace\cr
 block brace \.{\char123}\thinspace\.{\char125}&a wider structural space, both sides\cr
 literal brace \.{\char123}\thinspace\.{\char125}&tight (|T{a}|)\cr
@@ -921,11 +922,14 @@ a token leaves after it'' for whatever follows an open bracket or a unary sign.
 @ Seven widths of gap, in increasing order. |gTight| (no space); |gThin| (a
 \.{\\Gthin} kept within the math chunk---cweave's hair space before a call's
 parenthesis); then \.{cweave}'s three math muskips, each a breakable chunk boundary:
-|gPunct| (a \.{\\Gpunct}, the thinmuskip after a comma or semicolon), |gWide| (a
+|gPunct| (a \.{\\Gpunct}, the thinmuskip after a comma), |gWide| (a
 \.{\\GS}, the medmuskip around an arithmetic operator), |gRel| (a \.{\\Grel}, the
 thickmuskip around a relation or assignment); |gWord| (a wider \.{\\GW} between two
 words---cweave's text interword space, as in \.{int foo}); and |gBlock| (a wider
-\.{\\GBS} that sets a statement block's braces off from the block's head and body).
+\.{\\GBS} that sets a statement block's braces off from the block's head and body,
+and a \.{for} or \.{if} header's semicolon off from the next clause---where
+\.{cweave} breaks the math and leaves a half-em, its punctuation thin space plus a
+text interword space).
 The three operator widths are why \.{a,\ b}, \.{a+b}, and \.{a==b} set with visibly
 different spaces, exactly as \.{cweave} does.
 @<Space code tokens by grammar@>=
@@ -957,7 +961,8 @@ const (
 	catBlockClose                 // a statement block's closing brace (|rbrace|)
 	catEmptyParen                 // \.{()} (|exp|)
 	catLoneBrackets               // \.{[]} (|lpar| |rpar|)
-	catComma                      // \., or \.; (|comma| / |semi|)
+	catComma                      // \., (|comma|)
+	catSemi                       // \.; a \.{for} or \.{if} header's clause separator (|semi|)
 	catDot                        // \.. a selector (part of |exp|)
 	catSliceColon                 // the \.: of a slice \.{a[i:j]} (|colon|)
 	catColon                      // the \.: of a label, case, or map key (|colon|)
@@ -1014,8 +1019,10 @@ paren or bracket needs the role calls in the next two sections; anything left is
 sign or a binary operator.
 @<Classify an operator token@>=
 switch cur.text {
-case ",", ";":
+case ",":
 	return catComma
+case ";":
+	return catSemi
 case ".":
 	return catDot
 case ")", "{}", "++", "--":
@@ -1107,8 +1114,9 @@ if cur.text == "/" {
 return catBinop
 
 @ |gapBetween| is the whole spacing rule in one table: the gap that goes between a
-token of category |left| and the following token of category |right|. An operand
-clings to a preceding unary or pointer operator---the one rule keyed on |left|;
+token of category |left| and the following token of category |right|. A handful of
+rules are keyed on |left|---an operand clings to a preceding unary or pointer
+operator or to \./, and a header's semicolon breaks its clause whatever follows;
 otherwise the gap is read off |right|, with the few cases that still look back at
 |left| spelled out in the section below.
 @<Space code tokens by grammar@>=
@@ -1118,6 +1126,8 @@ func gapBetween(left, right spaceCat) int {
 		return gTight // the operand clings to a unary or pointer operator
 	case catOrdOp:
 		return gTight // \./ is an ordinary atom: its operand clings on the right too
+	case catSemi:
+		return gBlock // a \.{for} or \.{if} header's semicolon breaks its clause, whatever follows
 	}
 	@<Read the gap off the right-hand category@>
 }
@@ -1130,7 +1140,7 @@ open bracket or a unary sign, whose leading gap follows whatever came before,
 defers to |gapAfterCat|; an ordinary word defers to |afterNonOp|.
 @<Read the gap off the right-hand category@>=
 switch right {
-case catComma, catDot, catColon, catSliceColon, catClose, catCloseBracket, catIndex,
+case catComma, catSemi, catDot, catColon, catSliceColon, catClose, catCloseBracket, catIndex,
 	catLitOpen, catMapBracket, catPtrStar, catOrdOp:
 	return gTight
 case catBlockOpen:
@@ -1190,7 +1200,7 @@ func gapAfterCat(left spaceCat) int {
 	case catStmtKw:
 		return gBlock
 	case catComma:
-		return gPunct // a comma or semicolon leaves cweave's narrow thin space
+		return gPunct // a comma leaves cweave's narrow thin space
 	case catRel:
 		return gRel // a relation or assignment leaves cweave's wide thick space
 	}
@@ -1217,7 +1227,7 @@ func afterNonOp(left spaceCat) int {
 	case catExpr, catKeyword, catFunc, catMap, catTypeKw, catClose, catEmptyParen:
 		return gWord // two adjacent words, or a func result and its type: \.{n int}, \.{func() T}
 	case catComma:
-		return gPunct // a comma or semicolon leaves cweave's narrow thin space
+		return gPunct // a comma leaves cweave's narrow thin space
 	case catRel:
 		return gRel // a relation or assignment leaves cweave's wide thick space
 	}
@@ -3602,7 +3612,8 @@ func TestGoOnlySpacingDecisions(t *testing.T) {
 @ A block-heading keyword---|if|, |for|, |switch|, |select|---is set off from its
 clause with the same wider \.{\\GBS} its brace gets, so \.{if x \char123} reads
 evenly on both sides of the clause. An ordinary keyword like |case| or |func| keeps
-the plain \.{\\GS}.
+the plain \.{\\GS}. The header's own semicolons take that same block space after
+them, clinging to the clause before---as \.{cweave} breaks a \.{for} header.
 @(gweave_test.go@>=
 func TestWeaveStmtHeadSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() {\nif x { g() }\n"+
@@ -3610,6 +3621,7 @@ func TestWeaveStmtHeadSpacing(t *testing.T) {
 	checks := map[string]string{
 		`\GKW{if}$\GBS $\GID{x}`:     "if is set off from its clause with a block space",
 		`\GKW{for}$\GBS $\GID{i}`:    "for is set off from its clause",
+		`\GNU{0}\mathord{;}$\GBS $\GID{i}`: "a for-header ; clings before and breaks after",
 		`\GKW{switch}$\GBS $\GID{v}`: "switch is set off from its clause",
 		`\GKW{case}$\GW $\GNU{1}`:    "case gets the word space, not a block head's",
 		`\GKW{func}$\GW $\GID{f}`:    "func gets the word space, not a block head's",
