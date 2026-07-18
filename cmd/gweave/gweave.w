@@ -1155,17 +1155,19 @@ func gapAfterCat(left spaceCat) int {
 }
 
 @ |afterNonOp| gives the gap before an ordinary word: tight after a selector dot,
-an open bracket or paren, a lone \.{[]}, a composite literal's brace, or a slice
-colon; a full block space after a statement block's brace or a block-heading keyword
-(so \.{if x \char123} reads evenly on both sides of the clause); the wider word
-space between two words, \.{cweave}'s text interword space (\.{var foo Type},
-\.{func bar}, \.{n int}); and the plain medmuskip after an operator, close bracket,
-comma, or colon.
+an open bracket or paren, a lone \.{[]}, a close bracket, a composite literal's
+brace, or a slice colon; a full block space after a statement block's brace or a
+block-heading keyword (so \.{if x \char123} reads evenly on both sides of the
+clause); the wider word space between two words, \.{cweave}'s text interword space
+(\.{var foo Type}, \.{func bar}, \.{n int}); and the plain medmuskip after an
+operator, comma, or colon. A close bracket clings to a following element type so
+that an array or map type sets like its slice: \.{[256]int} and \.{map[K]V} match
+\.{[]int}.
 @<Space code tokens by grammar@>=
 func afterNonOp(left spaceCat) int {
 	switch left {
 	case catDot, catCallParen, catRecvParen, catOpen, catIndex, catArrayType,
-		catMapBracket, catLoneBrackets, catLitOpen, catSliceColon:
+		catMapBracket, catLoneBrackets, catCloseBracket, catLitOpen, catSliceColon:
 		return gTight
 	case catBlockOpen, catStmtKw:
 		return gBlock
