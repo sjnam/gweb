@@ -3176,6 +3176,7 @@ The weave engine's tests, one section per case. %'
 package main
 
 import (
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -4039,6 +4040,96 @@ func TestWeaveEmptyParensStatementEnd(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() {\n\tvar g func()\n\tx := 1\n\t_ = g\n\t_ = x\n}\n")
 	if !strings.Contains(out, `\GL{1}{$\GID{x}$\Grel $\mathord{:}\mathord{=}$\Grel $\GNU{1}$}`) {
 		t.Errorf("a statement after a bare func() type must not over-indent:\n%s", out)
+	}
+}
+
+@ The next few sections are the operator half of the \.{gweave}-versus-\.{cweave}
+spacing audit, frozen as a regression test. Each operator's woven gap was measured,
+by rendering both systems, to equal the width \.{cweave} sets it at; freezing the
+gap macro here makes any later change to the gap table that drifts from \.{cweave}
+fail in \.{CI}, where a full \TEX/ render is not available. The macros' measured
+widths: \.{\\Gpunct} is \.{cweave}'s thinmuskip (3mu, 1.667pt), \.{\\GS} the
+medmuskip (4mu, 2.22pt), \.{\\Grel} the thickmuskip (5mu, 2.778pt); \./ joins tight,
+an ordinary atom.
+
+@ Arithmetic, bitwise-and, xor, and the logical operators are all \.{cweave}
+|\mathbin|s, so they keep the medium \.{\\GS}; \./ alone is an ordinary atom and
+sets tight.
+@(gweave_test.go@>=
+var spacingLockBinop = []struct{ src, want string }{
+	{"a + b", `\GID{a}$\GS $\mathord{+}$\GS $\GID{b}`},
+	{"a - b", `\GID{a}$\GS $\mathord{-}$\GS $\GID{b}`},
+	{"a * b", `\GID{a}$\GS $\mathord{*}$\GS $\GID{b}`},
+	{"a % b", `\GID{a}$\GS $\mathord{\%}$\GS $\GID{b}`},
+	{"a & b", `\GID{a}$\GS $\mathord{\&}$\GS $\GID{b}`},
+	{"a ^ b", `\GID{a}$\GS $\mathord{\oplus}$\GS $\GID{b}`},
+	{"a && b", `\GID{a}$\GS $\mathord{\land}$\GS $\GID{b}`},
+	{"a || b", `\GID{a}$\GS $\mathord{\lor}$\GS $\GID{b}`},
+	{"a / b", `\GID{a}\mathord{/}\GID{b}`},
+}
+
+@ The relations and assignments take the thick \.{\\Grel}; so do bitwise-or and the
+shifts, which \.{cweave} draws as the relations |\mid|, $\ll$, and $\gg$.
+@(gweave_test.go@>=
+var spacingLockRel = []struct{ src, want string }{
+	{"a == b", `\GID{a}$\Grel $\mathord{\equiv}$\Grel $\GID{b}`},
+	{"a != b", `\GID{a}$\Grel $\mathord{\neq}$\Grel $\GID{b}`},
+	{"a < b", `\GID{a}$\Grel $\mathord{<}$\Grel $\GID{b}`},
+	{"a <= b", `\GID{a}$\Grel $\mathord{\leq}$\Grel $\GID{b}`},
+	{"a | b", `\GID{a}$\Grel $\mathord{\mid}$\Grel $\GID{b}`},
+	{"a << b", `\GID{a}$\Grel $\mathord{\ll}$\Grel $\GID{b}`},
+	{"a >> b", `\GID{a}$\Grel $\mathord{\gg}$\Grel $\GID{b}`},
+}
+
+@ A comma takes the thin \.{\\Gpunct} after it (tight before). Channel send has no
+\CEE/ analogue, so it is left at the medium space, not matched to anything.
+@(gweave_test.go@>=
+var spacingLockMisc = []struct{ src, want string }{
+	{"[]int{a, b}", `\GID{a}\mathord{,}$\Gpunct $\GID{b}`},
+	{"c <- d", `\GID{c}$\GS $\mathord{\leftarrow}$\GS $\GID{d}`},
+}
+
+@ The three tables run through one check: weave \.{var\ \_\ =\ }{\it src\/} and look
+for the frozen fragment.
+@(gweave_test.go@>=
+func TestOperatorSpacingLockedToCweave(t *testing.T) {
+	all := append(append(spacingLockBinop, spacingLockRel...), spacingLockMisc...)
+	for _, c := range all {
+		out := weaveString(t, "@@ x\n@@c\npackage p\nvar _ = "+c.src+"\n")
+		if !strings.Contains(out, c.want) {
+			t.Errorf("%s: spacing drifted from cweave\n\twant: %s\n\tgot:  %s",
+				c.src, c.want, out)
+		}
+	}
+}
+
+@ The gap table freezes the {\it choice\/} of macro; this freezes the macros'
+{\it widths}, so a change to \.{gwebmac.tex} that pulls a gap off \.{cweave}'s
+muskip is caught too. The file sits two levels up from the test's directory.
+@(gweave_test.go@>=
+func TestGapMacroWidthsMatchCweave(t *testing.T) {
+	src, err := os.ReadFile("../../gwebmac.tex")
+	if err != nil {
+		t.Skip("gwebmac.tex not reachable from the test directory")
+	}
+	text := string(src)
+	for _, w := range []struct{ macro, em string }{
+		{`\def\Gpunct{`, ".1667em"}, // cweave thinmuskip, 3mu
+		{`\def\GS{`, ".222em"},      // cweave medmuskip, 4mu
+		{`\def\Grel{`, ".2778em"},   // cweave thickmuskip, 5mu
+	} {
+		i := strings.Index(text, w.macro)
+		if i < 0 {
+			t.Errorf("%s not defined in gwebmac.tex", w.macro)
+			continue
+		}
+		line := text[i:]
+		if j := strings.IndexByte(line, '\n'); j >= 0 {
+			line = line[:j]
+		}
+		if !strings.Contains(line, w.em) {
+			t.Errorf("%s must keep cweave's width %s; got:\n%s", w.macro, w.em, line)
+		}
 	}
 }
 
