@@ -669,6 +669,10 @@ emit := func(s string) {
 			line.WriteString("\\GBS ")
 		case gWord:
 			line.WriteString("\\GW ")
+		case gRel:
+			line.WriteString("\\Grel ")
+		case gPunct:
+			line.WriteString("\\Gpunct ")
 		default:
 			line.WriteString("\\GS ")
 		}
@@ -821,7 +825,7 @@ if atLineStart {
 	switch g := gapBetween(prevCat, curCat); g {
 	case gThin:
 		emit("\\Gthin ")
-	case gWide, gWord, gBlock:
+	case gPunct, gWide, gRel, gWord, gBlock:
 		pendingGap = g
 	}
 }
@@ -888,22 +892,25 @@ one of those scrap categories, named in the comments beside |spaceCat|. The
 difference is that |gofmt| has already normalized the layout before \.{gweave} sees
 it, so where \.{cweave} must {\it parse\/} C to know a scrap's category, \.{gweave}
 merely {\it classifies\/} an already-tidy token---no grammar, no precedence table.
-The one thing this gives up against |gofmt|, which tightens spacing around
-higher-precedence operators, is that \.{gweave} spaces them all alike, as
-\.{cweave} does.
+Like \.{cweave}, \.{gweave} sets a comma, an arithmetic operator, and a relation
+with three different widths---\.{cweave}'s thin, medium, and thick math muskips. The
+one thing it still gives up against |gofmt|, which tightens spacing around
+higher-precedence operators, is that within arithmetic it spaces them all alike:
+\.{a*b} sets like \.{a + b}, not tighter.
 
 @ The categories and the table read, in brief:
 $$\vbox{\halign{\.{#}\hfil\quad&#\hfil\cr
 &{\rm gap before this category}\cr
 \noalign{\smallskip}
-binary op / relation&a medium space on each side (|a + b|)\cr
+arithmetic op&a medium space on each side (|a + b|)\cr
+relation, assignment&a wider thick space on each side (|a == b|, |x = y|)\cr
 two adjacent words&a wider text space (|var foo Type|, |n int|), as \.{cweave}\cr
 a name and its type&the same word space, whatever the type opens with (|c *Node|, |p []byte|)\cr
 unary prefix&clings to its operand (|*p|, |-1|, |!done|)\cr
 call \.( or empty \.{()}&a hair space (|f(x)|), as \.{cweave}\cr
 receiver \.(&a full space (|func (r T)|)\cr
 index \.[, selector \..&tight (|a[i]|, |x.f|)\cr
-comma, semicolon&tight before, a space after\cr
+comma, semicolon&tight before, a thin space after\cr
 \.{if}, \.{for}, \.{switch}, \.{select}&a structural space before the clause, as before the brace\cr
 block brace \.{\char123}\thinspace\.{\char125}&a wider structural space, both sides\cr
 literal brace \.{\char123}\thinspace\.{\char125}&tight (|T{a}|)\cr
@@ -911,17 +918,23 @@ literal brace \.{\char123}\thinspace\.{\char125}&tight (|T{a}|)\cr
 Every other pair falls to the default: a full space between words, and the ``space
 a token leaves after it'' for whatever follows an open bracket or a unary sign.
 
-@ Five widths of gap: |gTight| (no space), |gThin| (a \.{\\Gthin} kept within the
-math chunk---cweave's hair space before a call's parenthesis), |gWide| (a breakable
-\.{\\GS}, cweave's math medmuskip, around an operator), |gWord| (a wider \.{\\GW}
-between two words---cweave's text interword space, as in \.{int foo}), and |gBlock|
-(a wider \.{\\GBS} that sets a statement block's braces off from the block's head
-and body, matching \.{cweave}'s more generous structural space).
+@ Seven widths of gap, in increasing order. |gTight| (no space); |gThin| (a
+\.{\\Gthin} kept within the math chunk---cweave's hair space before a call's
+parenthesis); then \.{cweave}'s three math muskips, each a breakable chunk boundary:
+|gPunct| (a \.{\\Gpunct}, the thinmuskip after a comma or semicolon), |gWide| (a
+\.{\\GS}, the medmuskip around an arithmetic operator), |gRel| (a \.{\\Grel}, the
+thickmuskip around a relation or assignment); |gWord| (a wider \.{\\GW} between two
+words---cweave's text interword space, as in \.{int foo}); and |gBlock| (a wider
+\.{\\GBS} that sets a statement block's braces off from the block's head and body).
+The three operator widths are why \.{a,\ b}, \.{a+b}, and \.{a==b} set with visibly
+different spaces, exactly as \.{cweave} does.
 @<Space code tokens by grammar@>=
 const (
 	gTight = iota
 	gThin
+	gPunct
 	gWide
+	gRel
 	gWord
 	gBlock
 )
@@ -959,7 +972,9 @@ const (
 	catUnary                      // a unary prefix \.\& \.- \.+ \.! \.{<-} \.\^ or a unary \.* (|unop|)
 	catPtrStar                    // a pointer \.* crammed against an array type (|ubinop|)
 	catSpacedPtr                  // a pointer \.* with a blank before it, \.{p *int} (|ubinop|)
-	catBinop                      // a binary operator or relation, including a product \.* (|binop|)
+	catBinop                      // an arithmetic, bitwise, or logical binary operator, or a product \.* (|binop|)
+	catRel                        // an operator cweave sets thick: a relation, an assignment, \.{\char124}, \.{<<}, \.{>>}
+	catOrdOp                      // \./ : the one binary operator cweave sets tight, as an ordinary atom
 	catFunc                       // the keyword |func|
 	catMap                        // the keyword |map|
 	catStmtKw                     // a block-heading statement keyword: |if|, |for|, |switch|, |select|
@@ -986,7 +1001,7 @@ func classify(cur token, pk tokKind, pt string, toks []token, k int,
 		case cur.text == "if" || cur.text == "for" || cur.text == "switch" || cur.text == "select":
 			return catStmtKw // a block head, set off from its clause like the block's brace
 		case cur.text == "struct" || cur.text == "interface":
-			return catTypeKw // a composite-type body, whose brace takes a word space, not \5
+			return catTypeKw // a composite-type body; its brace takes a word space, not a block space
 		}
 		return catKeyword
 	}
@@ -1079,6 +1094,12 @@ if cur.text == "*" && isOperandEnd(pk, pt) {
 		return catSpacedPtr
 	}
 }
+if isRelOp(cur.text) {
+	return catRel // cweave's thick relation space: comparisons, assignments, \.{\char124}, shifts
+}
+if cur.text == "/" {
+	return catOrdOp // cweave sets division tight, an ordinary atom
+}
 return catBinop
 
 @ |gapBetween| is the whole spacing rule in one table: the gap that goes between a
@@ -1091,6 +1112,8 @@ func gapBetween(left, right spaceCat) int {
 	switch left {
 	case catUnary, catPtrStar, catSpacedPtr:
 		return gTight // the operand clings to a unary or pointer operator
+	case catOrdOp:
+		return gTight // \./ is an ordinary atom: its operand clings on the right too
 	}
 	@<Read the gap off the right-hand category@>
 }
@@ -1104,7 +1127,7 @@ defers to |gapAfterCat|; an ordinary word defers to |afterNonOp|.
 @<Read the gap off the right-hand category@>=
 switch right {
 case catComma, catDot, catColon, catSliceColon, catClose, catCloseBracket, catIndex,
-	catLitOpen, catMapBracket, catPtrStar:
+	catLitOpen, catMapBracket, catPtrStar, catOrdOp:
 	return gTight
 case catBlockOpen:
 	if left == catTypeKw {
@@ -1117,6 +1140,8 @@ case catEmptyParen, catCallParen:
 	return gThin // a call's parenthesis gets \.{cweave}'s hair space
 case catRecvParen, catBinop:
 	return gWide
+case catRel:
+	return gRel // a relation or assignment gets cweave's wider thick space
 case catArrayType, catSpacedPtr:
 	if left == catExpr {
 		return gWord // a declared name and its array or pointer type: x [3]int, c *Node
@@ -1160,6 +1185,10 @@ func gapAfterCat(left spaceCat) int {
 		return gTight
 	case catStmtKw:
 		return gBlock
+	case catComma:
+		return gPunct // a comma or semicolon leaves cweave's narrow thin space
+	case catRel:
+		return gRel // a relation or assignment leaves cweave's wide thick space
 	}
 	return gWide
 }
@@ -1169,10 +1198,10 @@ an open bracket or paren, a lone \.{[]}, a close bracket, a composite literal's
 brace, or a slice colon; a full block space after a statement block's brace or a
 block-heading keyword (so \.{if x \char123} reads evenly on both sides of the
 clause); the wider word space between two words, \.{cweave}'s text interword space
-(\.{var foo Type}, \.{func bar}, \.{n int}); and the plain medmuskip after an
-operator, comma, or colon. A close bracket clings to a following element type so
-that an array or map type sets like its slice: \.{[256]int} and \.{map[K]V} match
-\.{[]int}.
+(\.{var foo Type}, \.{func bar}, \.{n int}); the thin space after a comma, the thick
+space after a relation, and the plain medmuskip after any other operator or a colon.
+A close bracket clings to a following element type so that an array or map type sets
+like its slice: \.{[256]int} and \.{map[K]V} match \.{[]int}.
 @<Space code tokens by grammar@>=
 func afterNonOp(left spaceCat) int {
 	switch left {
@@ -1183,6 +1212,10 @@ func afterNonOp(left spaceCat) int {
 		return gBlock
 	case catExpr, catKeyword, catFunc, catMap, catTypeKw:
 		return gWord // two adjacent words, as \.{int foo} in \.{cweave}
+	case catComma:
+		return gPunct // a comma or semicolon leaves cweave's narrow thin space
+	case catRel:
+		return gRel // a relation or assignment leaves cweave's wide thick space
 	}
 	return gWide
 }
@@ -1209,6 +1242,24 @@ func isOperandEnd(k tokKind, text string) bool {
 func isSignOp(s string) bool {
 	switch s {
 	case "*", "&", "-", "+", "!", "<-", "^":
+		return true
+	}
+	return false
+}
+
+@ These are the operators \.{cweave} sets with the wide thickmuskip: it makes each a
+\TEX/ |\mathrel|, where \.+ or \.* is a |\mathbin| with the narrower medmuskip. Most
+are what one expects---the comparisons and the assignments---but \.{cweave} also
+draws bitwise-or as \.{\char124} (|\mid|) and the shifts as $\ll$ and $\gg$, all
+three relations, so they take the thick space too. |gweave| mirrors the whole set,
+so \.{a == b}, \.{a\char124b}, and \.{a<<b} breathe wider than \.{a + b}, exactly as
+in \.{cweave}.
+@<Space code tokens by grammar@>=
+func isRelOp(s string) bool {
+	switch s {
+	case "==", "!=", "<", ">", "<=", ">=", "=", ":=",
+		"+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=", "&^=",
+		"|", "<<", ">>":
 		return true
 	}
 	return false
@@ -2602,9 +2653,14 @@ case "||":
 case "<-":
 	return "\\mathord{\\leftarrow}"
 
-@ Exclusive-or and bit-clear both build on \.{CWEB}'s circled plus for \.{\^}; the
-shifts are tight double angles. Each assignment form simply appends an \.{=}.
+@ Bitwise-or is \.{CWEB}'s \.{\\mid}, a relation bar; exclusive-or and bit-clear
+both build on \.{CWEB}'s circled plus for \.{\^}; the shifts are tight double
+angles. Each assignment form simply appends an \.{=}.
 @<Typeset a bitwise or shift operator@>=
+case "|":
+	return "\\mathord{\\mid}" // bitwise or, as \.{CWEB} (a mid relation bar)
+case "|=":
+	return "\\mathord{\\mid}\\mathord{=}" // or-assign
 case "^":
 	return "\\mathord{\\oplus}" // bitwise xor, as \.{CWEB} (a circled plus)
 case "^=":
@@ -3981,7 +4037,7 @@ continuation and over-indented.
 @(gweave_test.go@>=
 func TestWeaveEmptyParensStatementEnd(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() {\n\tvar g func()\n\tx := 1\n\t_ = g\n\t_ = x\n}\n")
-	if !strings.Contains(out, `\GL{1}{$\GID{x}$\GS $\mathord{:}\mathord{=}$\GS $\GNU{1}$}`) {
+	if !strings.Contains(out, `\GL{1}{$\GID{x}$\Grel $\mathord{:}\mathord{=}$\Grel $\GNU{1}$}`) {
 		t.Errorf("a statement after a bare func() type must not over-indent:\n%s", out)
 	}
 }
