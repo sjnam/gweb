@@ -2695,9 +2695,9 @@ case "^":
 case "^=":
 	return "\\mathord{\\oplus}\\mathord{=}" // xor-assign: \.{\^} is a circled plus too
 case "&^":
-	return "\\mathord{\\&}\\mathord{\\oplus}" // bit clear (and-not): \.{\^} as circled plus
+	return "\\mathord{\\oslash}" // bit clear (and-not): a circled slash, its own symbol
 case "&^=":
-	return "\\mathord{\\&}\\mathord{\\oplus}\\mathord{=}" // and-not-assign
+	return "\\mathord{\\oslash}\\mathord{=}" // and-not-assign
 case "<<":
 	return "\\mathord{\\ll}" // left shift, as \.{CWEB} (a tight double angle)
 case ">>":
@@ -3644,23 +3644,25 @@ func TestWeaveShiftOperators(t *testing.T) {
 	}
 }
 
-@ Every operator containing \.{\^} shows it as a circled plus (\.{\\oplus}), as
-\.{CWEB} does: \.{\^}, \.{\^=}, \.{\&\^} (bit clear), and \.{\&\^=}. A bare
-caret must never appear. 
+@ Bitwise xor (\.{\^}, \.{\^=}) shows as a circled plus (\.{\\oplus}), as \.{CWEB}
+sets a caret. Bit clear (\.{\&\^}, \.{\&\^=}), which has no \CEE/ analogue, gets its
+own symbol, a circled slash (\.{\\oslash}), rather than an \.{\&} run together with a
+circled plus.
 @(gweave_test.go@>=
-func TestWeaveXorOperators(t *testing.T) {
+func TestWeaveCaretOperators(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\na = b ^ c\na ^= b\na &^= b\nd := e &^ f\n")
 	for _, want := range []string{
-		`\mathord{\oplus}\mathord{=}`,             // \.{\^=}
-		`\mathord{\&}\mathord{\oplus}\mathord{=}`, // \.{\&\^=}
-		`\mathord{\&}\mathord{\oplus}`,            // \.{\&\^}
+		`\mathord{\oplus}`,             // \.{\^} xor: a circled plus
+		`\mathord{\oplus}\mathord{=}`,  // \.{\^=}
+		`\mathord{\oslash}`,            // \.{\&\^} bit clear: a circled slash
+		`\mathord{\oslash}\mathord{=}`, // \.{\&\^=}
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("want %q in:\n%s", want, out)
 		}
 	}
-	if strings.Contains(out, `\char94`) {
-		t.Errorf("a caret (\\char94) should never appear; ^ must be \\oplus:\n%s", out)
+	if strings.Contains(out, `\mathord{\&}\mathord{\oplus}`) {
+		t.Errorf("bit clear must be \\oslash, not an ampersand-circledplus:\n%s", out)
 	}
 }
 
