@@ -963,6 +963,7 @@ const (
 	catFunc                       // the keyword |func|
 	catMap                        // the keyword |map|
 	catStmtKw                     // a block-heading statement keyword: |if|, |for|, |switch|, |select|
+	catTypeKw                     // |struct| or |interface|: a composite-type body opener (|struct_like|)
 	catKeyword                    // any other reserved word (|int_like|, |else_like|, \dots)
 )
 
@@ -984,6 +985,8 @@ func classify(cur token, pk tokKind, pt string, toks []token, k int,
 			return catMap
 		case cur.text == "if" || cur.text == "for" || cur.text == "switch" || cur.text == "select":
 			return catStmtKw // a block head, set off from its clause like the block's brace
+		case cur.text == "struct" || cur.text == "interface":
+			return catTypeKw // a composite-type body, whose brace takes a word space, not \5
 		}
 		return catKeyword
 	}
@@ -1093,16 +1096,23 @@ func gapBetween(left, right spaceCat) int {
 }
 
 @ Most categories fix the gap outright. A lone \.{[]} clings to a preceding
-bracket, brace, or selector dot but takes a space after a name; an open bracket or
-a unary sign, whose leading gap follows whatever came before, defers to
-|gapAfterCat|; an ordinary word defers to |afterNonOp|.
+bracket, brace, or selector dot but takes a space after a name; a block brace
+breathes, except a composite type's body brace, which \.{cweave} sets off its
+|struct| or |interface| with a plain word space, not the structural \.{\\5}; an
+open bracket or a unary sign, whose leading gap follows whatever came before,
+defers to |gapAfterCat|; an ordinary word defers to |afterNonOp|.
 @<Read the gap off the right-hand category@>=
 switch right {
 case catComma, catDot, catColon, catSliceColon, catClose, catCloseBracket, catIndex,
 	catLitOpen, catMapBracket, catPtrStar:
 	return gTight
-case catBlockOpen, catBlockClose:
-	return gBlock // a statement block's braces breathe, as in \.{cweave}
+case catBlockOpen:
+	if left == catTypeKw {
+		return gWord // \.{struct \char123}, \.{interface \char123}: a word space, as in \.{cweave}
+	}
+	return gBlock // a statement block's opening brace breathes, as in \.{cweave}
+case catBlockClose:
+	return gBlock // a statement block's closing brace breathes, as in \.{cweave}
 case catEmptyParen, catCallParen:
 	return gThin // a call's parenthesis gets \.{cweave}'s hair space
 case catRecvParen, catBinop:
@@ -1171,7 +1181,7 @@ func afterNonOp(left spaceCat) int {
 		return gTight
 	case catBlockOpen, catStmtKw:
 		return gBlock
-	case catExpr, catKeyword, catFunc, catMap:
+	case catExpr, catKeyword, catFunc, catMap, catTypeKw:
 		return gWord // two adjacent words, as \.{int foo} in \.{cweave}
 	}
 	return gWide
