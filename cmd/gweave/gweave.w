@@ -1041,6 +1041,10 @@ case "{":
 		return catBlockOpen
 	}
 	return catLitOpen
+case "...":
+	if isOperandEnd(pk, pt) && spreadEllipsis(toks, k) {
+		return catClose // a spread, \.{f(args...)}: clings to its operand like a postfix
+	}
 case "(":
 	@<Classify an open parenthesis@>
 case "[":
@@ -1143,8 +1147,8 @@ case catRecvParen, catBinop:
 case catRel:
 	return gRel // a relation or assignment gets cweave's wider thick space
 case catArrayType, catSpacedPtr:
-	if left == catExpr {
-		return gWord // a declared name and its array or pointer type: x [3]int, c *Node
+	if left == catExpr || left == catClose || left == catEmptyParen {
+		return gWord // a name or a func result and its array/pointer type: x [3]int, func() [3]int
 	}
 	return gWide
 case catLoneBrackets:
@@ -1155,17 +1159,17 @@ case catUnary, catOpen:
 return afterNonOp(left) // a word: identifier, number, string, or keyword
 
 @ |gapBeforeLone| gives the gap before a \.{[]}: tight after any bracket, brace, or
-selector dot (\.{[][]int}, \.{a[i][]}); the word space after a declared name and its
-slice type (\.{p []byte}), to match the other name-and-type gaps; a plain space
-after anything else.
+selector dot (\.{[][]int}, \.{a[i][]}); the word space after a declared name, or a
+function's parameter list, and its slice type (\.{p []byte}, \.{func() []V}), to
+match the other name-and-type gaps; a plain space after anything else.
 @<Space code tokens by grammar@>=
 func gapBeforeLone(left spaceCat) int {
 	switch left {
 	case catCloseBracket, catBlockClose, catLoneBrackets, catCallParen, catRecvParen,
 		catIndex, catArrayType, catMapBracket, catOpen, catDot:
 		return gTight
-	case catExpr:
-		return gWord // a declared name and its slice type: p []byte
+	case catExpr, catClose, catEmptyParen:
+		return gWord // a name or a func result and its slice type: p []byte, func() []V
 	}
 	return gWide
 }
@@ -1210,8 +1214,8 @@ func afterNonOp(left spaceCat) int {
 		return gTight
 	case catBlockOpen, catStmtKw:
 		return gBlock
-	case catExpr, catKeyword, catFunc, catMap, catTypeKw:
-		return gWord // two adjacent words, as \.{int foo} in \.{cweave}
+	case catExpr, catKeyword, catFunc, catMap, catTypeKw, catClose, catEmptyParen:
+		return gWord // two adjacent words, or a func result and its type: \.{n int}, \.{func() T}
 	case catComma:
 		return gPunct // a comma or semicolon leaves cweave's narrow thin space
 	case catRel:
@@ -1243,6 +1247,26 @@ func isSignOp(s string) bool {
 	switch s {
 	case "*", "&", "-", "+", "!", "<-", "^":
 		return true
+	}
+	return false
+}
+
+@ A \.{...} is a {\it spread\/} when it ends an operand inside a call---the next
+significant token is a closer or a comma, as in \.{f(args...)} or \.{f(a, b...)}. It
+then clings to its operand like the postfix \.{++}, rather than taking the space a
+binary operator would. A variadic {\it parameter\/} \.{...int}, whose \.{...} is
+followed by a type, is not a spread and keeps its ordinary spacing.
+@<Space code tokens by grammar@>=
+func spreadEllipsis(toks []token, k int) bool {
+	for i := k + 1; i < len(toks); i++ {
+		if toks[i].kind == tkSpace {
+			continue
+		}
+		switch toks[i].text {
+		case ")", ",", "]", "}":
+			return true
+		}
+		return false
 	}
 	return false
 }
@@ -3540,7 +3564,7 @@ func TestWeaveTypeSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f(x int) []int { return nil }\n"+
 		"func g() [3][]int { return z }\nvar b [256]int\nvar p *int\nvar s = a[i]\n")
 	checks := map[string]string{
-		`\mathord{)}$\GS $\mathord{[}\,\mathord{]}\GKW{int}`: "a slice result type is set off from the parameter list",
+		`\mathord{)}$\GW $\mathord{[}\,\mathord{]}\GKW{int}`: "a slice result type takes the word space, as p []byte does",
 		`\mathord{]}\mathord{[}\,\mathord{]}\GKW{int}`:       "a stacked slice type clings: [3][]int",
 		`\GID{b}$\GW $\mathord{[}\GNU{256}`:                  "a named array type gets the name-and-type word space: b [256]int",
 		`\GID{p}$\GW $\mathord{*}\GKW{int}`:                  "a named pointer type gets the word space, clinging after the star: p *int",
@@ -3549,6 +3573,28 @@ func TestWeaveTypeSpacing(t *testing.T) {
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
 			t.Errorf("%s\nwant %q in:\n%s", msg, sub, out)
+		}
+	}
+}
+
+@ These are the Go-only spacing decisions with no \CEE/ analogue, frozen so they do
+not regress. A spread \.{...} in a call clings to its operand, while a variadic
+parameter's \.{...int} keeps the ordinary medium space---the two are told apart by
+what follows the \.{...}. Channel send is left at the medium space, matched to
+nothing.
+@(gweave_test.go@>=
+func TestGoOnlySpacingDecisions(t *testing.T) {
+	for _, c := range []struct{ name, src, want string }{
+		{"spread clings", "@@ x\n@@c\npackage p\nvar _ = f(a...)\n",
+			`\GID{a}\mathord{\ldots}\mathord{)}`},
+		{"variadic keeps the medium space", "@@ x\n@@c\nfunc v(a ...int) {}\n",
+			`\GID{a}$\GS $\mathord{\ldots}$\GS $\GKW{int}`},
+		{"channel send stays medium", "@@ x\n@@c\npackage p\nvar _ = c <- d\n",
+			`\GID{c}$\GS $\mathord{\leftarrow}$\GS $\GID{d}`},
+	} {
+		out := weaveString(t, c.src)
+		if !strings.Contains(out, c.want) {
+			t.Errorf("%s: %s\n\twant: %s\n\tgot:  %s", c.name, c.src, c.want, out)
 		}
 	}
 }
