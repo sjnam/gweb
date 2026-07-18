@@ -808,11 +808,11 @@ consult.
 @<Emit the token@>
 @<Advance the look-behind@>
 
-@ The gap is a wide \.{\\GS} (a chunk boundary, where the woven line may wrap), a
-\.{\\Gthin} kept within the chunk, or nothing at all. The first token of a line is
-the exception twice over: it takes its indentation from the |indenter| and gets no
-leading space; and a hand-placed layout code may already have fixed the gap, in
-which case we leave it alone.
+@ The gap is one of the breakable code spaces (a chunk boundary, where the woven
+line may wrap) or nothing at all. The first token of a line is the exception twice
+over: it takes its indentation from the |indenter| and gets no leading space; and a
+hand-placed layout code may already have fixed the gap, in which case we leave it
+alone.
 @<Space the significant token@>=
 blockBrace := t.kind == tkOp && t.text == "{" && in.opensBlock()
 curCat := classify(t, prevSigKind, prevSigText, toks, k,
@@ -823,8 +823,6 @@ if atLineStart {
 	manualGap = false // a hand-placed layout code already set the spacing here
 } else {
 	switch g := gapBetween(prevCat, curCat); g {
-	case gThin:
-		emit("\\Gthin ")
 	case gPunct, gWide, gRel, gWord, gBlock:
 		pendingGap = g
 	}
@@ -907,7 +905,7 @@ relation, assignment&a wider thick space on each side (|a == b|, |x = y|)\cr
 two adjacent words&a wider text space (|var foo Type|, |n int|), as \.{cweave}\cr
 a name and its type&the same word space, whatever the type opens with (|c *Node|, |p []byte|)\cr
 unary prefix&clings to its operand (|*p|, |-1|, |!done|)\cr
-call \.( or empty \.{()}&a hair space (|f(x)|), as \.{cweave}\cr
+call \.( or empty \.{()}&tight (|f(x)|), as \.{cweave} sets a call\cr
 receiver \.(&a full space (|func (r T)|)\cr
 index \.[, selector \..&tight (|a[i]|, |x.f|)\cr
 comma&tight before, a thin space after (|a, b|)\cr
@@ -919,10 +917,10 @@ literal brace \.{\char123}\thinspace\.{\char125}&tight (|T{a}|)\cr
 Every other pair falls to the default: a full space between words, and the ``space
 a token leaves after it'' for whatever follows an open bracket or a unary sign.
 
-@ Seven widths of gap, in increasing order. |gTight| (no space); |gThin| (a
-\.{\\Gthin} kept within the math chunk---cweave's hair space before a call's
-parenthesis); then \.{cweave}'s three math muskips, each a breakable chunk boundary:
-|gPunct| (a \.{\\Gpunct}, the thinmuskip after a comma), |gWide| (a
+@ Six widths of gap, in increasing order. |gTight| (no space, as before a call's
+parenthesis, \.{cweave}'s tight |f(x)|); then \.{cweave}'s three math muskips, each
+a breakable chunk boundary: |gPunct| (a \.{\\Gpunct}, the thinmuskip after a comma),
+|gWide| (a
 \.{\\GS}, the medmuskip around an arithmetic operator), |gRel| (a \.{\\Grel}, the
 thickmuskip around a relation or assignment); |gWord| (a wider \.{\\GW} between two
 words---cweave's text interword space, as in \.{int foo}); and |gBlock| (a wider
@@ -935,7 +933,6 @@ different spaces, exactly as \.{cweave} does.
 @<Space code tokens by grammar@>=
 const (
 	gTight = iota
-	gThin
 	gPunct
 	gWide
 	gRel
@@ -1141,8 +1138,8 @@ defers to |gapAfterCat|; an ordinary word defers to |afterNonOp|.
 @<Read the gap off the right-hand category@>=
 switch right {
 case catComma, catSemi, catDot, catColon, catSliceColon, catClose, catCloseBracket, catIndex,
-	catLitOpen, catMapBracket, catPtrStar, catOrdOp:
-	return gTight
+	catLitOpen, catMapBracket, catPtrStar, catOrdOp, catCallParen, catEmptyParen:
+	return gTight // a call's \.( clings to its name (|f(x)|), tight as \.{cweave} sets it
 case catBlockOpen:
 	if left == catTypeKw {
 		return gWord // \.{struct \char123}, \.{interface \char123}: a word space, as in \.{cweave}
@@ -1150,8 +1147,6 @@ case catBlockOpen:
 	return gBlock // a statement block's opening brace breathes, as in \.{cweave}
 case catBlockClose:
 	return gBlock // a statement block's closing brace breathes, as in \.{cweave}
-case catEmptyParen, catCallParen:
-	return gThin // a call's parenthesis gets \.{cweave}'s hair space
 case catRecvParen, catBinop:
 	return gWide
 case catRel:
@@ -3505,17 +3500,18 @@ func use() {
 	}
 }
 
-@ As in cweave, a call's ``\.{(}'' directly after a function name gets a thin
-space, so it does not jam against it; a func literal's or type's \.{(} gets that
-same thin space (\.{func (n int)}), while a method receiver's takes a full space
-(\.{func (r T) m()}).
+@ As in \.{cweave}, a call's ``\.{(}'' directly after a function name clings tight,
+the way \.{cweave} sets |f(x)|; a func literal's or type's \.{(} clings the same way
+(\.{func(n int)}), while a method receiver's takes a full space (\.{func (r T)
+m()})---a reserved word's space before its parenthesis, as \.{cweave} gives \.{if}
+or \.{sizeof}.
 @(gweave_test.go@>=
-func TestWeaveThinSpaceBeforeParen(t *testing.T) {
+func TestWeaveCallParenTight(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar _ = f(a)\nvar cdq func(l, r int)\nfunc (r *T) m() {}\n")
 	checks := map[string]string{
-		`\GID{f}\Gthin \mathord{(}`:    "a call f( gets a thin space",
-		`\GKW{func}\Gthin \mathord{(}`: "a func literal/type func( gets the same thin space",
-		`\GKW{func}$\GS $\mathord{(}`:  "a method receiver func ( gets a full space",
+		`\GID{f}\mathord{(}`:          "a call f( clings tight, as cweave sets a call",
+		`\GKW{func}\mathord{(}`:       "a func literal/type func( clings the same way",
+		`\GKW{func}$\GS $\mathord{(}`: "a method receiver func ( gets a full space",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3922,7 +3918,7 @@ statement's \.{\\GL\{1\}}).
 @(gweave_test.go@>=
 func TestWeaveForceBreakIndent(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() {\n\tg(1,@@/2)\n}\n")
-	if !strings.Contains(out, `\GL{1}{$\GID{g}\Gthin \mathord{(}\GNU{1}\mathord{,}$}`) {
+	if !strings.Contains(out, `\GL{1}{$\GID{g}\mathord{(}\GNU{1}\mathord{,}$}`) {
 		t.Errorf("statement line should be at indent 1:\n%s", out)
 	}
 	if !strings.Contains(out, `\GL{2}{$\GNU{2}\mathord{)}$}`) {
