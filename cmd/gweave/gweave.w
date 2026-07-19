@@ -2685,7 +2685,7 @@ case "&&":
 case "||":
 	return "\\mathord{\\lor}" // logical or, as \.{CWEB} (a vee)
 case "<-":
-	return "\\mathord{\\leftarrow}"
+	return "\\mathord{\\gets}"
 case ":=":
 	return "\\mathord{\\GK}" // short declaration: one macro, so a document can \.{\\let} it
 
@@ -3464,7 +3464,7 @@ func f(ch chan int) {
 	checks := map[string]string{
 		`\neq`:                     "!= should render as \\neq",
 		`\geq`:                     ">= should render as \\geq",
-		`\mathord{\leftarrow}`:     "<- should render as a left arrow",
+		`\mathord{\gets}`:          "<- should render as a left arrow",
 		`\mathord{\GPP}`:           "++ should render as cweave's tight \\GPP symbol",
 		`\mathord{\GMM}`:           "-- should render as cweave's tight \\GMM symbol",
 		`$\GKW{if}$\GBS `:          "if is set off from its clause with the wider \\GBS",
@@ -3606,7 +3606,7 @@ func TestGoOnlySpacingDecisions(t *testing.T) {
 		{"variadic keeps the medium space", "@@ x\n@@c\nfunc v(a ...int) {}\n",
 			`\GID{a}$\GS $\mathord{\ldots}$\GS $\GKW{int}`},
 		{"channel send stays medium", "@@ x\n@@c\npackage p\nvar _ = c <- d\n",
-			`\GID{c}$\GS $\mathord{\leftarrow}$\GS $\GID{d}`},
+			`\GID{c}$\GS $\mathord{\gets}$\GS $\GID{d}`},
 	} {
 		out := weaveString(t, c.src)
 		if !strings.Contains(out, c.want) {
@@ -4152,7 +4152,7 @@ var spacingLockRel = []struct{ src, want string }{
 @(gweave_test.go@>=
 var spacingLockMisc = []struct{ src, want string }{
 	{"[]int{a, b}", `\GID{a}\mathord{,}$\Gpunct $\GID{b}`},
-	{"c <- d", `\GID{c}$\GS $\mathord{\leftarrow}$\GS $\GID{d}`},
+	{"c <- d", `\GID{c}$\GS $\mathord{\gets}$\GS $\GID{d}`},
 }
 
 @ The three tables run through one check: weave \.{var\ \_\ =\ }{\it src\/} and look
