@@ -2663,7 +2663,12 @@ func renderOp(s string) string {
 
 @ The relations get their real math symbols, and the logical connectives borrow
 \.{CWEB}'s---a wedge, a vee, a negation sign---so the code reads like the
-mathematics it mirrors.
+mathematics it mirrors. The short declaration \.{:=} is the one operator here that
+prints as itself, but it goes out as a single macro, \.{\\GK}, rather than as two
+atoms: \.{WEB} set Pascal's \.{:=} as a left arrow through \.{\\K}, and \.{\\GK} is
+the same hook for \GO/. Its default in \.{gwebmac.tex} is the two characters run
+together, so nothing changes unless a document asks for something else in its
+limbo---say |\let\GK=\Leftarrow|.
 @<Typeset a relation or a logical connective@>=
 case "<=":
 	return "\\mathord{\\leq}"
@@ -2681,10 +2686,15 @@ case "||":
 	return "\\mathord{\\lor}" // logical or, as \.{CWEB} (a vee)
 case "<-":
 	return "\\mathord{\\leftarrow}"
+case ":=":
+	return "\\mathord{\\GK}" // short declaration: one macro, so a document can \.{\\let} it
 
-@ Bitwise-or is \.{CWEB}'s \.{\\mid}, a relation bar; exclusive-or and bit-clear
-both build on \.{CWEB}'s circled plus for \.{\^}; the shifts are tight double
-angles. Each assignment form simply appends an \.{=}.
+@ Bitwise-or is \.{CWEB}'s \.{\\mid}, a relation bar; exclusive-or borrows
+\.{CWEB}'s circled plus for \.{\^}; the shifts are tight double angles. Each
+assignment form simply appends an \.{=}. Bit-clear, \.{\&\^}, is \GO/'s alone---C
+has no such operator, so its glyph is a choice and not a tradition---and it goes
+out through a macro of its own, \.{\\GAN}, a circled slash by default, on the same
+reasoning as \.{\\GK} above.
 @<Typeset a bitwise or shift operator@>=
 case "|":
 	return "\\mathord{\\mid}" // bitwise or, as \.{CWEB} (a mid relation bar)
@@ -2695,9 +2705,9 @@ case "^":
 case "^=":
 	return "\\mathord{\\oplus}\\mathord{=}" // xor-assign: \.{\^} is a circled plus too
 case "&^":
-	return "\\mathord{\\oslash}" // bit clear (and-not): a circled slash, its own symbol
+	return "\\mathord{\\GAN}" // bit clear (and-not): its own symbol, and its own macro
 case "&^=":
-	return "\\mathord{\\oslash}\\mathord{=}" // and-not-assign
+	return "\\mathord{\\GAN}\\mathord{=}" // and-not-assign
 case "<<":
 	return "\\mathord{\\ll}" // left shift, as \.{CWEB} (a tight double angle)
 case ">>":
@@ -3646,23 +3656,23 @@ func TestWeaveShiftOperators(t *testing.T) {
 
 @ Bitwise xor (\.{\^}, \.{\^=}) shows as a circled plus (\.{\\oplus}), as \.{CWEB}
 sets a caret. Bit clear (\.{\&\^}, \.{\&\^=}), which has no \CEE/ analogue, gets its
-own symbol, a circled slash (\.{\\oslash}), rather than an \.{\&} run together with a
-circled plus.
+own symbol through \.{\\GAN}, rather than an \.{\&} run together with a circled
+plus.
 @(gweave_test.go@>=
 func TestWeaveCaretOperators(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\na = b ^ c\na ^= b\na &^= b\nd := e &^ f\n")
 	for _, want := range []string{
-		`\mathord{\oplus}`,             // \.{\^} xor: a circled plus
-		`\mathord{\oplus}\mathord{=}`,  // \.{\^=}
-		`\mathord{\oslash}`,            // \.{\&\^} bit clear: a circled slash
-		`\mathord{\oslash}\mathord{=}`, // \.{\&\^=}
+		`\mathord{\oplus}`,            // \.{\^} xor: a circled plus
+		`\mathord{\oplus}\mathord{=}`, // \.{\^=}
+		`\mathord{\GAN}`,              // \.{\&\^} bit clear: its own macro
+		`\mathord{\GAN}\mathord{=}`,   // \.{\&\^=}
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("want %q in:\n%s", want, out)
 		}
 	}
 	if strings.Contains(out, `\mathord{\&}\mathord{\oplus}`) {
-		t.Errorf("bit clear must be \\oslash, not an ampersand-circledplus:\n%s", out)
+		t.Errorf("bit clear must be \\GAN, not an ampersand-circledplus:\n%s", out)
 	}
 }
 
@@ -4094,7 +4104,7 @@ continuation and over-indented.
 @(gweave_test.go@>=
 func TestWeaveEmptyParensStatementEnd(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() {\n\tvar g func()\n\tx := 1\n\t_ = g\n\t_ = x\n}\n")
-	if !strings.Contains(out, `\GL{1}{$\GID{x}$\Grel $\mathord{:}\mathord{=}$\Grel $\GNU{1}$}`) {
+	if !strings.Contains(out, `\GL{1}{$\GID{x}$\Grel $\mathord{\GK}$\Grel $\GNU{1}$}`) {
 		t.Errorf("a statement after a bare func() type must not over-indent:\n%s", out)
 	}
 }

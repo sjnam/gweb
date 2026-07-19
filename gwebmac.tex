@@ -70,6 +70,17 @@
 \setbox\GMMbox=\hbox{\kern.5pt\raise1pt\hbox{\sevensy\char0\kern-1pt\char0}\kern.5pt}
 \def\GMM{\copy\GMMbox}
 
+% Go's short variable declaration ":=", as one symbol you may redefine. WEB set
+% Pascal's ":=" as a left arrow through \K; \GK is the same hook for Go, so a
+% document that prefers an arrow need only say, in its limbo,
+%     \let\GK=\Leftarrow
+\def\GK{{:}{=}}
+
+% Go's bit-clear operator "&^", likewise redefinable. It has no C counterpart, so
+% its glyph is a choice rather than a tradition: a circled slash, read as "and
+% not". Say, for instance, \let\GAN=\setminus in your limbo to prefer another.
+\def\GAN{\oslash}
+
 % ---- running headers --------------------------------------------------------
 % The document title is the upper-cased job name; the current group title is set
 % by each starred section. Each section deposits a \mark of the form
