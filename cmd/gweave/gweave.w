@@ -912,7 +912,7 @@ comma&tight before, a thin space after (|a, b|)\cr
 header semicolon&tight before, a full clause space after, as \.{cweave} breaks a \.{for} header\cr
 \.{if}, \.{for}, \.{switch}, \.{select}&a structural space before the clause, as before the brace\cr
 block brace \.{\char123}\thinspace\.{\char125}&a wider structural space, both sides\cr
-literal brace \.{\char123}\thinspace\.{\char125}&tight (|T{a}|)\cr
+literal brace \.{\char123}\thinspace\.{\char125}&tight against its type (|T{a}|); as an element, spaced like one\cr
 }}$$
 Every other pair falls to the default: a full space between words, and the ``space
 a token leaves after it'' for whatever follows an open bracket or a unary sign.
@@ -1138,8 +1138,10 @@ defers to |gapAfterCat|; an ordinary word defers to |afterNonOp|.
 @<Read the gap off the right-hand category@>=
 switch right {
 case catComma, catSemi, catDot, catColon, catSliceColon, catClose, catCloseBracket, catIndex,
-	catLitOpen, catMapBracket, catPtrStar, catOrdOp, catCallParen, catEmptyParen:
+	catMapBracket, catPtrStar, catOrdOp, catCallParen, catEmptyParen:
 	return gTight // a call's \.( clings to its name (|f(x)|), tight as \.{cweave} sets it
+case catLitOpen:
+	return gapBeforeLit(left)
 case catBlockOpen:
 	if left == catTypeKw {
 		return gWord // \.{struct \char123}, \.{interface \char123}: a word space, as in \.{cweave}
@@ -1177,6 +1179,25 @@ func gapBeforeLone(left spaceCat) int {
 		return gWord // a name or a func result and its slice type: p []byte, func() []V
 	}
 	return gWide
+}
+
+@ |gapBeforeLit| gives the gap before a composite literal's \.\{. Usually none: the
+brace belongs to the type it follows, and \.{P\char123 4, 5\char125} or
+\.{[\,]int\char123 \char125} must read as one thing. But a literal's braces can also
+open an {\it element\/} of an enclosing literal, where the type is elided --- and
+there the brace is just another element, so it takes whatever gap its neighbor
+leaves, exactly as a name in the same slot would: \.{\char123 1, 2\char125, \char123
+3, 4\char125} spaces like \.{a, b}, and a keyed \.{23: \char123 2, 3\char125} like
+\.{45: bar}.
+@<Space code tokens by grammar@>=
+func gapBeforeLit(left spaceCat) int {
+	switch left {
+	case catComma:
+		return gPunct // an element after a comma, as any other element
+	case catColon:
+		return gWide // a keyed element's value, as any other value
+	}
+	return gTight // the brace clings to its type
 }
 
 @ |gapAfterCat| is the space a token leaves after it---\.{cweave}'s notion, used
@@ -3562,6 +3583,26 @@ func TestWeaveBlockBraceSpacing(t *testing.T) {
 		`\mathord{)}$\GBS $\mathord{\}}`:  "a block's closing brace breathes after its body",
 		`\GKW{int}\mathord{\{}\GNU{1}`:    "a composite literal's opening brace clings to its first element",
 		`\GNU{2}\mathord{\}}`:             "a composite literal's closing brace clings to its last element",
+	}
+	for sub, msg := range checks {
+		if !strings.Contains(out, sub) {
+			t.Errorf("%s\nwant %q in:\n%s", msg, sub, out)
+		}
+	}
+}
+
+@ Inside an enclosing literal the element type may be elided, and then a brace
+opens a value rather than following a type. Such a brace is spaced as the element
+it is: after a comma it takes the comma's thin space, and after a key's colon the
+same gap a plain value would get, so \.{23: \char123 2, 3\char125} lines up with
+\.{45: bar} beneath it.
+@(gweave_test.go@>=
+func TestWeaveElidedLiteralBraceSpacing(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nvar t = map[int]P{23: {2, 3}, 45: bar}\nvar u = [][]int{{1}, {2}}\n")
+	checks := map[string]string{
+		`\mathord{:}$\GS $\mathord{\{}`:    "a keyed element's brace is spaced like any other value",
+		`\mathord{,}$\Gpunct $\mathord{\{}`: "an element's brace takes the comma's thin space",
+		`\GKW{int}\mathord{\{}\mathord{\{}`: "but a brace still clings to its type, and to an enclosing brace",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
