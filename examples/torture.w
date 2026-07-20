@@ -37,6 +37,14 @@ type Fenwick struct{
 tree[]int
 }
 
+type Action struct {
+	Actor    int        `json:"player"` // who plays this move
+	FieldNo  int        `json:"field"`  // the field to sow or to reap
+	FaceUpNo int        `json:"card"`   // which face-up card, in |TakeRevealed|
+	HandNo   int        `json:"hand"`   // which card of the hand, in |TossHand|
+	To       int        `json:"to"`     // the other party to a trade
+}
+
 @ @<Sub...@>=
 func NewFenwick(n int)*Fenwick{
 return &Fenwick{

@@ -465,6 +465,27 @@ func (wv *Weaver) effKind(t token, qual string) tokKind {
 	return t.kind
 }
 
+@ A struct field's tag is a raw string, and the backquotes that delimit it are
+\GO/'s syntax rather than part of what the tag says---so the woven page drops them
+and sets the tag itself in the typewriter of any other string. The tangled \.{.go}
+file of course keeps them; this is a matter of display alone.
+
+No look at the enclosing |struct| is needed to know a tag when we see one. In \GO/
+two operands never abut without an operator between them {\it except\/} in a
+declaration, |name Type|, and a string cannot be a type---so a raw string standing
+immediately after an operand end can only be the tag of the field it follows.
+Everywhere else a raw string is preceded by an operator, a bracket, a comma, or a
+keyword, and keeps its backquotes.
+@<The effective token class@>=
+func structTagged(t token, prevKind tokKind, prevText string) token {
+	if t.kind == tkString && len(t.text) > 1 && isOperandEnd(prevKind, prevText) &&
+		t.text[0] == '`' && t.text[len(t.text)-1] == '`' {
+		t.kind = tkStructTag // both backquotes present: never a raw string cut across lines
+	}
+	return t
+}
+
+@ @<The effective token class@>=
 func (wv *Weaver) lookupFormat(name, qual string) (tokKind, bool) {
 	if qual != "" {
 		if k, ok := wv.format[qual+"."+name]; ok {
@@ -847,9 +868,11 @@ if t.kind == tkIdent || t.kind == tkBuiltin {
 }
 
 @ A comment goes through |renderComment|, everything else through |renderToken| in
-its effective class. A trailing comment is the one exception to the grammar's
-spacing: it is set off from the code by the generous \.{\\GCS} gap \.{cweave}
-leaves before a comment, in place of the ordinary \.{\\GS}.
+its effective class---which |structTagged| may refine once more, since only the
+look-behind kept here can tell a field's tag from any other raw string. A trailing
+comment is the one exception to the grammar's spacing: it is set off from the code
+by the generous \.{\\GCS} gap \.{cweave} leaves before a comment, in place of the
+ordinary \.{\\GS}.
 @<Emit the token@>=
 if t.kind == tkComment {
 	if pendingGap != gTight { // set a trailing comment off from the code with a generous gap, as cweave does
@@ -859,7 +882,7 @@ if t.kind == tkComment {
 	}
 	emit(wv.renderComment(secNum, t.text))
 } else {
-	emit(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
+	emit(renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
 }
 
 @ With the token set, it becomes the past: |advance| updates the |indenter|, and
@@ -1464,6 +1487,8 @@ func renderToken(t token) string {
 		return renderNumber(t.text)
 	case tkString:
 		return "\\GST{" + escTT(t.text) + "}"
+	case tkStructTag:
+		return "\\GST{" + escTT(t.text[1:len(t.text)-1]) + "}"
 	case tkComment:
 		if rest, ok := strings.CutPrefix(t.text, "//"); ok {
 			return "\\GCM{/\\kern\\Gcommentkern/" + escComment(rest) + "}"
@@ -1695,7 +1720,8 @@ case common.APaste:
 
 @ A blank or newline only arms the pending space; a significant token flushes it,
 is recorded in the index when the run records and the name is indexable, and is
-set in its effective class.
+set in its effective class---a field tag inside a |...| losing its backquotes just
+as one in a code part does.
 @<Set one token of an inline atom@>=
 if t.kind == tkSpace || t.kind == tkNewline {
 	if started {
@@ -1707,7 +1733,7 @@ qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndexed(t.text, qual) {
 	wv.xr.addIdentUse(t.text, secNum)
 }
-emit(renderToken(token{kind: wv.effKind(t, qual), text: t.text}))
+emit(renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
 prevPrevSigText = prevSigText
 prevSigKind, prevSigText = t.kind, t.text
 
@@ -2286,6 +2312,7 @@ const (
 	tkNewline                // a single '\.{\\.\{\\\\n\}}'
 	tkMacro                  // typewriter: an \.{@@d} name or a predeclared constant
 	tkTeXCS                  // \.{@@f name TeX}: set as a custom control sequence
+	tkStructTag              // a field's \.{`...`} tag, set without its backquotes
 )
 
 @ A |token| pairs a kind with its text; |lexState| carries the cross-fragment
@@ -4312,5 +4339,25 @@ func TestWeaveMultilineRawString(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar s = `a\n\nb`\n")
 	if strings.Count(out, `\GL`) < 2 {
 		t.Errorf("multi-line raw string should span multiple \\GL lines:\n%s", out)
+	}
+}
+
+@ A field tag sheds its backquotes; a raw string anywhere else keeps them. The
+witness puts one of each in every place a raw string can stand---after a type
+(the tag), and after a paren, a brace, a comma, a key's colon, and a keyword.
+@(gweave_test.go@>=
+func TestWeaveStructTagUnquoted(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\ntype T struct {\n\tA int      `json:\"a\"`\n"+
+		"\tB []string `json:\"b\"`\n}\n\nvar v = f(`p`, `q`)\nvar w = []string{`r`}\n"+
+		"var y = map[string]string{\"k\": `s`}\n\nfunc g() string { return `t` }\n")
+	for _, want := range []string{`\GST{json:"a"}`, `\GST{json:"b"}`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("a field tag should lose its backquotes; want %q in:\n%s", want, out)
+		}
+	}
+	for _, want := range []string{"\\GST{`p`}", "\\GST{`q`}", "\\GST{`r`}", "\\GST{`s`}", "\\GST{`t`}"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("a raw string that is not a tag should keep them; want %q in:\n%s", want, out)
+		}
 	}
 }
