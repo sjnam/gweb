@@ -123,6 +123,21 @@ For a tour of the bundled examples, the full `.w` file-format reference, and
 non-English (e.g. Korean) documentation, see the manual — `gwebman.tex`
 (`make manual`).
 
+## More examples
+
+The `examples/` directory here is deliberately small — just enough to exercise
+the tools. For **GWEB** used in earnest, see the companion repository:
+
+**[sjnam/gweb-examples](https://github.com/sjnam/gweb-examples)** — thirty-odd
+standalone literate Go programs, plus two curated collections that work through a
+single technique across several problems (`cdq-dc/`, CDQ divide-and-conquer;
+`cht/`, the convex hull trick). The programs range over algorithms and data
+structures (`ntt.w`, `ziptree.w`, `suffixautomaton.w`, `runningmedian.w`),
+concurrency (`fast_cancel.w`, `pmap.w`, `pipeline.w`), and competitive-programming
+solutions. Several are written in Korean via `\input kotexgweb`, and some carry
+MetaPost figures — so the repository doubles as a demonstration of what a
+finished **GWEB** document can look like.
+
 ## How it is organized
 
 Each `.w` source sits next to the Go it generates. Only the Go that bootstraps
