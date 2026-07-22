@@ -353,16 +353,16 @@
 \def\bin#1{\hbox{$^{\scriptscriptstyle b}$\tt #1}}
 
 % ---- named-section references and headlines ---------------------------------
-\def\Gangle#1#2{$\langle\,$#1\hbox{\eightrm\kern.4em\s{#2}}$\,\rangle$}
-\def\X#1#2{\hbox{\Gangle{#2}{#1}}}        % inline reference in code
-\def\D#1#2{\par\vskip 3pt\noindent\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
+\def\xsec#1#2{$\langle\,$#1\hbox{\eightrm\kern.4em\s{#2}}$\,\rangle$}
+\def\X#1#2{\hbox{\xsec{#2}{#1}}}        % inline reference in code
+\def\D#1#2{\par\vskip 3pt\noindent\hbox{\xsec{#2}{#1}${}\equiv{}$}\hskip 3pt}
 \def\Dp#1#2{\par\vskip 3pt\noindent
-  \hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
+  \hbox{\xsec{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
 % Run-in variants \Dr/\Dpr: used when a section has no commentary, so the
 % definition's name and equivalence sign follow the section number on the same
 % line (no \par), as cweave does for a code-only section.
-\def\Dr#1#2{\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
-\def\Dpr#1#2{\hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
+\def\Dr#1#2{\hbox{\xsec{#2}{#1}${}\equiv{}$}\hskip 3pt}
+\def\Dpr#1#2{\hbox{\xsec{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
 
 % ---- cross-reference notes printed under a definition -----------------------
 \def\note#1{\par\penalty-1\vskip 2pt\noindent{\smallfont #1.}\par}
@@ -451,7 +451,7 @@
   \begingroup
   \parindent=0pt \parskip=2pt plus 1pt \rightskip=0pt plus 2em \rm}
 \def\fin{\ifinx\endindex\fi \ifsecs\beginsecs\fi}
-\def\NS#1#2#3{\ifsecs\noindent\hangindent2em \Gangle{#1}{#2}%
+\def\NS#1#2#3{\ifsecs\noindent\hangindent2em \xsec{#1}{#2}%
   \ifx\empty#3\else\quad{\smallfont#3}\fi\par\fi}
 
 % ---- contents page: centered title, Section/Page columns, dot leaders --------
