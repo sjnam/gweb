@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const Version = "0.9.0"
+const Version = "0.9.5"
 
 //line common/common.w:51
 type Format struct {

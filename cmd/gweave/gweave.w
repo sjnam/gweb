@@ -8,11 +8,11 @@
 @s common.Format int
 @s common.Section int
 
-\def\title{GWEAVE (Version 0.9.0)}
+\def\title{GWEAVE (Version 0.9.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GWEAVE} processor}
   \vskip 15pt
-  \centerline{(Version 0.9.0)}
+  \centerline{(Version 0.9.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
