@@ -15,7 +15,7 @@
   \vskip 15pt
   \centerline{(Version 0.9.0)}
   \vfill}
-\def\botofcontents{\vfill\centerline{\Gsmallfont
+\def\botofcontents{\vfill\centerline{\smallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
 @y
 @z
@@ -28,7 +28,7 @@
   \vskip 15pt
   \centerline{(Version 0.9.0)}
   \vfill}
-\def\botofcontents{\vfill\centerline{\Gsmallfont
+\def\botofcontents{\vfill\centerline{\smallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
 @y
 @z
@@ -41,7 +41,7 @@
   \vskip 15pt
   \centerline{(Version 0.9.0)}
   \vfill}
-\def\botofcontents{\vfill\centerline{\Gsmallfont
+\def\botofcontents{\vfill\centerline{\smallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
 @y
 @z
