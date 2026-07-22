@@ -1,4 +1,4 @@
-//line common/common.w:27
+//line common/common.w:24
 package common
 
 import (
@@ -10,7 +10,7 @@ import (
 
 const Version = "0.9.5"
 
-//line common/common.w:51
+//line common/common.w:48
 type Format struct {
 	Original string
 	Like     string
@@ -18,7 +18,7 @@ type Format struct {
 	Macro    bool // \.{@d}: typeset Original in \.{typewriter} (a \.{CWEB}-style macro)
 }
 
-//line common/common.w:62
+//line common/common.w:59
 type Section struct {
 	Number   int    // 1-based section number
 	Line     int    // 1-based source line where the section begins
@@ -34,7 +34,7 @@ type Section struct {
 	CodeLine int    // 1-based combined-source line where |Code| begins (0 if none)
 }
 
-//line common/common.w:82
+//line common/common.w:79
 type Web struct {
 	Limbo    string
 	Formats  []Format // \.{@f}/\.{@s} directives found in limbo (apply globally)
@@ -45,7 +45,7 @@ type Web struct {
 	full     []string // canonical (non-abbreviated) section names
 }
 
-//line common/common.w:97
+//line common/common.w:94
 func Parse(filename string) (*Web, error) {
 	return ParseWithChange(filename, "")
 }
@@ -56,7 +56,7 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 		return nil, err
 	}
 
-//line common/common.w:119
+//line common/common.w:116
 	if changeFile != "" {
 		chData, err := os.ReadFile(changeFile)
 		if err != nil {
@@ -72,7 +72,7 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 		}
 	}
 
-//line common/common.w:107
+//line common/common.w:104
 	src := strings.Join(lines, "\n")
 	w := parse(src)
 	w.file = filename
@@ -81,7 +81,7 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 	return w, nil
 }
 
-//line common/common.w:138
+//line common/common.w:135
 func ParseString(src string) *Web {
 	w := parse(src)
 	w.finish(src)
@@ -94,7 +94,7 @@ func (w *Web) finish(src string) {
 	w.Warnings = append(w.Warnings, w.checkNames()...)
 }
 
-//line common/common.w:156
+//line common/common.w:153
 func (w *Web) Origin(line int) (file string, ln int) {
 	if i := line - 1; i >= 0 && i < len(w.locs) {
 		return w.locs[i].file, w.locs[i].line
@@ -112,7 +112,7 @@ func (w *Web) at(line int) string {
 	return fmt.Sprintf("line %d", line)
 }
 
-//line common/common.w:177
+//line common/common.w:174
 func DefaultExt(name, ext string) string {
 	if name == "" || filepath.Ext(name) != "" {
 		return name
@@ -120,7 +120,7 @@ func DefaultExt(name, ext string) string {
 	return name + ext
 }
 
-//line common/common.w:188
+//line common/common.w:185
 func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 	if depth > 25 {
 		return nil, nil, fmt.Errorf("gweb: @i include nesting too deep at %q", file)
@@ -134,8 +134,8 @@ func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 		raw = raw[:n-1]
 	}
 
-	var lines []string
-	var locs []srcLoc
+	var lines, hoisted []string
+	var locs, hoistedLocs []srcLoc
 	dir := filepath.Dir(file)
 	for i, line := range raw {
 		if name, ok := includeDirective(line); ok {
@@ -147,17 +147,52 @@ func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 			if err != nil {
 				return nil, nil, fmt.Errorf("%s:%d: %w", file, i+1, err)
 			}
-			lines = append(lines, sub...)
-			locs = append(locs, subLocs...)
+
+//line common/common.w:233
+			h, rest, hLocs, restLocs := hoistLimboDirectives(sub, subLocs)
+			hoisted = append(hoisted, h...)
+			hoistedLocs = append(hoistedLocs, hLocs...)
+			lines = append(lines, rest...)
+			locs = append(locs, restLocs...)
+
+//line common/common.w:212
 			continue
 		}
 		lines = append(lines, line)
 		locs = append(locs, srcLoc{file, i + 1})
 	}
-	return lines, locs, nil
+	return append(hoisted, lines...), append(hoistedLocs, locs...), nil
 }
 
-//line common/common.w:225
+//line common/common.w:244
+func hoistLimboDirectives(lines []string, locs []srcLoc) (h, rest []string, hLocs, restLocs []srcLoc) {
+	end := 0
+	for i, line := range lines {
+		t := strings.TrimSpace(line)
+		if t == "" {
+			continue // a blank line inside the run
+		}
+		if !isLimboDirective(t) {
+			break
+		}
+		end = i + 1
+	}
+	return lines[:end], lines[end:], locs[:end], locs[end:]
+}
+
+//line common/common.w:260
+func isLimboDirective(t string) bool {
+	if len(t) < 2 || t[0] != '@' {
+		return false
+	}
+	switch t[1] {
+	case 'd', 'f', 's':
+		return len(t) == 2 || t[2] == ' ' || t[2] == '\t'
+	}
+	return false
+}
+
+//line common/common.w:272
 func includeDirective(line string) (name string, ok bool) {
 	t := strings.TrimLeft(line, " \t")
 	if !strings.HasPrefix(t, "@i") {
@@ -171,7 +206,7 @@ func includeDirective(line string) (name string, ok bool) {
 	return name, name != ""
 }
 
-//line common/common.w:243
+//line common/common.w:290
 func (w *Web) collectNames() {
 	seen := map[string]bool{}
 	add := func(name string) {
@@ -194,7 +229,7 @@ func (w *Web) collectNames() {
 	}
 }
 
-//line common/common.w:268
+//line common/common.w:315
 func (w *Web) prefixMatches(prefix string) int {
 	n := 0
 	for _, full := range w.full {
@@ -205,7 +240,7 @@ func (w *Web) prefixMatches(prefix string) int {
 	return n
 }
 
-//line common/common.w:287
+//line common/common.w:334
 func (w *Web) checkNames() []string {
 	defined := map[string]bool{}
 	for _, s := range w.Sections {
@@ -218,7 +253,7 @@ func (w *Web) checkNames() []string {
 
 	for _, s := range w.Sections {
 
-//line common/common.w:318
+//line common/common.w:365
 		scan := func(raw string) {
 			for _, a := range ScanCode(raw) {
 				if a.Kind != ARef {
@@ -241,7 +276,7 @@ func (w *Web) checkNames() []string {
 			}
 		}
 
-//line common/common.w:299
+//line common/common.w:346
 		scan(s.Code)
 		scan(s.Tex)
 	}
@@ -260,7 +295,7 @@ func (w *Web) checkNames() []string {
 	return warns
 }
 
-//line common/common.w:372
+//line common/common.w:419
 func (w *Web) Resolve(name string) string {
 	name = canonName(name)
 	if !strings.HasSuffix(name, "...") {
@@ -281,7 +316,7 @@ func (w *Web) Resolve(name string) string {
 	return name // unresolved or ambiguous; leave as-is for caller to report
 }
 
-//line common/common.w:345
+//line common/common.w:392
 func lineAt(src string, off int) int {
 	if off > len(src) {
 		off = len(src)
@@ -304,7 +339,7 @@ func indexFrom(s, sub string, from int) int {
 	return from + idx
 }
 
-//line common/common.w:407
+//line common/common.w:454
 type ctrlKind int
 
 const (
@@ -315,7 +350,7 @@ const (
 	cDefn  // \.{@d}
 	cFormat
 
-//line common/common.w:416
+//line common/common.w:463
 )
 
 type ctrl struct {
@@ -329,7 +364,7 @@ type ctrl struct {
 	noIndex bool   // for |cFormat| (\.{@s})
 }
 
-//line common/common.w:434
+//line common/common.w:481
 func scanStruct(src string, i int) ctrl {
 	n := len(src)
 	for i < n {
@@ -347,7 +382,7 @@ func scanStruct(src string, i int) ctrl {
 			return ctrl{kind: cSection, pos: i, end: i + 2, depth: -1}
 		case c == '*':
 
-//line common/common.w:525
+//line common/common.w:574
 			j := i + 2
 			depth := 0
 			if j < n && src[j] == '*' {
@@ -361,7 +396,7 @@ func scanStruct(src string, i int) ctrl {
 			}
 			return ctrl{kind: cSection, pos: i, end: j, depth: depth, starred: true}
 
-//line common/common.w:451
+//line common/common.w:498
 		case c == 'c' || c == 'p':
 			return ctrl{kind: cCode, pos: i, end: i + 2}
 		case c == 'd':
@@ -372,7 +407,7 @@ func scanStruct(src string, i int) ctrl {
 			return ctrl{kind: cFormat, pos: i, end: i + 2, noIndex: true}
 		case c == '<' || c == '(':
 
-//line common/common.w:542
+//line common/common.w:591
 			end := indexFrom(src, "@>", i+2)
 			if end < 0 {
 				return ctrl{kind: cEOF, pos: n, end: n}
@@ -388,7 +423,7 @@ func scanStruct(src string, i int) ctrl {
 			}
 			i = after // a reference, not a definition
 
-//line common/common.w:461
+//line common/common.w:508
 		case c == '=' || c == 't' || c == '^' || c == '.' || c == ':' || c == 'q':
 			end := indexFrom(src, "@>", i+2)
 			if end < 0 {
@@ -408,7 +443,7 @@ func scanStruct(src string, i int) ctrl {
 	return ctrl{kind: cEOF, pos: n, end: n}
 }
 
-//line common/common.w:484
+//line common/common.w:533
 func findNextSection(src string, i int) ctrl {
 	n := len(src)
 	for i < n {
@@ -426,7 +461,7 @@ func findNextSection(src string, i int) ctrl {
 			return ctrl{kind: cSection, pos: i, end: i + 2, depth: -1}
 		case c == '*':
 
-//line common/common.w:525
+//line common/common.w:574
 			j := i + 2
 			depth := 0
 			if j < n && src[j] == '*' {
@@ -440,7 +475,7 @@ func findNextSection(src string, i int) ctrl {
 			}
 			return ctrl{kind: cSection, pos: i, end: j, depth: depth, starred: true}
 
-//line common/common.w:501
+//line common/common.w:550
 		case c == '<' || c == '(' || c == '=' || c == 't' || c == '^' || c == '.' || c == ':' || c == 'q':
 			end := indexFrom(src, "@>", i+2)
 			if end < 0 {
@@ -460,7 +495,7 @@ func findNextSection(src string, i int) ctrl {
 	return ctrl{kind: cEOF, pos: n, end: n}
 }
 
-//line common/common.w:563
+//line common/common.w:612
 func parse(src string) *Web {
 	w := &Web{}
 	n := len(src)
@@ -491,9 +526,9 @@ func parse(src string) *Web {
 			sec.Title = extractTitle(sec.Tex)
 		}
 
-//line common/common.w:593
+//line common/common.w:642
 
-//line common/common.w:611
+//line common/common.w:660
 		for ct.kind == cDefn || ct.kind == cFormat {
 			nx := scanStruct(src, ct.end)
 			seg := src[ct.end:nx.pos]
@@ -505,9 +540,9 @@ func parse(src string) *Web {
 			ct = nx
 		}
 
-//line common/common.w:594
+//line common/common.w:643
 
-//line common/common.w:626
+//line common/common.w:675
 		switch ct.kind {
 		case cCode:
 			sec.HasCode = true
@@ -527,7 +562,7 @@ func parse(src string) *Web {
 			i = ct.pos
 		}
 
-//line common/common.w:596
+//line common/common.w:645
 		w.Sections = append(w.Sections, sec)
 		if ct.kind == cEOF && sec.Code == "" {
 			break
@@ -539,7 +574,7 @@ func parse(src string) *Web {
 	return w
 }
 
-//line common/common.w:647
+//line common/common.w:696
 func findSectionHeaderEnd(src string, i int) ctrl {
 	n := len(src)
 	j := i + 2
@@ -556,7 +591,7 @@ func findSectionHeaderEnd(src string, i int) ctrl {
 	return ctrl{end: j, depth: depth}
 }
 
-//line common/common.w:666
+//line common/common.w:715
 func extractTitle(tex string) string {
 	t := strings.TrimLeft(tex, " \t\n")
 	if i := titleEnd(t); i >= 0 {
@@ -575,7 +610,7 @@ func titleEnd(s string) int {
 	return -1
 }
 
-//line common/common.w:687
+//line common/common.w:736
 func (w *Web) scanDiagnostics(src string) []string {
 	var warns []string
 	n := len(src)
@@ -602,7 +637,7 @@ func (w *Web) scanDiagnostics(src string) []string {
 	return warns
 }
 
-//line common/common.w:715
+//line common/common.w:764
 func parseFormat(seg string, noIndex bool) (Format, bool) {
 	fields := strings.Fields(seg)
 	if len(fields) < 2 {
@@ -611,7 +646,7 @@ func parseFormat(seg string, noIndex bool) (Format, bool) {
 	return Format{Original: fields[0], Like: fields[1], NoIndex: noIndex}, true
 }
 
-//line common/common.w:731
+//line common/common.w:780
 func parseMacro(seg string) []Format {
 	var fs []Format
 	for _, field := range strings.Fields(seg) {
@@ -626,7 +661,7 @@ func parseMacro(seg string) []Format {
 	return fs
 }
 
-//line common/common.w:750
+//line common/common.w:799
 func extractLimboFormats(src string) (string, []Format) {
 	var b strings.Builder
 	var formats []Format
@@ -644,7 +679,7 @@ func extractLimboFormats(src string) (string, []Format) {
 			i += 2
 		case 'd', 'f', 's':
 
-//line common/common.w:799
+//line common/common.w:848
 			var fs []Format
 			var j int
 			if c == 'd' {
@@ -665,7 +700,7 @@ func extractLimboFormats(src string) (string, []Format) {
 			}
 			i = j
 
-//line common/common.w:767
+//line common/common.w:816
 		case 'q':
 			if end := indexFrom(src, "@>", i+2); end < 0 {
 				i = n // unterminated: drop the rest of limbo
@@ -689,7 +724,7 @@ func extractLimboFormats(src string) (string, []Format) {
 	return b.String(), formats
 }
 
-//line common/common.w:823
+//line common/common.w:872
 func endOfFormatArgs(src string, p, n int) int {
 	for word := 0; word < 2; word++ {
 		p = skipBlanks(src, p, n)
@@ -707,7 +742,7 @@ func skipBlanks(src string, p, n int) int {
 	return p
 }
 
-//line common/common.w:849
+//line common/common.w:898
 type AtomKind int
 
 const (
@@ -727,7 +762,7 @@ type Atom struct {
 	Index byte   // '\.{\^}','\.{.}','\.{:}' for AIndex; '\.{,}' '\.{/}' '\.{|}' '\.{\#}' for |ALayout|
 }
 
-//line common/common.w:872
+//line common/common.w:921
 func ScanCode(code string) []Atom {
 	var atoms []Atom
 	var buf strings.Builder
@@ -747,10 +782,10 @@ func ScanCode(code string) []Atom {
 			continue
 		}
 
-//line common/common.w:902
+//line common/common.w:951
 		switch d := code[i+1]; d {
 
-//line common/common.w:912
+//line common/common.w:961
 		case '@':
 			buf.WriteByte('@')
 			i += 2
@@ -759,7 +794,7 @@ func ScanCode(code string) []Atom {
 			atoms = append(atoms, Atom{Kind: APaste})
 			i += 2
 
-//line common/common.w:925
+//line common/common.w:974
 		case '<':
 			end := indexFrom(code, "@>", i+2)
 			if end < 0 {
@@ -805,7 +840,7 @@ func ScanCode(code string) []Atom {
 			}
 			i = end + 2 // ignored material
 
-//line common/common.w:981
+//line common/common.w:1030
 		case '%':
 			j := i + 2
 			for j < n && code[j] != '\n' {
@@ -827,16 +862,16 @@ func ScanCode(code string) []Atom {
 		default:
 			i += 2 // unknown \.{@x}: drop it rather than corrupt the output
 
-//line common/common.w:906
+//line common/common.w:955
 		}
 
-//line common/common.w:891
+//line common/common.w:940
 	}
 	flush()
 	return atoms
 }
 
-//line common/common.w:1022
+//line common/common.w:1071
 type change struct {
 	match    []string // lines to find in the master source
 	repl     []string // lines to substitute for them
@@ -856,7 +891,7 @@ func (l srcLoc) String() string {
 	return fmt.Sprintf("%s:%d", l.file, l.line)
 }
 
-//line common/common.w:1044
+//line common/common.w:1093
 func isChangeCtrl(line string, c byte) bool {
 	return len(line) >= 2 && line[0] == '@' && line[1] == c
 }
@@ -869,7 +904,7 @@ func sameLine(a, b string) bool {
 	return strings.TrimRight(a, " \t") == strings.TrimRight(b, " \t")
 }
 
-//line common/common.w:1059
+//line common/common.w:1108
 func parseChangeFile(src string) ([]change, error) {
 	lines := splitLines(src)
 	var changes []change
@@ -882,7 +917,7 @@ func parseChangeFile(src string) ([]change, error) {
 		c := change{line: i + 1}
 		i++
 
-//line common/common.w:1084
+//line common/common.w:1133
 		for i < n && !isChangeCtrl(lines[i], 'y') {
 			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'z') {
 				return nil, fmt.Errorf("change file line %d: expected @y to close the @x match part", c.line)
@@ -896,9 +931,9 @@ func parseChangeFile(src string) ([]change, error) {
 		i++ // skip \.{@y}
 		c.replLine = i + 1
 
-//line common/common.w:1071
+//line common/common.w:1120
 
-//line common/common.w:1100
+//line common/common.w:1149
 		for i < n && !isChangeCtrl(lines[i], 'z') {
 			if isChangeCtrl(lines[i], 'x') || isChangeCtrl(lines[i], 'y') {
 				return nil, fmt.Errorf("change file line %d: expected @z to close the change", c.line)
@@ -911,7 +946,7 @@ func parseChangeFile(src string) ([]change, error) {
 		}
 		i++ // skip \.{@z}
 
-//line common/common.w:1072
+//line common/common.w:1121
 		if len(c.match) == 0 {
 			return nil, fmt.Errorf("change file line %d: the @x match part is empty", c.line)
 		}
@@ -920,7 +955,7 @@ func parseChangeFile(src string) ([]change, error) {
 	return changes, nil
 }
 
-//line common/common.w:1114
+//line common/common.w:1163
 func applyChanges(src string, changes []change, chFile string) (string, error) {
 	out, _, err := applyChangesMapped(splitLines(src), nil, changes, chFile)
 	if err != nil {
@@ -929,7 +964,7 @@ func applyChanges(src string, changes []change, chFile string) (string, error) {
 	return strings.Join(out, "\n"), nil
 }
 
-//line common/common.w:1127
+//line common/common.w:1176
 func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile string) (
 	[]string, []srcLoc, error,
 ) {
@@ -967,7 +1002,7 @@ func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile
 	return out, outLocs, nil
 }
 
-//line common/common.w:1167
+//line common/common.w:1216
 func blockMatches(master []string, at int, match []string) bool {
 	if at+len(match) > len(master) {
 		return false

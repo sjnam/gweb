@@ -1,4 +1,4 @@
-//line cmd/gtangle/gtangle.w:27
+//line cmd/gtangle/gtangle.w:19
 package main
 
 import (
@@ -17,7 +17,7 @@ import (
 	"github.com/sjnam/gweb/common"
 )
 
-//line cmd/gtangle/gtangle.w:54
+//line cmd/gtangle/gtangle.w:46
 func main() {
 	outDir := flag.String("o", "", "output directory (default: input file's directory)")
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -38,13 +38,13 @@ func main() {
 	}
 }
 
-//line cmd/gtangle/gtangle.w:76
+//line cmd/gtangle/gtangle.w:68
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file[.w] [change[.ch]]")
 	flag.PrintDefaults()
 }
 
-//line cmd/gtangle/gtangle.w:85
+//line cmd/gtangle/gtangle.w:77
 func reportProgress(w *common.Web) {
 	for _, s := range w.Sections {
 		if s.Starred {
@@ -54,7 +54,7 @@ func reportProgress(w *common.Web) {
 	fmt.Fprintln(os.Stderr)
 }
 
-//line cmd/gtangle/gtangle.w:99
+//line cmd/gtangle/gtangle.w:91
 func run(input, changeFile, outDir string) error {
 	input = common.DefaultExt(input, ".w")
 	changeFile = common.DefaultExt(changeFile, ".ch")
@@ -79,7 +79,7 @@ func run(input, changeFile, outDir string) error {
 		return err
 	}
 
-//line cmd/gtangle/gtangle.w:130
+//line cmd/gtangle/gtangle.w:122
 	for _, out := range outs {
 		path := filepath.Join(outDir, out.File)
 		if dir := filepath.Dir(path); dir != "." {
@@ -96,18 +96,18 @@ func run(input, changeFile, outDir string) error {
 		fmt.Printf("gtangle: wrote %s (%d bytes)\n", path, len(out.Content))
 	}
 
-//line cmd/gtangle/gtangle.w:123
+//line cmd/gtangle/gtangle.w:115
 	return nil
 }
 
-//line cmd/gtangle/gtangle.w:165
+//line cmd/gtangle/gtangle.w:157
 type Output struct {
 	File    string
 	Content []byte
 	Warning string
 }
 
-//line cmd/gtangle/gtangle.w:183
+//line cmd/gtangle/gtangle.w:175
 type Tangler struct {
 	w     *common.Web
 	defs  map[string][]codePiece // canonical named-section $\rightarrow$ code pieces
@@ -120,7 +120,7 @@ type codePiece struct {
 	line int
 }
 
-//line cmd/gtangle/gtangle.w:199
+//line cmd/gtangle/gtangle.w:191
 func New(w *common.Web) *Tangler {
 	t := &Tangler{
 		w:     w,
@@ -145,7 +145,7 @@ func New(w *common.Web) *Tangler {
 	return t
 }
 
-//line cmd/gtangle/gtangle.w:226
+//line cmd/gtangle/gtangle.w:218
 func (t *Tangler) Tangle(defaultFile string) ([]Output, error) {
 	var outs []Output
 
@@ -176,7 +176,7 @@ func (t *Tangler) Tangle(defaultFile string) ([]Output, error) {
 	return outs, nil
 }
 
-//line cmd/gtangle/gtangle.w:259
+//line cmd/gtangle/gtangle.w:251
 func nonEmpty(pieces []codePiece) bool {
 	for _, p := range pieces {
 		if strings.TrimSpace(p.code) != "" {
@@ -186,7 +186,7 @@ func nonEmpty(pieces []codePiece) bool {
 	return false
 }
 
-//line cmd/gtangle/gtangle.w:282
+//line cmd/gtangle/gtangle.w:274
 func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) {
 	o := &buffer{t: t, atLineStart: true}
 	if err := t.expandPieces(pieces, o, nil); err != nil {
@@ -205,14 +205,14 @@ func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) 
 	return Output{File: file, Content: thinned}, nil
 }
 
-//line cmd/gtangle/gtangle.w:322
+//line cmd/gtangle/gtangle.w:314
 func thinLineMarks(src []byte) []byte {
 	marks, ok := lineMarkLines(src)
 	if !ok || len(marks) == 0 {
 		return src
 	}
 
-//line cmd/gtangle/gtangle.w:368
+//line cmd/gtangle/gtangle.w:360
 	lines := strings.SplitAfter(string(src), "\n")
 	out := make([]byte, 0, len(src))
 	expFile, expLine, have := "", 0, false
@@ -238,10 +238,10 @@ func thinLineMarks(src []byte) []byte {
 	}
 	return out
 
-//line cmd/gtangle/gtangle.w:328
+//line cmd/gtangle/gtangle.w:320
 }
 
-//line cmd/gtangle/gtangle.w:333
+//line cmd/gtangle/gtangle.w:325
 func lineMarkLines(src []byte) (map[int]bool, bool) {
 	fset := token.NewFileSet()
 	f := fset.AddFile("", fset.Base(), len(src))
@@ -264,14 +264,14 @@ func lineMarkLines(src []byte) (map[int]bool, bool) {
 	return marks, !bad
 }
 
-//line cmd/gtangle/gtangle.w:396
+//line cmd/gtangle/gtangle.w:388
 func blankLine(s string) bool { return strings.TrimSpace(s) == "" }
 
 func betweenBlanks(prevBlank bool, lines []string, i int) bool {
 	return prevBlank && i+1 < len(lines) && blankLine(lines[i+1])
 }
 
-//line cmd/gtangle/gtangle.w:405
+//line cmd/gtangle/gtangle.w:397
 func parseLineMark(s string) (string, int, bool) {
 	rest := strings.TrimSuffix(strings.TrimSuffix(s, "\n"), "\r")
 	rest = strings.TrimPrefix(rest, "//line ")
@@ -286,7 +286,7 @@ func parseLineMark(s string) (string, int, bool) {
 	return rest[:i], n, true
 }
 
-//line cmd/gtangle/gtangle.w:421
+//line cmd/gtangle/gtangle.w:413
 func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) error {
 	for _, p := range pieces {
 		if err := t.expand(p.code, p.line, o, stack); err != nil {
@@ -296,7 +296,7 @@ func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) er
 	return nil
 }
 
-//line cmd/gtangle/gtangle.w:435
+//line cmd/gtangle/gtangle.w:427
 func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error {
 	for _, a := range common.ScanCode(code) {
 		switch a.Kind {
@@ -308,7 +308,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 			o.atLineStart = false
 		case common.ARef:
 
-//line cmd/gtangle/gtangle.w:457
+//line cmd/gtangle/gtangle.w:449
 			name := t.w.Resolve(a.Text)
 			def, ok := t.defs[name]
 			if !ok {
@@ -323,7 +323,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 			}
 			o.newline()
 
-//line cmd/gtangle/gtangle.w:446
+//line cmd/gtangle/gtangle.w:438
 		case common.ATeX, common.AIndex, common.ALayout, common.AIndexDef:
 			// woven-output only; ignored by tangle
 		}
@@ -331,7 +331,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 	return nil
 }
 
-//line cmd/gtangle/gtangle.w:478
+//line cmd/gtangle/gtangle.w:470
 type buffer struct {
 	t           *Tangler
 	b           []byte
@@ -343,7 +343,7 @@ type buffer struct {
 	esc         bool // a backslash is pending inside a quoted string or rune
 }
 
-//line cmd/gtangle/gtangle.w:495
+//line cmd/gtangle/gtangle.w:487
 type goLex int
 
 const (
@@ -354,12 +354,12 @@ const (
 	lexRune
 	lexRaw
 
-//line cmd/gtangle/gtangle.w:504
+//line cmd/gtangle/gtangle.w:496
 )
 
 func (l goLex) spansLines() bool { return l == lexRaw || l == lexBlockComment }
 
-//line cmd/gtangle/gtangle.w:513
+//line cmd/gtangle/gtangle.w:505
 func (o *buffer) writeText(s string, line int) int {
 	if o.pasteNext {
 		s = strings.TrimLeft(s, " \t\n\r")
@@ -383,12 +383,12 @@ func (o *buffer) writeText(s string, line int) int {
 	return line
 }
 
-//line cmd/gtangle/gtangle.w:540
+//line cmd/gtangle/gtangle.w:532
 func (o *buffer) track(c byte) {
 	switch o.lex {
 	case lexCode:
 
-//line cmd/gtangle/gtangle.w:565
+//line cmd/gtangle/gtangle.w:557
 		if o.slash {
 			o.slash = false
 			switch c {
@@ -412,7 +412,7 @@ func (o *buffer) track(c byte) {
 			o.lex = lexRaw
 		}
 
-//line cmd/gtangle/gtangle.w:544
+//line cmd/gtangle/gtangle.w:536
 	case lexLineComment:
 		if c == '\n' {
 			o.lex = lexCode
@@ -424,7 +424,7 @@ func (o *buffer) track(c byte) {
 		o.star = c == '*'
 	case lexQuote, lexRune:
 
-//line cmd/gtangle/gtangle.w:589
+//line cmd/gtangle/gtangle.w:581
 		switch {
 		case o.esc:
 			o.esc = false
@@ -436,7 +436,7 @@ func (o *buffer) track(c byte) {
 			o.lex = lexCode
 		}
 
-//line cmd/gtangle/gtangle.w:555
+//line cmd/gtangle/gtangle.w:547
 	case lexRaw:
 		if c == '`' {
 			o.lex = lexCode
@@ -444,7 +444,7 @@ func (o *buffer) track(c byte) {
 	}
 }
 
-//line cmd/gtangle/gtangle.w:605
+//line cmd/gtangle/gtangle.w:597
 func (o *buffer) lineMark(line int) {
 	file, ln := o.t.w.Origin(line)
 	o.b = append(o.b, fmt.Sprintf("//line %s:%d\n", file, ln)...)

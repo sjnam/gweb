@@ -1,7 +1,4 @@
-@d os.Stdin os.Stdout os.Stderr
-@s strings.Builder int
-@s testing.T int
-
+@i types.w
 \def\title{Common code for GTANGLE and GWEAVE (Version 0.9.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Common code for {\ttitlefont GTANGLE} and
@@ -198,8 +195,8 @@ func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 		raw = raw[:n-1]
 	}
 
-	var lines []string
-	var locs []srcLoc
+	var lines, hoisted []string
+	var locs, hoistedLocs []srcLoc
 	dir := filepath.Dir(file)
 	for i, line := range raw {
 		if name, ok := includeDirective(line); ok {
@@ -211,14 +208,64 @@ func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 			if err != nil {
 				return nil, nil, fmt.Errorf("%s:%d: %w", file, i+1, err)
 			}
-			lines = append(lines, sub...)
-			locs = append(locs, subLocs...)
+			@<Take the include's limbo directives out of line@>
 			continue
 		}
 		lines = append(lines, line)
 		locs = append(locs, srcLoc{file, i + 1})
 	}
-	return lines, locs, nil
+	return append(hoisted, lines...), append(hoistedLocs, locs...), nil
+}
+
+@ An included file that is also a web in its own right opens with its own limbo:
+a run of \.{@@d}/\.{@@f}/\.{@@s} that applies to the whole of it. Spliced in where
+the \.{@@i} sits, that run would land in the middle of the host document---after
+some section's code part, if the \.{@@i} follows one---where it is no longer a
+definition part at all, and would be set as though it were program text.
+
+So we lift the run out and put it back at the front, ahead of everything this
+file contributes. Each level does the same, so the directives rise until they
+reach the master's own limbo, where |extractLimboFormats| registers them
+globally---which is what they meant in the included web to begin with. The
+origin map rides along, so diagnostics still cite the file the directives were
+written in.
+@<Take the include's limbo directives out of line@>=
+h, rest, hLocs, restLocs := hoistLimboDirectives(sub, subLocs)
+hoisted = append(hoisted, h...)
+hoistedLocs = append(hoistedLocs, hLocs...)
+lines = append(lines, rest...)
+locs = append(locs, restLocs...)
+
+@ The run is the leading directive lines, blank lines between them allowed; it
+ends at the first line that is neither. Anything else at the top of the file---a
+\TeX\ comment, a section break---stops the scan, so only a genuine limbo run is
+lifted.
+@<Expand include files@>=
+func hoistLimboDirectives(lines []string, locs []srcLoc) (h, rest []string, hLocs, restLocs []srcLoc) {
+	end := 0
+	for i, line := range lines {
+		t := strings.TrimSpace(line)
+		if t == "" {
+			continue // a blank line inside the run
+		}
+		if !isLimboDirective(t) {
+			break
+		}
+		end = i + 1
+	}
+	return lines[:end], lines[end:], locs[:end], locs[end:]
+}
+
+@ @<Expand include files@>=
+func isLimboDirective(t string) bool {
+	if len(t) < 2 || t[0] != '@@' {
+		return false
+	}
+	switch t[1] {
+	case 'd', 'f', 's':
+		return len(t) == 2 || t[2] == ' ' || t[2] == '\t'
+	}
+	return false
 }
 
 @ @<Expand include files@>=
@@ -479,7 +526,9 @@ func scanStruct(src string, i int) ctrl {
 
 @ |findNextSection| scans forward to the next section break (\.{@@ } or \.{@@*}),
 skipping everything else. It is used inside code parts, where \.{@@c}, \.{@@d}, and
-\.{@@f} never legitimately appear.
+\.{@@f} never legitimately appear---a section's directives belong to its
+definition part, and |hoistLimboDirectives| keeps an included web's own from
+drifting past it.
 @<Scan forward to a control code@>=
 func findNextSection(src string, i int) ctrl {
 	n := len(src)

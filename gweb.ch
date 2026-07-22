@@ -5,6 +5,15 @@
 % strip them---the same trick CWEB uses to fold its component webs into the
 % manual's appendices (comm-man.ch and friends). Apply with
 % `gweave gweb.w gweb.ch'; `make selfdoc' does this for you.
+%
+% Only the \def block is matched here---never the `@i types.w' line above it.
+% Changes are matched after @i includes are expanded (see the Change files
+% section of common.w), so by matching time that line is gone, replaced by the
+% contents of types.w; an @x block naming it can never match. Spelling out
+% those contents instead would work, but then this file would have to mirror
+% types.w forever and would break every time it changed. Leaving the include
+% alone costs nothing: types.w holds only @d and @s format hints, which are
+% invisible and harmless when the three webs each bring in a copy.
 
 % ---- common.w ----------------------------------------------------------------
 @x
@@ -22,15 +31,6 @@
 
 % ---- gtangle.w ---------------------------------------------------------------
 @x
-@d os.Stdin os.Stdout os.Stderr
-@d common.AText common.ARef common.AVerbatim common.ATeX common.AIndex
-@d common.APaste common.ALayout common.AIndexDef
-
-@s testing.T int
-@s common.Web int
-@s common.Format int
-@s common.Section int
-
 \def\title{GTANGLE (Version 0.9.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
@@ -44,16 +44,6 @@
 
 % ---- gweave.w ----------------------------------------------------------------
 @x
-@d os.Stdin os.Stdout os.Stderr
-@d common.AText common.ARef common.AVerbatim common.ATeX common.AIndex
-@d common.APaste common.ALayout common.AIndexDef
-
-@s strings.Builder int
-@s testing.T int
-@s common.Web int
-@s common.Format int
-@s common.Section int
-
 \def\title{GWEAVE (Version 0.9.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GWEAVE} processor}

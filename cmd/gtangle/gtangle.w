@@ -1,12 +1,4 @@
-@d os.Stdin os.Stdout os.Stderr
-@d common.AText common.ARef common.AVerbatim common.ATeX common.AIndex
-@d common.APaste common.ALayout common.AIndexDef
-
-@s testing.T int
-@s common.Web int
-@s common.Format int
-@s common.Section int
-
+@i ../../common/types.w
 \def\title{GTANGLE (Version 0.9.5)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
