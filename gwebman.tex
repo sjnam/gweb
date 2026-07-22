@@ -8,7 +8,7 @@
 % section, list, verbatim, and running-head macros on top.
 
 \input gwebmac
-\Gpdffalse \Gdvipdffalse        % a plain manual: no hyperlinks or bookmarks
+\pdffalse \dvipdffalse        % a plain manual: no hyperlinks or bookmarks
 \parskip=0pt plus 1pt
 \parindent=18pt
 \abovedisplayskip=.5\abovedisplayskip  \belowdisplayskip=.5\belowdisplayskip
@@ -286,14 +286,14 @@ header);
 \bull \cw{\bs def\bs contentspagenumber\char123 n\char125} together with
 \cw{\bs pageno}---to renumber for binding into a larger document;
 
-\bull \cw{\bs Gcodepenalty} (how strongly a code part resists a page break) and
-\cw{\bs Gcommentkern} (the \cw{//} tightening) are registers you may tune.
+\bull \cw{\bs codepenalty} (how strongly a code part resists a page break) and
+\cw{\bs commentkern} (the \cw{//} tightening) are registers you may tune.
 
-\bull \cw{\bs GK}---the symbol for Go's short declaration \cw{:=}. It prints the
+\bull \cw{\bs K}---the symbol for Go's short declaration \cw{:=}. It prints the
 two characters run together by default; \.{WEB} set Pascal's \cw{:=} as a left
-arrow, and \cw{\bs let\bs GK=\bs Leftarrow} in limbo does the same here.
+arrow, and \cw{\bs let\bs K=\bs Leftarrow} in limbo does the same here.
 
-\bull \cw{\bs GAN}---the symbol for Go's bit clear \cw{\&\^}, a circled slash by
+\bull \cw{\bs AN}---the symbol for Go's bit clear \cw{\&\^}, a circled slash by
 default. Like \cw{:=} it has no \.{CWEB} counterpart to imitate, so it too is
 yours to \cw{\bs let} elsewhere.
 
@@ -321,8 +321,8 @@ URL write \cw{@@} for an at-sign (the usual \cw{.w} escape), \cw{\bs TILDE/} for
 \noindent Every fixed phrase \cw{gweave} writes into the woven output---the
 cross-reference notes beneath a code part, the {\it Names of the Sections\/}
 heading, the \cw{Section} and \cw{Page} words on the contents page---goes through
-a macro (\cw{\bs GU}, \cw{\bs GA}, \cw{\bs GNused}, \cw{\bs Gsectionword},
-\cw{\bs Gpageword}, $\ldots$), never as literal English. Redefine those in an
+a macro (\cw{\bs U}, \cw{\bs A}, \cw{\bs Nused}, \cw{\bs sectionword},
+\cw{\bs pageword}, $\ldots$), never as literal English. Redefine those in an
 \cw{\bs input} file and the document is localized to any language; pair the file
 with a Unicode-capable engine and suitable fonts, and the code and prose themselves
 may be non-ASCII too.

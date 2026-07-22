@@ -14,7 +14,7 @@
   \vskip 15pt
   \centerline{(Version 0.9.0)}
   \vfill}
-\def\botofcontents{\vfill\centerline{\Gsmallfont
+\def\botofcontents{\vfill\centerline{\smallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
 
 @** Processor gweave.
@@ -552,7 +552,7 @@ func stripGwebmacInput(limbo string) string {
 }
 
 @ |writeSection| emits one section: its headline (starred or numbered), its
-commentary, and -- if present -- its code part bracketed by \.{\\GB...\\GE}, with
+commentary, and -- if present -- its code part bracketed by \.{\\B...\\E}, with
 the definition headline and cross-reference notes for a named section.
 @<Write one section@>=
 func (wv *Weaver) writeSection(bw *bufio.Writer, sec *common.Section) {
@@ -570,7 +570,7 @@ inside \. does not split early). A plain section just emits its number and its
 commentary.
 @<Write the section headline and commentary@>=
 if sec.Starred {
-	fmt.Fprintf(bw, "\n\\GN{%d}{%d}{%s}", sec.Depth, sec.Number, wv.processTex(sec.Number, sec.Title))
+	fmt.Fprintf(bw, "\n\\N{%d}{%d}{%s}", sec.Depth, sec.Number, wv.processTex(sec.Number, sec.Title))
 	rest := sec.Tex
 	for i := 0; i < len(rest); i++ {
 		if rest[i] == '.' && (i+1 == len(rest) || rest[i+1] == ' ' ||
@@ -581,30 +581,30 @@ if sec.Starred {
 	}
 	bw.WriteString(wv.processTex(sec.Number, rest))
 } else {
-	fmt.Fprintf(bw, "\n\\GM{%d}", sec.Number)
+	fmt.Fprintf(bw, "\n\\M{%d}", sec.Number)
 	bw.WriteString(wv.processTex(sec.Number, sec.Tex))
 }
 
-@ The code part is bracketed by \.{\\GB}$\,\ldots\,$\.{\\GE}. A code-only section
+@ The code part is bracketed by \.{\\B}$\,\ldots\,$\.{\\E}. A code-only section
 (no commentary) runs in on the section-number line, as cweave does: an unnamed
-section's first code line uses \.{\\GBr} (no break). A named section emits its
+section's first code line uses \.{\\Br} (no break). A named section emits its
 definition headline first, and its cross-reference notes after the code.
 @<Write the section's code part@>=
 runin := !sec.Starred && strings.TrimSpace(sec.Tex) == ""
 @<Write a named section's definition headline@>
 runinCode := runin && sec.Name == ""
 if runinCode {
-	bw.WriteString("\n\\GBr%\n")
+	bw.WriteString("\n\\Br%\n")
 } else {
-	bw.WriteString("\n\\GB%\n")
+	bw.WriteString("\n\\B%\n")
 }
 bw.WriteString(wv.renderCode(sec.Number, sec.Code, runinCode))
-bw.WriteString("\\GE\n")
+bw.WriteString("\\E\n")
 if sec.Name != "" {
 	bw.WriteString(wv.crossRefNotes(wv.w.Resolve(sec.Name), sec.Number))
 }
 
-@ A named section's header is \.{\\GD}, or \.{\\GDp} for a continuation of an
+@ A named section's header is \.{\\D}, or \.{\\Dp} for a continuation of an
 earlier definition, with an \.{r} suffix when it runs in beside the number.
 Emitting it also records this section as a definition of the name.
 @<Write a named section's definition headline@>=
@@ -612,9 +612,9 @@ if sec.Name != "" {
 	name := wv.w.Resolve(sec.Name)
 	cont := wv.defNum[name] != sec.Number
 	wv.xr.addSectionDef(name, sec.Number)
-	macro := "\\GD"
+	macro := "\\D"
 	if cont {
-		macro = "\\GDp" // continuation of an earlier definition
+		macro = "\\Dp" // continuation of an earlier definition
 	}
 	if runin {
 		macro += "r"
@@ -648,7 +648,7 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	pendingGap := gTight  // width of the space owed before the next token (gTight = none)
 	forceDef := false     // set by \.{@@!} to force the next identifier to index as a def
 	haveContent := false  // at least one code line has been emitted
-	blankPending := false // a blank source line is waiting to become a \.{\\GBK} gap
+	blankPending := false // a blank source line is waiting to become a \.{\\BK} gap
 
 	prevSigKind := tkNewline
 	prevSigText := ""
@@ -670,7 +670,7 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 @ The rendered code is built up chunk by chunk. |flushRun| closes the current
 tight math chunk into the line, and |emit| adds a token's \TEX/ to the chunk,
 first turning a pending grammar space (|pendingGap|) into the breakable code
-space its width calls for: an ordinary \.{\\GS}, or the wider \.{\\GBS} that sets
+space its width calls for: an ordinary \.{\\GS}, or the wider \.{\\BS} that sets
 a statement block's braces apart.
 @<Accumulate a chunk into the current line@>=
 flushRun := func() {
@@ -687,13 +687,13 @@ emit := func(s string) {
 		flushRun()
 		switch pendingGap {
 		case gBlock:
-			line.WriteString("\\GBS ")
+			line.WriteString("\\BS ")
 		case gWord:
-			line.WriteString("\\GW ")
+			line.WriteString("\\W ")
 		case gRel:
-			line.WriteString("\\Grel ")
+			line.WriteString("\\rel ")
 		case gPunct:
-			line.WriteString("\\Gpunct ")
+			line.WriteString("\\punct ")
 		default:
 			line.WriteString("\\GS ")
 		}
@@ -704,16 +704,16 @@ emit := func(s string) {
 }
 
 @ |emitLine| writes the accumulated line as a \.{\\GL}, leaving the indent
-intact. A blank source line between two code lines becomes a small \.{\\GBK}
+intact. A blank source line between two code lines becomes a small \.{\\BK}
 gap, giving a little air between, say, the import block and the function body.
 The first line of an unnamed code-only section runs in beside the section number
-(\.{\\GLr}, no break); the rest are ordinary \.{\\GL} lines.
+(\.{\\Lr}, no break); the rest are ordinary \.{\\GL} lines.
 @<Emit the current line@>=
 emitLine := func() {
 	flushRun()
 	if strings.TrimSpace(line.String()) != "" {
 		if blankPending {
-			out.WriteString("\\GBK\n")
+			out.WriteString("\\BK\n")
 			blankPending = false
 		}
 		macro := "GL"
@@ -745,7 +745,7 @@ flushLine := func() {
 forceBreak := func(blank bool) {
 	emitLine()
 	if blank {
-		out.WriteString("\\GBL\n")
+		out.WriteString("\\BL\n")
 	}
 	in.endLine()
 	atLineStart = true
@@ -754,7 +754,7 @@ forceBreak := func(blank bool) {
 }
 
 @ Each atom of the scanned code is rendered in turn: \GO/ text is tokenized and
-pretty-printed, a section reference becomes a \.{\\GX} link, verbatim and \TEX/
+pretty-printed, a section reference becomes a \.{\\X} link, verbatim and \TEX/
 material passes through, and the layout hints (\.{@@,} \.{@@/} \.{@@\#} \.{@@\|})
 shape the woven line.
 @<Render one code atom@>=
@@ -768,13 +768,13 @@ case common.ARef:
 	}
 	name := wv.w.Resolve(a.Text)
 	wv.xr.addSectionUse(name, secNum)
-	emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
+	emit(fmt.Sprintf("\\X{%d}{%s}", wv.defNum[name], wv.renderName(name)))
 	in.advanceGeneric()
 case common.AVerbatim:
 	if atLineStart {
 		indent = in.beginGeneric()
 	}
-	emit(fmt.Sprintf("\\GST{%s}", escTT(a.Text)))
+	emit(fmt.Sprintf("\\ST{%s}", escTT(a.Text)))
 	in.advanceGeneric()
 case common.ATeX:
 	emit("\\hbox{" + a.Text + "}") // \.{@@t}: a \TEX/ box set amid the code, as in cweave
@@ -794,7 +794,7 @@ case common.ALayout:
 	case '|': // optional (zero-width) line break between chunks
 		manualGap = true // this hand-placed break overrides the grammar's space
 		flushRun()
-		line.WriteString("\\GSO ")
+		line.WriteString("\\SO ")
 		pendingGap = gTight
 		atLineStart = false
 	}
@@ -871,13 +871,13 @@ if t.kind == tkIdent || t.kind == tkBuiltin {
 its effective class---which |structTagged| may refine once more, since only the
 look-behind kept here can tell a field's tag from any other raw string. A trailing
 comment is the one exception to the grammar's spacing: it is set off from the code
-by the generous \.{\\GCS} gap \.{cweave} leaves before a comment, in place of the
+by the generous \.{\\CS} gap \.{cweave} leaves before a comment, in place of the
 ordinary \.{\\GS}.
 @<Emit the token@>=
 if t.kind == tkComment {
 	if pendingGap != gTight { // set a trailing comment off from the code with a generous gap, as cweave does
 		flushRun()
-		line.WriteString("\\GCS ")
+		line.WriteString("\\CS ")
 		pendingGap = gTight
 	}
 	emit(wv.renderComment(secNum, t.text))
@@ -942,12 +942,12 @@ a token leaves after it'' for whatever follows an open bracket or a unary sign.
 
 @ Six widths of gap, in increasing order. |gTight| (no space, as before a call's
 parenthesis, \.{cweave}'s tight |f(x)|); then \.{cweave}'s three math muskips, each
-a breakable chunk boundary: |gPunct| (a \.{\\Gpunct}, the thinmuskip after a comma),
+a breakable chunk boundary: |gPunct| (a \.{\\punct}, the thinmuskip after a comma),
 |gWide| (a
-\.{\\GS}, the medmuskip around an arithmetic operator), |gRel| (a \.{\\Grel}, the
-thickmuskip around a relation or assignment); |gWord| (a wider \.{\\GW} between two
+\.{\\GS}, the medmuskip around an arithmetic operator), |gRel| (a \.{\\rel}, the
+thickmuskip around a relation or assignment); |gWord| (a wider \.{\\W} between two
 words---cweave's text interword space, as in \.{int foo}); and |gBlock| (a wider
-\.{\\GBS} that sets a statement block's braces off from the block's head and body,
+\.{\\BS} that sets a statement block's braces off from the block's head and body,
 and a \.{for} or \.{if} header's semicolon off from the next clause---where
 \.{cweave} breaks the math and leaves a half-em, its punctuation thin space plus a
 text interword space).
@@ -1458,43 +1458,43 @@ func isMethodReceiver(toks []token, k int) bool {
 }
 
 @ |renderToken| renders a single \GO/ token as a \TEX/ fragment, used inside
-math. Keywords and builtins are set bold (\.{\\GKW}), identifiers italic
-(\.{\\GID}). A typewriter macro---an \.{@@d} name or a predeclared constant---%
-uses \.{\\GMAC}, which wraps \.{\\tentex} in an \.{\\hbox} so it works in the
+math. Keywords and builtins are set bold (\.{\\KW}), identifiers italic
+(\.{\\ID}). A typewriter macro---an \.{@@d} name or a predeclared constant---%
+uses \.{\\MAC}, which wraps \.{\\tentex} in an \.{\\hbox} so it works in the
 surrounding math mode; the sole exception is |nil|, \GO/'s null value, shown with
-a symbol (\.{\\Gnil}, a capital lambda) as cweave shows \CEE/'s \.{NULL}. An
+a symbol (\.{\\nil}, a capital lambda) as cweave shows \CEE/'s \.{NULL}. An
 identifier reformatted by \.{@@f name TeX} is set as the control sequence
 |\name| (see |texControlSeq|), letting you dress a plain name up as any bit of
-mathematics you please. A comment is set in roman with \.{\\GCM} (escaped for
+mathematics you please. A comment is set in roman with \.{\\CM} (escaped for
 roman text mode, not the typewriter \.{\\charNN} codes, but letting $...$ math
-through), its leading \.{//} tightened by a small kern (\.{\\Gcommentkern}),
+through), its leading \.{//} tightened by a small kern (\.{\\commentkern}),
 whose two slashes are otherwise set rather far apart.
 @<Render one token@>=
 func renderToken(t token) string {
 	switch t.kind {
 	case tkKeyword, tkBuiltin:
-		return "\\GKW{" + escIdent(t.text) + "}"
+		return "\\KW{" + escIdent(t.text) + "}"
 	case tkIdent:
-		return "\\GID{" + escIdent(t.text) + "}"
+		return "\\ID{" + escIdent(t.text) + "}"
 	case tkMacro:
 		if t.text == "nil" {
-			return "\\Gnil "
+			return "\\nil "
 		}
-		return "\\GMAC{" + escTT(t.text) + "}"
+		return "\\MAC{" + escTT(t.text) + "}"
 	case tkTeXCS:
 		return "\\" + texControlSeq(t.text) + " "
 	case tkNumber:
 		return renderNumber(t.text)
 	case tkString:
-		return "\\GST{" + escTT(t.text) + "}"
+		return "\\ST{" + escTT(t.text) + "}"
 	case tkStructTag:
-		return "\\GST{" + escTT(t.text[1:len(t.text)-1]) + "}"
+		return "\\ST{" + escTT(t.text[1:len(t.text)-1]) + "}"
 	case tkComment:
 		if rest, ok := strings.CutPrefix(t.text, "//"); ok {
-			return "\\GCM{/\\kern\\Gcommentkern/" + escComment(rest) + "}"
+			return "\\CM{/\\kern\\commentkern/" + escComment(rest) + "}"
 		}
 		open, close, body := blockCommentDelims(t.text)
-		return "\\GCM{" + open + escComment(body) + close + "}"
+		return "\\CM{" + open + escComment(body) + close + "}"
 	case tkOp:
 		return renderOp(t.text)
 	}
@@ -1533,17 +1533,17 @@ func renderNumber(s string) string {
 	if len(s) >= 2 && s[0] == '0' {
 		switch s[1] {
 		case 'x', 'X':
-			return "\\Ghex{" + numDigits(s[2:]) + "}"
+			return "\\hex{" + numDigits(s[2:]) + "}"
 		case 'o', 'O':
-			return "\\Goct{" + numDigits(s[2:]) + "}"
+			return "\\oct{" + numDigits(s[2:]) + "}"
 		case 'b', 'B':
-			return "\\Gbin{" + numDigits(s[2:]) + "}"
+			return "\\bin{" + numDigits(s[2:]) + "}"
 		}
 		if isOctalDigits(s[1:]) {
-			return "\\Goct{" + numDigits(s[1:]) + "}"
+			return "\\oct{" + numDigits(s[1:]) + "}"
 		}
 	}
-	return "\\GNU{" + numDigits(s) + "}"
+	return "\\NU{" + numDigits(s) + "}"
 }
 
 @ |isOctalDigits| recognizes a classic octal literal (all digits |0|--|7|, with an
@@ -1612,7 +1612,7 @@ if c == '|' {
 }
 
 @ In prose, \.{@@@@} is a literal at-sign, \.{@@<...@@>} is a section reference
-(set as a \.{\\GX} link and recorded as a use), an index entry \.{@@\^},
+(set as a \.{\\X} link and recorded as a use), an index entry \.{@@\^},
 \.{@@.}, or \.{@@:} is recorded and removed, and a \.{@@q...@@>} source comment is
 dropped. Everything else---the user's \TEX/---falls through unchanged.
 @<Handle a control code in prose@>=
@@ -1627,7 +1627,7 @@ if c == '@@' && i+1 < n {
 			end += i + 2
 			name := wv.w.Resolve(strings.TrimSpace(s[i+2 : end]))
 			wv.xr.addSectionUse(name, secNum)
-			fmt.Fprintf(&b, "\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name))
+			fmt.Fprintf(&b, "\\X{%d}{%s}", wv.defNum[name], wv.renderName(name))
 			i = end + 2
 			continue
 		}
@@ -1663,7 +1663,7 @@ honored rather than lexed as \GO/: an index entry (\.{@@\^ @@. @@:}) is recorded
 \TEX/ box (\.{@@t}) and verbatim output (\.{@@=}) are set as they are in a code
 part, a section name is linked, and an \.{@@q} comment has already been dropped.
 The lone |emit| both flushes a pending source blank (as \.{\\\ }) and marks the
-run started, so the next blank counts. The whole fragment is wrapped in \.{\\GPB},
+run started, so the next blank counts. The whole fragment is wrapped in \.{\\PB},
 which supplies the enclosing \.{\$...\$} only when \TEX/ is not already in math
 mode. So a \.{\|...\|} the author placed inside a \.{\$...\$} (as \.{CWEB} allows),
 or inside a text-mode \.{\\halign} cell of a \.{\$\$...\$\$} display, comes out
@@ -1672,7 +1672,7 @@ right either way---\TEX/ itself, not \.{gweave}, decides the mode.
 func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	var st lexState
 	var b strings.Builder
-	b.WriteString("\\GPB{")
+	b.WriteString("\\PB{")
 	pendingSpace := false
 	started := false
 	prevSigKind := tkNewline
@@ -1709,11 +1709,11 @@ case common.AIndex:
 case common.ATeX:
 	emit("\\hbox{" + a.Text + "}")
 case common.AVerbatim:
-	emit("\\GST{" + escTT(a.Text) + "}")
+	emit("\\ST{" + escTT(a.Text) + "}")
 case common.ARef:
 	name := wv.w.Resolve(a.Text)
 	wv.xr.addSectionUse(name, secNum)
-	emit(fmt.Sprintf("\\GX{%d}{%s}", wv.defNum[name], wv.renderName(name)))
+	emit(fmt.Sprintf("\\X{%d}{%s}", wv.defNum[name], wv.renderName(name)))
 case common.APaste:
 	pendingSpace = false
 }
@@ -1741,16 +1741,16 @@ prevSigKind, prevSigText = t.kind, t.text
 a |...| span inside it is set as the \GO/ code it represents (via |inlineCode|),
 and everything else passes through verbatim, so ordinary \TEX/ control sequences
 work -- at the cost (again as in \.{CWEB}) that the author must escape any \TEX/
-specials. A literal bar is written \.{\|}. The whole thing is wrapped in \.{\\GCM},
+specials. A literal bar is written \.{\|}. The whole thing is wrapped in \.{\\CM},
 with the leading \.{//} of a line comment tightened by a small kern and the
 \.{/*}\thinspace\.{*/} of a block comment set the \.{CWEB} way (see below).
 @<Render a code comment@>=
 func (wv *Weaver) renderComment(secNum int, text string) string {
 	if rest, ok := strings.CutPrefix(text, "//"); ok {
-		return "\\GCM{/\\kern\\Gcommentkern/" + wv.commentBody(secNum, rest) + "}"
+		return "\\CM{/\\kern\\commentkern/" + wv.commentBody(secNum, rest) + "}"
 	}
 	open, close, body := blockCommentDelims(text)
-	return "\\GCM{" + open + wv.commentBody(secNum, body) + close + "}"
+	return "\\CM{" + open + wv.commentBody(secNum, body) + close + "}"
 }
 
 @ |commentBody| walks the comment text, accumulating raw \TEX/ in |lit| and
@@ -2416,7 +2416,7 @@ if end := indexStr(src, "*/", i); end >= 0 {
 
 @ An open raw string is closed only if its backtick comes before any newline;
 otherwise this line is emitted and the string stays open, so a multi-line raw
-string becomes one woven line per physical line (a single \.{\\GST} spanning
+string becomes one woven line per physical line (a single \.{\\ST} spanning
 blank lines would end the \.{\\GL}'s paragraph).
 @<Resume an open raw string@>=
 end := indexByte(src, '`', i)
@@ -2635,7 +2635,7 @@ func escIdent(s string) string {
 
 @ |escTT| escapes arbitrary text for a typewriter box. Every \TEX/ special
 becomes a \.{\\charNN} code so it prints literally, and a blank becomes a visible
-space (\.{\\GSP}), the space glyph in slot 32 of the typewriter font, the way
+space (\.{\\SP}), the space glyph in slot 32 of the typewriter font, the way
 \.{CWEB} prints the blanks inside a string.
 @<Escape typewriter text@>=
 func escTT(s string) string {
@@ -2646,7 +2646,7 @@ func escTT(s string) string {
 		case '\\', '{', '}', '$', '&', '#', '%', '^', '_', '~':
 			fmt.Fprintf(&b, "\\char%d ", c)
 		case ' ':
-			b.WriteString("\\GSP ")
+			b.WriteString("\\SP ")
 		default:
 			b.WriteByte(c)
 		}
@@ -2712,11 +2712,11 @@ func renderOp(s string) string {
 @ The relations get their real math symbols, and the logical connectives borrow
 \.{CWEB}'s---a wedge, a vee, a negation sign---so the code reads like the
 mathematics it mirrors. The short declaration \.{:=} is the one operator here that
-prints as itself, but it goes out as a single macro, \.{\\GK}, rather than as two
-atoms: \.{WEB} set Pascal's \.{:=} as a left arrow through \.{\\K}, and \.{\\GK} is
+prints as itself, but it goes out as a single macro, \.{\\K}, rather than as two
+atoms: \.{WEB} set Pascal's \.{:=} as a left arrow through \.{\\K}, and \.{\\K} is
 the same hook for \GO/. Its default in \.{gwebmac.tex} is the two characters run
 together, so nothing changes unless a document asks for something else in its
-limbo---say |\let\GK=\Leftarrow|.
+limbo---say |\let\K=\Leftarrow|.
 @<Typeset a relation or a logical connective@>=
 case "<=":
 	return "\\mathord{\\leq}"
@@ -2735,14 +2735,14 @@ case "||":
 case "<-":
 	return "\\mathord{\\gets}"
 case ":=":
-	return "\\mathord{\\GK}" // short declaration: one macro, so a document can \.{\\let} it
+	return "\\mathord{\\K}" // short declaration: one macro, so a document can \.{\\let} it
 
 @ Bitwise-or is \.{CWEB}'s \.{\\mid}, a relation bar; exclusive-or borrows
 \.{CWEB}'s circled plus for \.{\^}; the shifts are tight double angles. Each
 assignment form simply appends an \.{=}. Bit-clear, \.{\&\^}, is \GO/'s alone---C
 has no such operator, so its glyph is a choice and not a tradition---and it goes
-out through a macro of its own, \.{\\GAN}, a circled slash by default, on the same
-reasoning as \.{\\GK} above.
+out through a macro of its own, \.{\\AN}, a circled slash by default, on the same
+reasoning as \.{\\K} above.
 @<Typeset a bitwise or shift operator@>=
 case "|":
 	return "\\mathord{\\mid}" // bitwise or, as \.{CWEB} (a mid relation bar)
@@ -2753,9 +2753,9 @@ case "^":
 case "^=":
 	return "\\mathord{\\oplus}\\mathord{=}" // xor-assign: \.{\^} is a circled plus too
 case "&^":
-	return "\\mathord{\\GAN}" // bit clear (and-not): its own symbol, and its own macro
+	return "\\mathord{\\AN}" // bit clear (and-not): its own symbol, and its own macro
 case "&^=":
-	return "\\mathord{\\GAN}\\mathord{=}" // and-not-assign
+	return "\\mathord{\\AN}\\mathord{=}" // and-not-assign
 case "<<":
 	return "\\mathord{\\ll}" // left shift, as \.{CWEB} (a tight double angle)
 case ">>":
@@ -2765,14 +2765,14 @@ case "<<=":
 case ">>=":
 	return "\\mathord{\\gg}\\mathord{=}"
 
-@ The postfix \.{++} and \.{--} borrow \.{CWEB}'s \.{\\GPP} and \.{\\GMM}: a pair of
+@ The postfix \.{++} and \.{--} borrow \.{CWEB}'s \.{\\PP} and \.{\\MM}: a pair of
 small, raised, tightly kerned signs that read as one operator rather than two full
 plus or minus glyphs jammed side by side.
 @<Typeset an increment or decrement@>=
 case "++":
-	return "\\mathord{\\GPP}"
+	return "\\mathord{\\PP}"
 case "--":
-	return "\\mathord{\\GMM}"
+	return "\\mathord{\\MM}"
 
 @ The ellipsis is a single math \.{\\ldots}; the empty bracket, brace, and paren
 pairs get a thin space so their two halves do not jam together --- the same gap
@@ -2939,31 +2939,31 @@ func secList(secs, def map[int]bool) string {
 	parts := make([]string, len(nums))
 	for i, n := range nums {
 		if def != nil && def[n] {
-			parts[i] = fmt.Sprintf("\\GsD{%d}", n)
+			parts[i] = fmt.Sprintf("\\sD{%d}", n)
 		} else {
-			parts[i] = fmt.Sprintf("\\Gs{%d}", n)
+			parts[i] = fmt.Sprintf("\\s{%d}", n)
 		}
 	}
 	return strings.Join(parts, ", ")
 }
 
 @ |writeBackMatter| emits the {\sc PDF} bookmarks, the index, the list of named
-sections, and the table of contents that close a woven document. The \.{\\Gdest}
+sections, and the table of contents that close a woven document. The \.{\\dest}
 destination at the top of the section-names page (targeted by the ``Names of the
 sections'' bookmark) is numbered one past the last section, so it never collides
 with a section's own destination.
 @<Write the back matter@>=
 func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 	wv.writeBookmarks(bw)
-	bw.WriteString("\n\\Ginx\n")
+	bw.WriteString("\n\\inx\n")
 	wv.writeIndex(bw)
-	bw.WriteString("\\Gfin\n")
-	fmt.Fprintf(bw, "\\Gsecdest{%d}%%\n", len(wv.w.Sections)+1)
+	bw.WriteString("\\fin\n")
+	fmt.Fprintf(bw, "\\secdest{%d}%%\n", len(wv.w.Sections)+1)
 	wv.writeSectionNames(bw)
-	bw.WriteString("\\Gcon\n\\end\n")
+	bw.WriteString("\\con\n\\end\n")
 }
 
-@ |writeBookmarks| emits one \.{\\Gbookmark} per starred section, in document
+@ |writeBookmarks| emits one \.{\\bookmark} per starred section, in document
 order, so a {\sc PDF} outline can be built whose nesting follows the \.{@@*}, \.{@@*1},
 \.{@@*2} depths. Each entry carries its depth (for the \.{dvipdfmx} route, which
 nests by level) and its number of direct children (for \.{pdftex}'s count model). A
@@ -2997,14 +2997,14 @@ for i, s := range starred {
 	if s.Depth < topDepth {
 		topDepth = s.Depth
 	}
-	fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%d}{%s}%%\n", s.Depth, s.Number, children, bookmarkTitle(s.Title))
+	fmt.Fprintf(bw, "\\bookmark{%d}{%d}{%d}{%s}%%\n", s.Depth, s.Number, children, bookmarkTitle(s.Title))
 }
 
 @ A final top-level ``Names of the sections'' entry (linking to the destination
 one past the last section) lists every defined section name beneath it, each
 linking to its defining section, as cweave does. The negative child count starts
-the group collapsed; \.{\\Goutsecname} holds the title, which the Korean backend
-localizes. The whole block is bracketed by \.{\\ifGsecs} so that \.{\\nosecs} (and
+the group collapsed; \.{\\outsecname} holds the title, which the Korean backend
+localizes. The whole block is bracketed by \.{\\ifsecs} so that \.{\\nosecs} (and
 \.{\\noinx}), which drop the section-name list, drop its outline too rather than
 leaving it pointing at a destination that is no longer emitted.
 @<Emit the ``Names of the sections'' bookmarks@>=
@@ -3014,10 +3014,10 @@ for _, n := range wv.sortedSectionNames() {
 		names = append(names, n)
 	}
 }
-bw.WriteString("\\ifGsecs\n")
-fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{%d}{\\Goutsecname}%%\n", topDepth, len(wv.w.Sections)+1, -len(names))
+bw.WriteString("\\ifsecs\n")
+fmt.Fprintf(bw, "\\bookmark{%d}{%d}{%d}{\\outsecname}%%\n", topDepth, len(wv.w.Sections)+1, -len(names))
 for _, n := range names {
-	fmt.Fprintf(bw, "\\Gbookmark{%d}{%d}{0}{%s}%%\n", topDepth+1, wv.defNum[n], bookmarkTitle(n))
+	fmt.Fprintf(bw, "\\bookmark{%d}{%d}{0}{%s}%%\n", topDepth+1, wv.defNum[n], bookmarkTitle(n))
 }
 bw.WriteString("\\fi\n")
 
@@ -3093,7 +3093,7 @@ subset in |defs| are where it is defined).
 @<Write the index@>=
 type indexItem struct {
 	sortKey string
-	render  string // typeset form of the entry head (\.{\\GID}{...}, \.{\\GIR}{...}, ...)
+	render  string // typeset form of the entry head (\.{\\ID}{...}, \.{\\IR}{...}, ...)
 	secs    map[int]bool
 	defs    map[int]bool
 }
@@ -3126,11 +3126,11 @@ a definition also flags it in |defs|.
 head := func(name string) string {
 	switch wv.format[name] {
 	case tkMacro:
-		return "\\GMAC{" + escTT(name) + "}"
+		return "\\MAC{" + escTT(name) + "}"
 	case tkTeXCS:
 		return "$\\" + texControlSeq(name) + "$" // its macro assumes math mode
 	}
-	return "\\GID{" + escIdent(name) + "}"
+	return "\\ID{" + escIdent(name) + "}"
 }
 for name, secs := range wv.xr.identUse {
 	it := get(head(name), strings.ToLower(name))
@@ -3153,18 +3153,18 @@ for _, e := range wv.xr.manualIndex {
 	var render string
 	switch e.kind {
 	case '.':
-		render = "\\GIT{" + escTT(e.text) + "}"
+		render = "\\IT{" + escTT(e.text) + "}"
 	case ':':
-		render = "\\GIC{" + e.text + "}"
+		render = "\\IC{" + e.text + "}"
 	default: // '\.{\^}'
-		render = "\\GIR{" + escProse(e.text) + "}"
+		render = "\\IR{" + escProse(e.text) + "}"
 	}
 	it := get(render, strings.ToLower(e.text))
 	it.secs[e.sec] = true
 }
 
 @ The entries are sorted by their case-folded key (ties broken by the rendered
-form) and emitted as \.{\\GII} lines, each pairing the head with its section list.
+form) and emitted as \.{\\II} lines, each pairing the head with its section list.
 @<Sort and emit the index@>=
 list := make([]*indexItem, 0, len(items))
 for _, it := range items {
@@ -3177,7 +3177,7 @@ sort.Slice(list, func(i, j int) bool {
 	return list[i].render < list[j].render
 })
 for _, it := range list {
-	fmt.Fprintf(bw, "\\GII{%s}{%s}\n", it.render, secList(it.secs, it.defs))
+	fmt.Fprintf(bw, "\\II{%s}{%s}\n", it.render, secList(it.secs, it.defs))
 }
 
 @ |writeSectionNames| emits the list of named sections with their defining and
@@ -3186,7 +3186,7 @@ here and for the {\sc PDF} outline children beneath ``Names of the sections''.
 @<Write the list of section names@>=
 func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	for _, n := range wv.sortedSectionNames() {
-		fmt.Fprintf(bw, "\\GNS{%s}{%d}{%s}\n",
+		fmt.Fprintf(bw, "\\NS{%s}{%d}{%s}\n",
 			wv.renderName(n), wv.defNum[n], usedNote(wv.xr.sectionUses[n]))
 	}
 }
@@ -3211,16 +3211,16 @@ func (wv *Weaver) sortedSectionNames() []string {
 
 @ |usedNote| renders the ``Used in section(s) \dots'' note for the section-names
 list, or |""| when the section is never used. The wording is deferred to the
-|\GNused|/|\GNuseds| macros (singular/plural) so a localization file can
-translate it, exactly as |\GU|/|\GUs| do for the under-definition notes.
+|\Nused|/|\Nuseds| macros (singular/plural) so a localization file can
+translate it, exactly as |\U|/|\Us| do for the under-definition notes.
 @<The ``used in'' note@>=
 func usedNote(uses map[int]bool) string {
 	if len(uses) == 0 {
 		return ""
 	}
-	macro := "\\GNused"
+	macro := "\\Nused"
 	if len(uses) > 1 {
-		macro = "\\GNuseds"
+		macro = "\\Nuseds"
 	}
 	return macro + "{" + secList(uses, nil) + "}"
 }
@@ -3241,16 +3241,16 @@ func (wv *Weaver) crossRefNotes(name string, secNum int) string {
 				others[s] = true
 			}
 		}
-		macro := "\\GA"
+		macro := "\\A"
 		if len(others) > 1 {
-			macro = "\\GAs"
+			macro = "\\As"
 		}
 		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(others, nil))
 	}
 	if uses := wv.xr.sectionUses[name]; len(uses) > 0 {
-		macro := "\\GU"
+		macro := "\\U"
 		if len(uses) > 1 {
-			macro = "\\GUs"
+			macro = "\\Us"
 		}
 		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(uses, nil))
 	}
@@ -3298,13 +3298,13 @@ func main() {
 println(x)
 `)
 	checks := []string{
-		`\GN{0}{1}{Demo}`, // starred section with title
-		`$\GID{main}$`,    // inline code
-		`\GKW{package}`,   // keyword bold
-		`\GKW{func}`,      // keyword bold
-		`\GID{main}`,      // identifier italic
-		`\GX{2}{body}`,    // reference resolved to defining section 2
-		`\GD{2}{body}`,    // definition headline
+		`\N{0}{1}{Demo}`, // starred section with title
+		`$\ID{main}$`,    // inline code
+		`\KW{package}`,   // keyword bold
+		`\KW{func}`,      // keyword bold
+		`\ID{main}`,      // identifier italic
+		`\X{2}{body}`,    // reference resolved to defining section 2
+		`\D{2}{body}`,    // definition headline
 	}
 	for _, c := range checks {
 		if !strings.Contains(out, c) {
@@ -3314,7 +3314,7 @@ println(x)
 }
 
 @ The back matter ends with a top-level "Names of the sections" \sc {PDF} outline
-entry (\.{\\Goutsecname}) linking to a destination on the section-names page
+entry (\.{\\outsecname}) linking to a destination on the section-names page
 (numbered one past the last section), under which every section name is a
 collapsible child linking to its defining section, as cweave does. Here the
 one name "x" is defined in section 2, so the group has a single child and a
@@ -3322,17 +3322,17 @@ negative count (collapsed).
 @(gweave_test.go@>=
 func TestNamesBookmark(t *testing.T) {
 	out := weaveString(t, "@@* A.\n@@c\npackage main\n@@ B.\n@@<x@@>=\n_ = 0\n")
-	if !strings.Contains(out, `\Gbookmark{0}{3}{-1}{\Goutsecname}`) {
+	if !strings.Contains(out, `\bookmark{0}{3}{-1}{\outsecname}`) {
 		t.Errorf("missing/!collapsed Names-of-the-sections bookmark:\n%s", out)
 	}
-	if !strings.Contains(out, `\Gbookmark{1}{2}{0}{x}`) {
+	if !strings.Contains(out, `\bookmark{1}{2}{0}{x}`) {
 		t.Errorf("missing section-name child bookmark:\n%s", out)
 	}
-	if !strings.Contains(out, `\Gsecdest{3}`) {
+	if !strings.Contains(out, `\secdest{3}`) {
 		t.Errorf("missing section-names destination:\n%s", out)
 	}
-	if !strings.Contains(out, "\\ifGsecs\n\\Gbookmark{0}{3}{-1}{\\Goutsecname}") {
-		t.Errorf("Names-of-the-sections outline should be guarded by \\ifGsecs:\n%s", out)
+	if !strings.Contains(out, "\\ifsecs\n\\bookmark{0}{3}{-1}{\\outsecname}") {
+		t.Errorf("Names-of-the-sections outline should be guarded by \\ifsecs:\n%s", out)
 	}
 }
 
@@ -3343,7 +3343,7 @@ func TestWeaveEscaping(t *testing.T) {
 m := map[string]int{}
 s := "a\tb"
 `)
-	if !strings.Contains(out, `\GID{m}`) || !strings.Contains(out, `\GKW{map}`) {
+	if !strings.Contains(out, `\ID{m}`) || !strings.Contains(out, `\KW{map}`) {
 		t.Errorf("expected identifier/keyword highlighting:\n%s", out)
 	}
 	// Braces in code must be escaped for math mode.
@@ -3352,13 +3352,13 @@ s := "a\tb"
 	}
 }
 
-@ A blank inside a string literal prints as a visible space (\.{\\GSP}), as cweb
+@ A blank inside a string literal prints as a visible space (\.{\\SP}), as cweb
 does; each blank becomes its own marker.
 @(gweave_test.go@>=
 func TestWeaveStringVisibleSpace(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\ns := \"a b  c\"\n")
-	if !strings.Contains(out, `\GST{"a\GSP b\GSP \GSP c"}`) {
-		t.Errorf("string blanks should become \\GSP markers:\n%s", out)
+	if !strings.Contains(out, `\ST{"a\SP b\SP \SP c"}`) {
+		t.Errorf("string blanks should become \\SP markers:\n%s", out)
 	}
 }
 
@@ -3393,37 +3393,37 @@ and a \.{@@q} comment vanishes---none of it leaking as stray tokens.
 @(gweave_test.go@>=
 func TestWeaveInnerCControlCodes(t *testing.T) {
 	out := weaveString(t, "@@ A |x @@^ROM@@> @@.TT@@> @@t\\bf B@@> @@=V@@> @@q Z @@> y| end.\n@@c\npackage main\n")
-	for _, want := range []string{`\GIR{ROM}`, `\GIT{TT}`, `\hbox{\bf B}`, `\GST{V}`} {
+	for _, want := range []string{`\IR{ROM}`, `\IT{TT}`, `\hbox{\bf B}`, `\ST{V}`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("inner-C control text lost %q:\n%s", want, out)
 		}
 	}
-	if strings.Contains(out, `\mathord{@}`) || strings.Contains(out, `\GID{ROM}`) || strings.Contains(out, `\GID{Z}`) {
+	if strings.Contains(out, `\mathord{@}`) || strings.Contains(out, `\ID{ROM}`) || strings.Contains(out, `\ID{Z}`) {
 		t.Errorf("inner-C control code leaked as stray tokens:\n%s", out)
 	}
 }
 
-@ \.{nil} prints as a symbol (\.{\\Gnil}), the way cweb shows \CEE/'s \.{NULL}, not in
+@ \.{nil} prints as a symbol (\.{\\nil}), the way cweb shows \CEE/'s \.{NULL}, not in
 typewriter; the other predeclared constants stay typewriter.
 @(gweave_test.go@>=
 func TestWeaveNilSymbol(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar p *int = nil\n_ = true\n")
-	if !strings.Contains(out, `\Gnil `) {
-		t.Errorf("nil should render as \\Gnil:\n%s", out)
+	if !strings.Contains(out, `\nil `) {
+		t.Errorf("nil should render as \\nil:\n%s", out)
 	}
-	if strings.Contains(out, `\GMAC{nil}`) {
+	if strings.Contains(out, `\MAC{nil}`) {
 		t.Errorf("nil should not be typewriter:\n%s", out)
 	}
-	if !strings.Contains(out, `\GMAC{true}`) {
+	if !strings.Contains(out, `\MAC{true}`) {
 		t.Errorf("true should stay typewriter:\n%s", out)
 	}
 }
 
-@ The leading ``\.{//}" of a comment is tightened with \.{\\Gcommentkern}.
+@ The leading ``\.{//}" of a comment is tightened with \.{\\commentkern}.
 @(gweave_test.go@>=
 func TestWeaveCommentSlashKern(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nx := 1 // hi\n")
-	if !strings.Contains(out, `\GCM{/\kern\Gcommentkern/ hi}`) {
+	if !strings.Contains(out, `\CM{/\kern\commentkern/ hi}`) {
 		t.Errorf("comment // not kerned:\n%s", out)
 	}
 }
@@ -3433,18 +3433,18 @@ the star sits on the axis instead of riding high as the roman \.* does.
 @(gweave_test.go@>=
 func TestWeaveBlockCommentAsterisk(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nx := 1 /* hi */\n")
-	if !strings.Contains(out, `\GCM{$/\ast\,$hi$\,\ast/$}`) {
+	if !strings.Contains(out, `\CM{$/\ast\,$hi$\,\ast/$}`) {
 		t.Errorf("block comment /* */ should use CWEB's math asterisk:\n%s", out)
 	}
 }
 
-@ A trailing comment is set off from the code by the generous \.{\\GCS} gap, not the
+@ A trailing comment is set off from the code by the generous \.{\\CS} gap, not the
 ordinary \.{\\GS} of an inter-token space.
 @(gweave_test.go@>=
 func TestWeaveCommentGap(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nx := 1 // hi\n")
-	if !strings.Contains(out, `\GCS $\GCM{`) {
-		t.Errorf("trailing comment should get the generous \\GCS gap:\n%s", out)
+	if !strings.Contains(out, `\CS $\CM{`) {
+		t.Errorf("trailing comment should get the generous \\CS gap:\n%s", out)
 	}
 }
 
@@ -3454,7 +3454,7 @@ func TestWeaveUnderscoreIdent(t *testing.T) {
 @@c
 var my_var int
 `)
-	if !strings.Contains(out, `\GID{my\_var}`) {
+	if !strings.Contains(out, `\ID{my\_var}`) {
 		t.Errorf("underscore not escaped in identifier:\n%s", out)
 	}
 }
@@ -3479,12 +3479,12 @@ println(x)
 println(x + 1)
 `)
 	checks := []string{
-		`\GII{\GID{main}}{\GsD{1}}`, // main defined (underlined) in section 1
-		`\GII{\GID{x}}{`,            // x indexed
-		`\GsD{1}`,                   // x defined via := in section 1
-		`\GNS{use x}`,               // named section in the list
-		`\GU{`,                      // "used in" note
-		`\GA{`,                      // "also defined in" note (two def sites)
+		`\II{\ID{main}}{\sD{1}}`, // main defined (underlined) in section 1
+		`\II{\ID{x}}{`,            // x indexed
+		`\sD{1}`,                   // x defined via := in section 1
+		`\NS{use x}`,               // named section in the list
+		`\U{`,                      // "used in" note
+		`\A{`,                      // "also defined in" note (two def sites)
 	}
 	for _, c := range checks {
 		if !strings.Contains(out, c) {
@@ -3513,10 +3513,10 @@ func f(ch chan int) {
 		`\neq`:                     "!= should render as \\neq",
 		`\geq`:                     ">= should render as \\geq",
 		`\mathord{\gets}`:          "<- should render as a left arrow",
-		`\mathord{\GPP}`:           "++ should render as cweave's tight \\GPP symbol",
-		`\mathord{\GMM}`:           "-- should render as cweave's tight \\GMM symbol",
-		`$\GKW{if}$\GBS `:          "if is set off from its clause with the wider \\GBS",
-		`\GKW{default}\mathord{:}`: "default: should be tight (no space before colon)",
+		`\mathord{\PP}`:           "++ should render as cweave's tight \\PP symbol",
+		`\mathord{\MM}`:           "-- should render as cweave's tight \\MM symbol",
+		`$\KW{if}$\BS `:          "if is set off from its clause with the wider \\BS",
+		`\KW{default}\mathord{:}`: "default: should be tight (no space before colon)",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3525,7 +3525,7 @@ func f(ch chan int) {
 	}
 }
 
-@ A name declared with `type' is a user type and renders bold (\.{\\GKW})
+@ A name declared with `type' is a user type and renders bold (\.{\\KW})
 everywhere, like a predeclared type -- as cweave does.
 @(gweave_test.go@>=
 func TestWeaveTypeNamesAreBold(t *testing.T) {
@@ -3547,13 +3547,13 @@ func use() {
 	_ = g
 }
 `)
-	for _, want := range []string{`\GKW{entry}`, `\GKW{Graph}`, `\GKW{Vertex}`} {
+	for _, want := range []string{`\KW{entry}`, `\KW{Graph}`, `\KW{Vertex}`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("want declared type bold %q in:\n%s", want, out)
 		}
 	}
 	// frac is a struct field, not a type, so it stays an italic identifier.
-	if strings.Contains(out, `\GKW{frac}`) {
+	if strings.Contains(out, `\KW{frac}`) {
 		t.Errorf("a struct field must not be bolded as a type:\n%s", out)
 	}
 }
@@ -3567,9 +3567,9 @@ or \.{sizeof}.
 func TestWeaveCallParenTight(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar _ = f(a)\nvar cdq func(l, r int)\nfunc (r *T) m() {}\n")
 	checks := map[string]string{
-		`\GID{f}\mathord{(}`:          "a call f( clings tight, as cweave sets a call",
-		`\GKW{func}\mathord{(}`:       "a func literal/type func( clings the same way",
-		`\GKW{func}$\GS $\mathord{(}`: "a method receiver func ( gets a full space",
+		`\ID{f}\mathord{(}`:          "a call f( clings tight, as cweave sets a call",
+		`\KW{func}\mathord{(}`:       "a func literal/type func( clings the same way",
+		`\KW{func}$\GS $\mathord{(}`: "a method receiver func ( gets a full space",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3579,16 +3579,16 @@ func TestWeaveCallParenTight(t *testing.T) {
 }
 
 @ Two adjacent words---a keyword and a name, a name and its type---get the wider
-\.{\\GW}, \.{cweave}'s text interword space (\.{var foo Type}, \.{n int}), while an
+\.{\\W}, \.{cweave}'s text interword space (\.{var foo Type}, \.{n int}), while an
 operator keeps the narrower medmuskip \.{\\GS} (\.{a + b}).
 @(gweave_test.go@>=
 func TestWeaveWordSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar foo Type\nfunc bar(n int) T\nz := a + b\n")
 	checks := map[string]string{
-		`\GKW{var}$\GW $\GID{foo}$\GW $\GID{Type}`: "var, name, and type get the wider word space",
-		`\GKW{func}$\GW $\GID{bar}`:                "func and its name get the word space",
-		`\GID{n}$\GW $\GKW{int}`:                   "a parameter and its type get the word space",
-		`\GID{a}$\GS $\mathord{+}$\GS $\GID{b}`:    "an operator keeps the narrower medmuskip",
+		`\KW{var}$\W $\ID{foo}$\W $\ID{Type}`: "var, name, and type get the wider word space",
+		`\KW{func}$\W $\ID{bar}`:                "func and its name get the word space",
+		`\ID{n}$\W $\KW{int}`:                   "a parameter and its type get the word space",
+		`\ID{a}$\GS $\mathord{+}$\GS $\ID{b}`:    "an operator keeps the narrower medmuskip",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3597,7 +3597,7 @@ func TestWeaveWordSpacing(t *testing.T) {
 	}
 }
 
-@ A statement block's braces are set off with the wider \.{\\GBS} on every open
+@ A statement block's braces are set off with the wider \.{\\BS} on every open
 side---before the opening \.{\char123}, after it, and before the closing
 \.{\char125}---while a composite literal's braces cling to their contents, as
 \.{cweave} sets them.
@@ -3605,11 +3605,11 @@ side---before the opening \.{\char123}, after it, and before the closing
 func TestWeaveBlockBraceSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() int { return g([]int{1, 2}) }\n")
 	checks := map[string]string{
-		`\GKW{int}$\GBS $\mathord{\{}`:    "a block's opening brace is set off from its head",
-		`\mathord{\{}$\GBS $\GKW{return}`: "a block's opening brace breathes before its body",
-		`\mathord{)}$\GBS $\mathord{\}}`:  "a block's closing brace breathes after its body",
-		`\GKW{int}\mathord{\{}\GNU{1}`:    "a composite literal's opening brace clings to its first element",
-		`\GNU{2}\mathord{\}}`:             "a composite literal's closing brace clings to its last element",
+		`\KW{int}$\BS $\mathord{\{}`:    "a block's opening brace is set off from its head",
+		`\mathord{\{}$\BS $\KW{return}`: "a block's opening brace breathes before its body",
+		`\mathord{)}$\BS $\mathord{\}}`:  "a block's closing brace breathes after its body",
+		`\KW{int}\mathord{\{}\NU{1}`:    "a composite literal's opening brace clings to its first element",
+		`\NU{2}\mathord{\}}`:             "a composite literal's closing brace clings to its last element",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3628,8 +3628,8 @@ func TestWeaveElidedLiteralBraceSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar t = map[int]P{23: {2, 3}, 45: bar}\nvar u = [][]int{{1}, {2}}\n")
 	checks := map[string]string{
 		`\mathord{:}$\GS $\mathord{\{}`:    "a keyed element's brace is spaced like any other value",
-		`\mathord{,}$\Gpunct $\mathord{\{}`: "an element's brace takes the comma's thin space",
-		`\GKW{int}\mathord{\{}\mathord{\{}`: "but a brace still clings to its type, and to an enclosing brace",
+		`\mathord{,}$\punct $\mathord{\{}`: "an element's brace takes the comma's thin space",
+		`\KW{int}\mathord{\{}\mathord{\{}`: "but a brace still clings to its type, and to an enclosing brace",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3648,11 +3648,11 @@ func TestWeaveTypeSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f(x int) []int { return nil }\n"+
 		"func g() [3][]int { return z }\nvar b [256]int\nvar p *int\nvar s = a[i]\n")
 	checks := map[string]string{
-		`\mathord{)}$\GW $\mathord{[}\,\mathord{]}\GKW{int}`: "a slice result type takes the word space, as p []byte does",
-		`\mathord{]}\mathord{[}\,\mathord{]}\GKW{int}`:       "a stacked slice type clings: [3][]int",
-		`\GID{b}$\GW $\mathord{[}\GNU{256}`:                  "a named array type gets the name-and-type word space: b [256]int",
-		`\GID{p}$\GW $\mathord{*}\GKW{int}`:                  "a named pointer type gets the word space, clinging after the star: p *int",
-		`\GID{a}\mathord{[}\GID{i}\mathord{]}`:               "an index clings to its operand: a[i]",
+		`\mathord{)}$\W $\mathord{[}\,\mathord{]}\KW{int}`: "a slice result type takes the word space, as p []byte does",
+		`\mathord{]}\mathord{[}\,\mathord{]}\KW{int}`:       "a stacked slice type clings: [3][]int",
+		`\ID{b}$\W $\mathord{[}\NU{256}`:                  "a named array type gets the name-and-type word space: b [256]int",
+		`\ID{p}$\W $\mathord{*}\KW{int}`:                  "a named pointer type gets the word space, clinging after the star: p *int",
+		`\ID{a}\mathord{[}\ID{i}\mathord{]}`:               "an index clings to its operand: a[i]",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3670,11 +3670,11 @@ nothing.
 func TestGoOnlySpacingDecisions(t *testing.T) {
 	for _, c := range []struct{ name, src, want string }{
 		{"spread clings", "@@ x\n@@c\npackage p\nvar _ = f(a...)\n",
-			`\GID{a}\mathord{\ldots}\mathord{)}`},
+			`\ID{a}\mathord{\ldots}\mathord{)}`},
 		{"variadic keeps the medium space", "@@ x\n@@c\nfunc v(a ...int) {}\n",
-			`\GID{a}$\GS $\mathord{\ldots}$\GS $\GKW{int}`},
+			`\ID{a}$\GS $\mathord{\ldots}$\GS $\KW{int}`},
 		{"channel send stays medium", "@@ x\n@@c\npackage p\nvar _ = c <- d\n",
-			`\GID{c}$\GS $\mathord{\gets}$\GS $\GID{d}`},
+			`\ID{c}$\GS $\mathord{\gets}$\GS $\ID{d}`},
 	} {
 		out := weaveString(t, c.src)
 		if !strings.Contains(out, c.want) {
@@ -3684,7 +3684,7 @@ func TestGoOnlySpacingDecisions(t *testing.T) {
 }
 
 @ A block-heading keyword---|if|, |for|, |switch|, |select|---is set off from its
-clause with the same wider \.{\\GBS} its brace gets, so \.{if x \char123} reads
+clause with the same wider \.{\\BS} its brace gets, so \.{if x \char123} reads
 evenly on both sides of the clause. An ordinary keyword like |case| or |func| keeps
 the plain \.{\\GS}. The header's own semicolons take that same block space after
 them, clinging to the clause before---as \.{cweave} breaks a \.{for} header.
@@ -3693,12 +3693,12 @@ func TestWeaveStmtHeadSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() {\nif x { g() }\n"+
 		"for i := 0; i < n; i++ { h() }\nswitch v {\ncase 1:\n}\n}\n")
 	checks := map[string]string{
-		`\GKW{if}$\GBS $\GID{x}`:     "if is set off from its clause with a block space",
-		`\GKW{for}$\GBS $\GID{i}`:    "for is set off from its clause",
-		`\GNU{0}\mathord{;}$\GBS $\GID{i}`: "a for-header ; clings before and breaks after",
-		`\GKW{switch}$\GBS $\GID{v}`: "switch is set off from its clause",
-		`\GKW{case}$\GW $\GNU{1}`:    "case gets the word space, not a block head's",
-		`\GKW{func}$\GW $\GID{f}`:    "func gets the word space, not a block head's",
+		`\KW{if}$\BS $\ID{x}`:     "if is set off from its clause with a block space",
+		`\KW{for}$\BS $\ID{i}`:    "for is set off from its clause",
+		`\NU{0}\mathord{;}$\BS $\ID{i}`: "a for-header ; clings before and breaks after",
+		`\KW{switch}$\BS $\ID{v}`: "switch is set off from its clause",
+		`\KW{case}$\W $\NU{1}`:    "case gets the word space, not a block head's",
+		`\KW{func}$\W $\ID{f}`:    "func gets the word space, not a block head's",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3724,7 +3724,7 @@ func TestWeaveShiftOperators(t *testing.T) {
 
 @ Bitwise xor (\.{\^}, \.{\^=}) shows as a circled plus (\.{\\oplus}), as \.{CWEB}
 sets a caret. Bit clear (\.{\&\^}, \.{\&\^=}), which has no \CEE/ analogue, gets its
-own symbol through \.{\\GAN}, rather than an \.{\&} run together with a circled
+own symbol through \.{\\AN}, rather than an \.{\&} run together with a circled
 plus.
 @(gweave_test.go@>=
 func TestWeaveCaretOperators(t *testing.T) {
@@ -3732,15 +3732,15 @@ func TestWeaveCaretOperators(t *testing.T) {
 	for _, want := range []string{
 		`\mathord{\oplus}`,            // \.{\^} xor: a circled plus
 		`\mathord{\oplus}\mathord{=}`, // \.{\^=}
-		`\mathord{\GAN}`,              // \.{\&\^} bit clear: its own macro
-		`\mathord{\GAN}\mathord{=}`,   // \.{\&\^=}
+		`\mathord{\AN}`,              // \.{\&\^} bit clear: its own macro
+		`\mathord{\AN}\mathord{=}`,   // \.{\&\^=}
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("want %q in:\n%s", want, out)
 		}
 	}
 	if strings.Contains(out, `\mathord{\&}\mathord{\oplus}`) {
-		t.Errorf("bit clear must be \\GAN, not an ampersand-circledplus:\n%s", out)
+		t.Errorf("bit clear must be \\AN, not an ampersand-circledplus:\n%s", out)
 	}
 }
 
@@ -3756,31 +3756,31 @@ type Counts struct{}
 var c Counts
 var hidden int
 `)
-	if !strings.Contains(out, `\GKW{Counts}`) {
+	if !strings.Contains(out, `\KW{Counts}`) {
 		t.Errorf("@@f should typeset Counts bold like a type:\n%s", out)
 	}
-	if !strings.Contains(out, `\GKW{hidden}`) {
+	if !strings.Contains(out, `\KW{hidden}`) {
 		t.Errorf("@@s should also change the typeset class:\n%s", out)
 	}
-	if !strings.Contains(out, `\GII{\GID{Counts}}`) {
+	if !strings.Contains(out, `\II{\ID{Counts}}`) {
 		t.Errorf("@@f keeps the identifier in the index:\n%s", out)
 	}
-	if strings.Contains(out, `\GII{\GID{hidden}}`) {
+	if strings.Contains(out, `\II{\ID{hidden}}`) {
 		t.Errorf("@@s should omit the identifier from the index:\n%s", out)
 	}
 }
 
-@ A \.{@@d} sets every identifier it lists in typewriter (\.{\\GMAC}), even across
-line breaks, while a name it does not mention stays italic (\.{\\GID}).
+@ A \.{@@d} sets every identifier it lists in typewriter (\.{\\MAC}), even across
+line breaks, while a name it does not mention stays italic (\.{\\ID}).
 @(gweave_test.go@>=
 func TestWeaveMacroMultipleNames(t *testing.T) {
 	out := weaveString(t, "@@ @@d Push Pop\n   Peek\n@@c\nvar _ = Push + Pop + Peek + Other\n")
 	for _, name := range []string{"Push", "Pop", "Peek"} {
-		if !strings.Contains(out, `\GMAC{`+name+`}`) {
+		if !strings.Contains(out, `\MAC{`+name+`}`) {
 			t.Errorf("@@d should set %s in typewriter:\n%s", name, out)
 		}
 	}
-	if !strings.Contains(out, `\GID{Other}`) {
+	if !strings.Contains(out, `\ID{Other}`) {
 		t.Errorf("a name not in @@d should stay italic:\n%s", out)
 	}
 }
@@ -3797,7 +3797,7 @@ func TestWeaveTeXFormat(t *testing.T) {
 	if !strings.Contains(out, `\twoxwords `) {
 		t.Errorf("@@f two_words TeX should transliterate _ to x:\n%s", out)
 	}
-	if strings.Contains(out, `\GID{x1}`) {
+	if strings.Contains(out, `\ID{x1}`) {
 		t.Errorf("x1 should not fall back to an italic identifier:\n%s", out)
 	}
 }
@@ -3808,21 +3808,21 @@ unqualified \.{@@s Bar int} sets every |Bar|.
 @(gweave_test.go@>=
 func TestWeaveQualifiedFormat(t *testing.T) {
 	q := weaveString(t, "\\input gwebmac\n@@s foo.Bar int\n@@ x\n@@c\nvar a = foo.Bar\nvar b = abc.Bar\n")
-	if !strings.Contains(q, `\GID{foo}\mathord{.}\GKW{Bar}`) {
+	if !strings.Contains(q, `\ID{foo}\mathord{.}\KW{Bar}`) {
 		t.Errorf("foo.Bar should typeset Bar bold:\n%s", q)
 	}
-	if !strings.Contains(q, `\GID{abc}\mathord{.}\GID{Bar}`) {
+	if !strings.Contains(q, `\ID{abc}\mathord{.}\ID{Bar}`) {
 		t.Errorf("abc.Bar should leave Bar italic under a qualified directive:\n%s", q)
 	}
 	all := weaveString(t, "\\input gwebmac\n@@s Bar int\n@@ x\n@@c\nvar b = abc.Bar\n")
-	if !strings.Contains(all, `\GID{abc}\mathord{.}\GKW{Bar}`) {
+	if !strings.Contains(all, `\ID{abc}\mathord{.}\KW{Bar}`) {
 		t.Errorf("unqualified @@s Bar should bold every Bar:\n%s", all)
 	}
 }
 
-@ Constants declared in an |iota| enumeration are set in typewriter (\.{\\GMAC}),
+@ Constants declared in an |iota| enumeration are set in typewriter (\.{\\MAC}),
 everywhere they are used, while a plain \.{const} block and a one-line \.{const}
-stay italic (\.{\\GID}), and the |iota| line's type stays whatever it was.
+stay italic (\.{\\ID}), and the |iota| line's type stays whatever it was.
 @(gweave_test.go@>=
 func TestWeaveIotaConst(t *testing.T) {
 	out := weaveString(t, "\\input gwebmac\n@@ x\n@@c\n"+
@@ -3831,12 +3831,12 @@ func TestWeaveIotaConst(t *testing.T) {
 		"const Limit = 1\n"+
 		"var _ = Red + Green\n")
 	for _, name := range []string{"Red", "Green"} {
-		if !strings.Contains(out, `\GMAC{`+name+`}`) {
+		if !strings.Contains(out, `\MAC{`+name+`}`) {
 			t.Errorf("iota constant %s should be typewriter:\n%s", name, out)
 		}
 	}
 	for _, name := range []string{"Pi", "Limit", "Color"} {
-		if !strings.Contains(out, `\GID{`+name+`}`) {
+		if !strings.Contains(out, `\ID{`+name+`}`) {
 			t.Errorf("%s should stay italic:\n%s", name, out)
 		}
 	}
@@ -3902,9 +3902,9 @@ even the tight \.{a*b} |gofmt| writes to group a factor---is set spaced, as in
 func TestWeaveGrammarSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f(p *int) {\nr := a*b + c\ns := xs[i]\n}\n")
 	checks := map[string]string{
-		`\mathord{*}\GKW{int}`:                  "a pointer type *int is tight",
-		`\GID{xs}\mathord{[}\GID{i}\mathord{]}`: "an index xs[i] is tight",
-		`\GID{a}$\GS $\mathord{*}$\GS $\GID{b}`: "a product a*b is set spaced",
+		`\mathord{*}\KW{int}`:                  "a pointer type *int is tight",
+		`\ID{xs}\mathord{[}\ID{i}\mathord{]}`: "an index xs[i] is tight",
+		`\ID{a}$\GS $\mathord{*}$\GS $\ID{b}`: "a product a*b is set spaced",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3922,9 +3922,9 @@ func TestWeaveStarSpacing(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@<b@@>=\n"+
 		"c := *a**b\nvar h []*T\nfunc g(p *int) {}\n")
 	checks := map[string]string{
-		`\mathord{*}\GID{a}$\GS $\mathord{*}$\GS $\mathord{*}\GID{b}`: "*a**b -> *a * *b",
-		`\mathord{*}\GKW{int}`: "a pointer *int clings to its type",
-		`\mathord{*}\GID{T}`:   "[]*T keeps *T tight",
+		`\mathord{*}\ID{a}$\GS $\mathord{*}$\GS $\mathord{*}\ID{b}`: "*a**b -> *a * *b",
+		`\mathord{*}\KW{int}`: "a pointer *int clings to its type",
+		`\mathord{*}\ID{T}`:   "[]*T keeps *T tight",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3942,10 +3942,10 @@ func TestWeaveArrayPointer(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\n"+
 		"func f(src *[256]*Node, b [256]*Node) {\nvar m [3][4]*int\nr := a[i]*b\n}\n")
 	checks := map[string]string{
-		`\mathord{]}\mathord{*}\GID{Node}`:                 "[256]*Node keeps *Node tight",
-		`\GID{b}$\GW $\mathord{[}`:                         "b [256] gets the name-and-type word space",
-		`\mathord{[}\GNU{3}\mathord{]}\mathord{[}\GNU{4}\mathord{]}\mathord{*}\GKW{int}`: "[3][4]*int stays tight throughout",
-		`\GID{i}\mathord{]}$\GS $\mathord{*}$\GS $\GID{b}`: "a[i]*b stays a spaced product",
+		`\mathord{]}\mathord{*}\ID{Node}`:                 "[256]*Node keeps *Node tight",
+		`\ID{b}$\W $\mathord{[}`:                         "b [256] gets the name-and-type word space",
+		`\mathord{[}\NU{3}\mathord{]}\mathord{[}\NU{4}\mathord{]}\mathord{*}\KW{int}`: "[3][4]*int stays tight throughout",
+		`\ID{i}\mathord{]}$\GS $\mathord{*}$\GS $\ID{b}`: "a[i]*b stays a spaced product",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3966,11 +3966,11 @@ var _ = @@<Compute |area| now@@>
 @@<Compute |area| now@@>=
 w * h
 `)
-	want := `Compute \GPB{\GID{area}} now`
-	if !strings.Contains(out, `\GX{2}{`+want+`}`) {
+	want := `Compute \PB{\ID{area}} now`
+	if !strings.Contains(out, `\X{2}{`+want+`}`) {
 		t.Errorf("reference name should typeset |area| as code; missing %q in:\n%s", want, out)
 	}
-	if !strings.Contains(out, `\GD{2}{`+want+`}`) {
+	if !strings.Contains(out, `\D{2}{`+want+`}`) {
 		t.Errorf("definition headline should typeset |area| as code; missing %q in:\n%s", want, out)
 	}
 }
@@ -3979,10 +3979,10 @@ w * h
 func TestWeaveLayoutCodes(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar y = a@@,b\nvar z = c@@/d\nvar w = e@@|f\nvar v = g@@#h\n")
 	checks := map[string]string{
-		`\GID{a}\,$\GW $\GID{b}`: "@@, should add a thin space on top of the grammar's word space",
-		`\GL{0}{$\GID{d}$}`:      "@@/ should force a new line",
-		`\GSO `:                  "@@| should emit an optional break",
-		`\GBL`:                   "@@# should emit a blank line",
+		`\ID{a}\,$\W $\ID{b}`: "@@, should add a thin space on top of the grammar's word space",
+		`\GL{0}{$\ID{d}$}`:      "@@/ should force a new line",
+		`\SO `:                  "@@| should emit an optional break",
+		`\BL`:                   "@@# should emit a blank line",
 	}
 	for sub, msg := range checks {
 		if !strings.Contains(out, sub) {
@@ -3998,10 +3998,10 @@ statement's \.{\\GL\{1\}}).
 @(gweave_test.go@>=
 func TestWeaveForceBreakIndent(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() {\n\tg(1,@@/2)\n}\n")
-	if !strings.Contains(out, `\GL{1}{$\GID{g}\mathord{(}\GNU{1}\mathord{,}$}`) {
+	if !strings.Contains(out, `\GL{1}{$\ID{g}\mathord{(}\NU{1}\mathord{,}$}`) {
 		t.Errorf("statement line should be at indent 1:\n%s", out)
 	}
-	if !strings.Contains(out, `\GL{2}{$\GNU{2}\mathord{)}$}`) {
+	if !strings.Contains(out, `\GL{2}{$\NU{2}\mathord{)}$}`) {
 		t.Errorf("@@/ continuation inside ( should step in to indent 2:\n%s", out)
 	}
 }
@@ -4011,7 +4011,7 @@ indexed as a definition, so its section number is underlined in the index.
 @(gweave_test.go@>=
 func TestWeaveForceDefinition(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() { use(@@!foo) }\n")
-	if !strings.Contains(out, `\GII{\GID{foo}}{\GsD{1}}`) {
+	if !strings.Contains(out, `\II{\ID{foo}}{\sD{1}}`) {
 		t.Errorf("@@! should index foo as a definition (underlined):\n%s", out)
 	}
 }
@@ -4036,14 +4036,14 @@ func f() {
 @@c
 func g() { @@<chunk@@> }
 `)
-	if strings.Contains(out, `\GII{\GID{_}}`) {
+	if strings.Contains(out, `\II{\ID{_}}`) {
 		t.Errorf("the blank identifier _ should not be indexed:\n%s", out)
 	}
 	// chunk is used in two different sections (2 and 3), so the plural notes apply.
-	if !strings.Contains(out, `\GUs{\Gs{2}, \Gs{3}}`) {
-		t.Errorf("uses in two sections should emit \\GUs:\n%s", out)
+	if !strings.Contains(out, `\Us{\s{2}, \s{3}}`) {
+		t.Errorf("uses in two sections should emit \\Us:\n%s", out)
 	}
-	if !strings.Contains(out, `\GNS{chunk}{1}{\GNuseds{\Gs{2}, \Gs{3}}}`) {
+	if !strings.Contains(out, `\NS{chunk}{1}{\Nuseds{\s{2}, \s{3}}}`) {
 		t.Errorf("section-names entry malformed:\n%s", out)
 	}
 }
@@ -4054,10 +4054,10 @@ resolves to section 0, which also crashes luatex's {\sc PDF} backend.
 @(gweave_test.go@>=
 func TestWrappedSectionName(t *testing.T) {
 	out := weaveString(t, "@@* Start.\n@@c\nfunc main() { @@<do the\nthing@@> }\n@@ @@<do the thing@@>=\nx := 1\n")
-	if strings.Contains(out, `\GX{0}`) {
-		t.Errorf("wrapped section name failed to resolve (got \\GX{0}):\n%s", out)
+	if strings.Contains(out, `\X{0}`) {
+		t.Errorf("wrapped section name failed to resolve (got \\X{0}):\n%s", out)
 	}
-	if !strings.Contains(out, `\GX{2}`) {
+	if !strings.Contains(out, `\X{2}`) {
 		t.Errorf("wrapped reference should resolve to defining section 2:\n%s", out)
 	}
 }
@@ -4069,11 +4069,11 @@ stays a literal bar without turning the rest of the comment into code.
 @(gweave_test.go@>=
 func TestCommentInlineCode(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nx := 1 // set |x| now\n")
-	if !strings.Contains(out, `\GCM{`) {
+	if !strings.Contains(out, `\CM{`) {
 		t.Fatalf("no comment emitted:\n%s", out)
 	}
-	if !strings.Contains(out, `\GID{x}`) {
-		t.Errorf("|x| in a comment should render as code \\GID{x}:\n%s", out)
+	if !strings.Contains(out, `\ID{x}`) {
+		t.Errorf("|x| in a comment should render as code \\ID{x}:\n%s", out)
 	}
 	if strings.Contains(out, "|x|") {
 		t.Errorf("the bars should be consumed, not printed literally:\n%s", out)
@@ -4084,13 +4084,13 @@ func TestCommentInlineCode(t *testing.T) {
 	}
 
 	out2 := weaveString(t, "@@ x\n@@c\nx := 1 // a | b\n")
-	if strings.Contains(out2, `\GID{b}`) {
+	if strings.Contains(out2, `\ID{b}`) {
 		t.Errorf("an unmatched bar must not turn the rest into code:\n%s", out2)
 	}
 }
 
-@ Every \.{\|...\|} from a \TEX/ part is wrapped in \.{\\GPB}, never in bare
-dollars of \.{gweave}'s own choosing: \.{\\GPB} adds the \.{\$...\$} at typeset
+@ Every \.{\|...\|} from a \TEX/ part is wrapped in \.{\\PB}, never in bare
+dollars of \.{gweave}'s own choosing: \.{\\PB} adds the \.{\$...\$} at typeset
 time only when \TEX/ is not already in math, so a span inside a \.{\$...\$} the
 author opened---or inside a text-mode \.{\\halign} cell of a \.{\$\$...\$\$}
 display---comes out right without \.{gweave} guessing the mode. (The
@@ -4098,16 +4098,16 @@ display---comes out right without \.{gweave} guessing the mode. (The
 @(gweave_test.go@>=
 func TestInlineCodeUsesGPB(t *testing.T) {
 	out := weaveString(t, "@@ In prose |maxDim| and in math $k < |maxDim|$ alike.\n@@c\npackage main\n")
-	if strings.Count(out, `\GPB{\GID{maxDim}}`) != 2 {
-		t.Errorf("both |...| spans should render as \\GPB{\\GID{maxDim}}:\n%s", out)
+	if strings.Count(out, `\PB{\ID{maxDim}}`) != 2 {
+		t.Errorf("both |...| spans should render as \\PB{\\ID{maxDim}}:\n%s", out)
 	}
-	if strings.Contains(out, `$\GID{maxDim}$`) {
-		t.Errorf("gweave must not add its own $...$ around a span; \\GPB decides:\n%s", out)
+	if strings.Contains(out, `$\ID{maxDim}$`) {
+		t.Errorf("gweave must not add its own $...$ around a span; \\PB decides:\n%s", out)
 	}
-	// A |...| in a comment is wrapped in \GPB too.
+	// A |...| in a comment is wrapped in \PB too.
 	cm := weaveString(t, "@@ x\n@@c\nvar _ = 0 // note |y| here\n")
-	if !strings.Contains(cm, `\GPB{\GID{y}}`) {
-		t.Errorf("a comment span should render as \\GPB{\\GID{y}}:\n%s", cm)
+	if !strings.Contains(cm, `\PB{\ID{y}}`) {
+		t.Errorf("a comment span should render as \\PB{\\ID{y}}:\n%s", cm)
 	}
 }
 
@@ -4157,7 +4157,7 @@ a function literal. A chained call or index after an empty call, \.{f()(x)} or
 @(gweave_test.go@>=
 func TestWeaveEmptyParensMethodReceiver(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc (r *T) m() {}\n")
-	if !strings.Contains(out, `\GKW{func}$\GS $\mathord{(}`) {
+	if !strings.Contains(out, `\KW{func}$\GS $\mathord{(}`) {
 		t.Errorf("a receiver with empty params should still get a full space:\n%s", out)
 	}
 	out2 := weaveString(t, "@@ x\n@@c\nvar _ = f()[0]\n")
@@ -4172,7 +4172,7 @@ continuation and over-indented.
 @(gweave_test.go@>=
 func TestWeaveEmptyParensStatementEnd(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() {\n\tvar g func()\n\tx := 1\n\t_ = g\n\t_ = x\n}\n")
-	if !strings.Contains(out, `\GL{1}{$\GID{x}$\Grel $\mathord{\GK}$\Grel $\GNU{1}$}`) {
+	if !strings.Contains(out, `\GL{1}{$\ID{x}$\rel $\mathord{\K}$\rel $\NU{1}$}`) {
 		t.Errorf("a statement after a bare func() type must not over-indent:\n%s", out)
 	}
 }
@@ -4182,8 +4182,8 @@ spacing audit, frozen as a regression test. Each operator's woven gap was measur
 by rendering both systems, to equal the width \.{cweave} sets it at; freezing the
 gap macro here makes any later change to the gap table that drifts from \.{cweave}
 fail in \.{CI}, where a full \TEX/ render is not available. The macros' measured
-widths: \.{\\Gpunct} is \.{cweave}'s thinmuskip (3mu, 1.667pt), \.{\\GS} the
-medmuskip (4mu, 2.22pt), \.{\\Grel} the thickmuskip (5mu, 2.778pt); \./ joins tight,
+widths: \.{\\punct} is \.{cweave}'s thinmuskip (3mu, 1.667pt), \.{\\GS} the
+medmuskip (4mu, 2.22pt), \.{\\rel} the thickmuskip (5mu, 2.778pt); \./ joins tight,
 an ordinary atom.
 
 @ Arithmetic, bitwise-and, xor, and the logical operators are all \.{cweave}
@@ -4191,36 +4191,36 @@ an ordinary atom.
 sets tight.
 @(gweave_test.go@>=
 var spacingLockBinop = []struct{ src, want string }{
-	{"a + b", `\GID{a}$\GS $\mathord{+}$\GS $\GID{b}`},
-	{"a - b", `\GID{a}$\GS $\mathord{-}$\GS $\GID{b}`},
-	{"a * b", `\GID{a}$\GS $\mathord{*}$\GS $\GID{b}`},
-	{"a % b", `\GID{a}$\GS $\mathord{\%}$\GS $\GID{b}`},
-	{"a & b", `\GID{a}$\GS $\mathord{\&}$\GS $\GID{b}`},
-	{"a ^ b", `\GID{a}$\GS $\mathord{\oplus}$\GS $\GID{b}`},
-	{"a && b", `\GID{a}$\GS $\mathord{\land}$\GS $\GID{b}`},
-	{"a || b", `\GID{a}$\GS $\mathord{\lor}$\GS $\GID{b}`},
-	{"a / b", `\GID{a}\mathord{/}\GID{b}`},
+	{"a + b", `\ID{a}$\GS $\mathord{+}$\GS $\ID{b}`},
+	{"a - b", `\ID{a}$\GS $\mathord{-}$\GS $\ID{b}`},
+	{"a * b", `\ID{a}$\GS $\mathord{*}$\GS $\ID{b}`},
+	{"a % b", `\ID{a}$\GS $\mathord{\%}$\GS $\ID{b}`},
+	{"a & b", `\ID{a}$\GS $\mathord{\&}$\GS $\ID{b}`},
+	{"a ^ b", `\ID{a}$\GS $\mathord{\oplus}$\GS $\ID{b}`},
+	{"a && b", `\ID{a}$\GS $\mathord{\land}$\GS $\ID{b}`},
+	{"a || b", `\ID{a}$\GS $\mathord{\lor}$\GS $\ID{b}`},
+	{"a / b", `\ID{a}\mathord{/}\ID{b}`},
 }
 
-@ The relations and assignments take the thick \.{\\Grel}; so do bitwise-or and the
+@ The relations and assignments take the thick \.{\\rel}; so do bitwise-or and the
 shifts, which \.{cweave} draws as the relations |\mid|, $\ll$, and $\gg$.
 @(gweave_test.go@>=
 var spacingLockRel = []struct{ src, want string }{
-	{"a == b", `\GID{a}$\Grel $\mathord{\equiv}$\Grel $\GID{b}`},
-	{"a != b", `\GID{a}$\Grel $\mathord{\neq}$\Grel $\GID{b}`},
-	{"a < b", `\GID{a}$\Grel $\mathord{<}$\Grel $\GID{b}`},
-	{"a <= b", `\GID{a}$\Grel $\mathord{\leq}$\Grel $\GID{b}`},
-	{"a | b", `\GID{a}$\Grel $\mathord{\mid}$\Grel $\GID{b}`},
-	{"a << b", `\GID{a}$\Grel $\mathord{\ll}$\Grel $\GID{b}`},
-	{"a >> b", `\GID{a}$\Grel $\mathord{\gg}$\Grel $\GID{b}`},
+	{"a == b", `\ID{a}$\rel $\mathord{\equiv}$\rel $\ID{b}`},
+	{"a != b", `\ID{a}$\rel $\mathord{\neq}$\rel $\ID{b}`},
+	{"a < b", `\ID{a}$\rel $\mathord{<}$\rel $\ID{b}`},
+	{"a <= b", `\ID{a}$\rel $\mathord{\leq}$\rel $\ID{b}`},
+	{"a | b", `\ID{a}$\rel $\mathord{\mid}$\rel $\ID{b}`},
+	{"a << b", `\ID{a}$\rel $\mathord{\ll}$\rel $\ID{b}`},
+	{"a >> b", `\ID{a}$\rel $\mathord{\gg}$\rel $\ID{b}`},
 }
 
-@ A comma takes the thin \.{\\Gpunct} after it (tight before). Channel send has no
+@ A comma takes the thin \.{\\punct} after it (tight before). Channel send has no
 \CEE/ analogue, so it is left at the medium space, not matched to anything.
 @(gweave_test.go@>=
 var spacingLockMisc = []struct{ src, want string }{
-	{"[]int{a, b}", `\GID{a}\mathord{,}$\Gpunct $\GID{b}`},
-	{"c <- d", `\GID{c}$\GS $\mathord{\gets}$\GS $\GID{d}`},
+	{"[]int{a, b}", `\ID{a}\mathord{,}$\punct $\ID{b}`},
+	{"c <- d", `\ID{c}$\GS $\mathord{\gets}$\GS $\ID{d}`},
 }
 
 @ The three tables run through one check: weave \.{var\ \_\ =\ }{\it src\/} and look
@@ -4248,9 +4248,9 @@ func TestGapMacroWidthsMatchCweave(t *testing.T) {
 	}
 	text := string(src)
 	for _, w := range []struct{ macro, em string }{
-		{`\def\Gpunct{`, ".1667em"}, // cweave thinmuskip, 3mu
+		{`\def\punct{`, ".1667em"}, // cweave thinmuskip, 3mu
 		{`\def\GS{`, ".222em"},      // cweave medmuskip, 4mu
-		{`\def\Grel{`, ".2778em"},   // cweave thickmuskip, 5mu
+		{`\def\rel{`, ".2778em"},   // cweave thickmuskip, 5mu
 	} {
 		i := strings.Index(text, w.macro)
 		if i < 0 {
@@ -4268,7 +4268,7 @@ func TestGapMacroWidthsMatchCweave(t *testing.T) {
 }
 
 @ Chapter one (depth 0, section 1) has two direct children: the \.{@@*1}
-subsections (depth 1). \.{\\Gbookmark} is \.{\{depth\}\{secNum\}\{children\}\{title\}}.
+subsections (depth 1). \.{\\bookmark} is \.{\{depth\}\{secNum\}\{children\}\{title\}}.
 @(gweave_test.go@>=
 func TestWeaveBookmarks(t *testing.T) {
 	out := weaveString(t, `@@* Chapter one. intro.
@@ -4285,10 +4285,10 @@ package main
 var _ = 0
 `)
 	for _, want := range []string{
-		`\Gbookmark{0}{1}{2}{Chapter one}`,
-		`\Gbookmark{1}{2}{0}{Sub A}`,
-		`\Gbookmark{1}{3}{0}{Sub B}`,
-		`\Gbookmark{0}{4}{0}{Chapter two}`,
+		`\bookmark{0}{1}{2}{Chapter one}`,
+		`\bookmark{1}{2}{0}{Sub A}`,
+		`\bookmark{1}{3}{0}{Sub B}`,
+		`\bookmark{0}{4}{0}{Chapter two}`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing bookmark %q:\n%s", want, out)
@@ -4333,7 +4333,7 @@ func TestWeaveInjectsGwebmac(t *testing.T) {
 }
 
 @ A raw string spanning lines weaves as one code line per physical line, not
-as a single multi-line \.{\\GST} (which would end the enclosing \.{\\GL} paragraph).
+as a single multi-line \.{\\ST} (which would end the enclosing \.{\\GL} paragraph).
 @(gweave_test.go@>=
 func TestWeaveMultilineRawString(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nvar s = `a\n\nb`\n")
@@ -4350,12 +4350,12 @@ func TestWeaveStructTagUnquoted(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\ntype T struct {\n\tA int      `json:\"a\"`\n"+
 		"\tB []string `json:\"b\"`\n}\n\nvar v = f(`p`, `q`)\nvar w = []string{`r`}\n"+
 		"var y = map[string]string{\"k\": `s`}\n\nfunc g() string { return `t` }\n")
-	for _, want := range []string{`\GST{json:"a"}`, `\GST{json:"b"}`} {
+	for _, want := range []string{`\ST{json:"a"}`, `\ST{json:"b"}`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("a field tag should lose its backquotes; want %q in:\n%s", want, out)
 		}
 	}
-	for _, want := range []string{"\\GST{`p`}", "\\GST{`q`}", "\\GST{`r`}", "\\GST{`s`}", "\\GST{`t`}"} {
+	for _, want := range []string{"\\ST{`p`}", "\\ST{`q`}", "\\ST{`r`}", "\\ST{`s`}", "\\ST{`t`}"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("a raw string that is not a tag should keep them; want %q in:\n%s", want, out)
 		}

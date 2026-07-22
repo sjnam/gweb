@@ -147,23 +147,23 @@
 \font\tentex=cmtex10
 
 \font\inchhigh=cminch
-% Contents-page title (\Gcon) and the typewriter title for limbo: keep gwebmac's
+% Contents-page title (\con) and the typewriter title for limbo: keep gwebmac's
 % Latin title fonts for Latin and punctuation, and pair a Hangul companion via
 % luatexko's \sethangulfont so only Korean characters take the CJK face -- the
 % same "\latinfont\hangulfont" idiom this file uses for \rm above. gwebmac set
 % \titlefont=cmr7 scaled\magstep4 (~14.5pt) and \ttitlefont=cmtt10 scaled\magstep2
 % (~14.4pt); the companions match those sizes.
-\let\Glatintitlefont=\titlefont
-\sethangulfont\Ghangultitlefont="Noto Serif CJK KR Medium:%
+\let\latintitlefont=\titlefont
+\sethangulfont\hangultitlefont="Noto Serif CJK KR Medium:%
   language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
   charraise=-0.06em;+compresspunctuations" at 14.5pt
-\def\titlefont{\Glatintitlefont\Ghangultitlefont}
+\def\titlefont{\latintitlefont\hangultitlefont}
 
-\let\Glattitlefont=\ttitlefont
-\sethangulfont\Ghantitlefont="Noto Sans Mono CJK KR:%
+\let\lattitlefont=\ttitlefont
+\sethangulfont\hantitlefont="Noto Sans Mono CJK KR:%
   language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
   charraise=-0.06em;+compresspunctuations" at 14pt
-\def\ttitlefont{\Glattitlefont\Ghantitlefont}
+\def\ttitlefont{\lattitlefont\hantitlefont}
 
 \font\sectionfont="Noto Sans CJK KR Light" at 18pt
 
@@ -288,59 +288,59 @@
 \fontdimen7\tentex=0pt  % restore cmtex10's "no extra space after sentence"
                         % (the \font\tentex above drops gwebmac's setting)
 
-% gwebmac sets strings (\GST) and @d names (\GMAC) in cmtex10, which has no
+% gwebmac sets strings (\ST) and @d names (\MAC) in cmtex10, which has no
 % Hangul; pair it with the monospace hangul (\tentz) so Korean inside a Go
 % string or an @d name is also typewriter, not the serif fallback.
-\def\GST#1{\hbox{\tentex\tentz #1}}
-\def\GMAC#1{\hbox{\tentex\tentz #1}}
+\def\ST#1{\hbox{\tentex\tentz #1}}
+\def\MAC#1{\hbox{\tentex\tentz #1}}
 
 % \.{...} (typewriter text in comments and the limbo) is cmtex10 too; bring the
 % monospace hangul (\tentz) into scope so Korean inside \.{...} is typewriter as
 % well. The original \. then sets cmtex10 for the Latin part as before.
-\let\Gttdot\.
-\def\.#1{{\tentz\Gttdot{#1}}}
+\let\ttdot\.
+\def\.#1{{\tentz\ttdot{#1}}}
 
 % The small print (cross-reference notes, contents columns, section-name notes)
 % is cmr8, which has no Hangul; pair it with the 8pt serif hangul (\eightmj) so
 % Korean there is small too, instead of falling back to the body size. (The
-% running head's \Gheadfont stays sans, set earlier.)
-\def\Gsmallfont{\eightrm\eightmj}
+% running head's \headfont stays sans, set earlier.)
+\def\smallfont{\eightrm\eightmj}
 
 % \datethis: localize the timestamp. cweb sets this line in \eightrm (8pt); pair
 % the 8pt serif hangul (\eightmj) so the Korean date is the same 8pt as cweb's,
-% not the serif body size. \today reads "2026년 6월 29일"; \Gdateat is a space.
+% not the serif body size. \today reads "2026년 6월 29일"; \dateat is a space.
 \def\today{{\number\year}년 {\number\month}월 {\number\day}일}
-\def\Gdatefont{\eightrm\eightmj}
-\def\Gdateat{\ }
+\def\datefont{\eightrm\eightmj}
+\def\dateat{\ }
 
 % ---- Korean wording (the GWEB analogue of cwebman's localization list) ------
 % Cross-reference notes printed beneath a code definition. Korean has no
 % singular/plural inflection, so the "section"/"sections" pair reads the same.
-\def\GU#1{\Gnote{이 코드는 #1절에서 쓰인다}}
-\def\GUs#1{\Gnote{이 코드는 #1절에서 쓰인다}}
-\def\GA#1{\Gnote{이 코드는 #1절에도 정의되어 있다}}
-\def\GAs#1{\Gnote{이 코드는 #1절에도 정의되어 있다}}
+\def\U#1{\note{이 코드는 #1절에서 쓰인다}}
+\def\Us#1{\note{이 코드는 #1절에서 쓰인다}}
+\def\A#1{\note{이 코드는 #1절에도 정의되어 있다}}
+\def\As#1{\note{이 코드는 #1절에도 정의되어 있다}}
 % The usage note beside an entry in the section-name list.
-\def\GNused#1{#1절에서 쓰임}
-\def\GNuseds#1{#1절에서 쓰임}
+\def\Nused#1{#1절에서 쓰임}
+\def\Nuseds#1{#1절에서 쓰임}
 % The running head over the list of section names, and the contents columns.
-\def\Gnamesheading{절 이름 목록}
-\def\Goutsecname{절 이름 목록} % title of the section-names PDF bookmark
-\def\Gsectionword{절}
-\def\Gpageword{쪽}
+\def\namesheading{절 이름 목록}
+\def\outsecname{절 이름 목록} % title of the section-names PDF bookmark
+\def\sectionword{절}
+\def\pageword{쪽}
 % Running-head font: pair the small roman (cmr8) with a sans hangul (\ninegt,
 % Noto Sans) so Korean in the header matches the upper-cased Latin instead of
 % clashing with it as the serif body font would. This is the group (chapter)
-% title's font, and \Ggroupfont follows it.
-\def\Gheadfont{\eightrm\ninegt}
+% title's font, and \groupfont follows it.
+\def\headfont{\eightrm\ninegt}
 % The document title, though, is set as written (not upper-cased), and on the
 % contents page it is serif; so when the author supplies a \def\title we set it
 % in serif hangul (\ninemj, Noto Serif) here too, to match. A default job-name
 % title keeps the sans of the group titles, since it reads like one of them.
-\def\Gtitlefont{\eightrm\ifx\title\Gdefaulttitle\ninegt\else\ninemj\fi}
+\def\Gtitlefont{\eightrm\ifx\title\defaulttitle\ninegt\else\ninemj\fi}
 
 % ---- LuaTeX PDF back end: blue links and Korean (UTF-16BE) bookmarks --------
-% gwebmac's \Gdest/\Glink/\Gbookmark are written for pdfTeX primitives that
+% gwebmac's \dest/\link/\bookmark are written for pdfTeX primitives that
 % luatex does not provide; we restate them with luatex's \pdfextension forms.
 % A PDF outline title must be a UTF-16BE string, so Korean titles are converted
 % by a small Lua helper, gweb_pdfutf16(s), which prints s as the body of a PDF
@@ -380,10 +380,10 @@
   end
 }
 \endgroup
-\def\Gdest#1{\pdfextension dest num #1 fith\relax}
-\def\Glink#1#2{\pdfextension startlink attr{/Border[0 0 0]}goto num #1\relax
+\def\dest#1{\pdfextension dest num #1 fith\relax}
+\def\link#1#2{\pdfextension startlink attr{/Border[0 0 0]}goto num #1\relax
   \pdfextension literal{0 0 1 rg}#2\pdfextension literal{0 g}\pdfextension endlink}
-\def\Gbookmark#1#2#3#4{\pdfextension outline goto num #2 count #3
+\def\bookmark#1#2#3#4{\pdfextension outline goto num #2 count #3
   {\directlua{gweb_pdfutf16("\luaescapestring{#4}")}}}
 % gwebmac's \pdfURL is likewise written for pdfTeX primitives; restate it (the
 % link text may of course be Korean).

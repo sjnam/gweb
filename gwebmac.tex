@@ -36,7 +36,7 @@
 % accent; we override it -- gweave documents need \tt strings, not accents.)
 % This is a plain \def (not e-TeX's \protected, so bare `tex' works for the DVI
 % route): the running-head and contents machinery below is written to carry the
-% title without ever expanding \. (see \Gsetmark and \Grunhead).
+% title without ever expanding \. (see \setmark and \runhead).
 \def\.#1{{\tentex
   \def\\{\char92 }\def\{{\char123 }\def\}{\char125 }%
   \def\&{\char38 }\def\^{\char94 }\def\_{\char95 }\def\~{\char126 }%
@@ -44,42 +44,42 @@
   #1}}
 
 % ---- page layout ------------------------------------------------------------
-\newdimen\Gpagewidth  \Gpagewidth=6.5in
-\newdimen\Gpageheight \Gpageheight=8.7in
-\newdimen\Gcolwidth   \Gcolwidth=.5\Gpagewidth \advance\Gcolwidth by-10pt
-\hsize=\Gpagewidth
-\vsize=\Gpageheight
+\newdimen\pagewidth  \pagewidth=6.5in
+\newdimen\pageheight \pageheight=8.7in
+\newdimen\colwidth   \colwidth=.5\pagewidth \advance\colwidth by-10pt
+\hsize=\pagewidth
+\vsize=\pageheight
 \parindent=1em
 \parskip=0pt
 \hbadness=10000
 \tolerance=2000
-\newdimen\Gindentunit \Gindentunit=1.4em % one indentation step in displayed code
-\newcount\Gtmpcount \newdimen\Gtmpdimen  % scratch registers (avoid e-TeX exprs)
-\newskip\Gsecskip     \Gsecskip=12pt plus 4pt minus 3pt % space between sections
-\newcount\Gcodepenalty \Gcodepenalty=9999 % discourage page breaks inside code
+\newdimen\indentunit \indentunit=1.4em % one indentation step in displayed code
+\newcount\tmpcount \newdimen\tmpdimen  % scratch registers (avoid e-TeX exprs)
+\newskip\secskip     \secskip=12pt plus 4pt minus 3pt % space between sections
+\newcount\codepenalty \codepenalty=9999 % discourage page breaks inside code
                                           % (high but finite, so >1-page code can still break)
-\newdimen\Gcommentkern \Gcommentkern=-1.3pt % tighten the "//" comment marker
-\newcount\Gsecpagedepth \Gsecpagedepth=1 % starred sections this deep start a page
+\newdimen\commentkern \commentkern=-1.3pt % tighten the "//" comment marker
+\newcount\secpagedepth \secpagedepth=1 % starred sections this deep start a page
 
 % "++" and "--" as tight, small, raised symbols, exactly as cweave sets them:
 % seven-point signs kerned together so the pair reads as one operator, not two.
-\newbox\GPPbox % the "++" symbol
-\setbox\GPPbox=\hbox{\kern.5pt\raise1pt\hbox{\sevenrm+\kern-1pt+}\kern.5pt}
-\def\GPP{\copy\GPPbox}
-\newbox\GMMbox % the "--" symbol
-\setbox\GMMbox=\hbox{\kern.5pt\raise1pt\hbox{\sevensy\char0\kern-1pt\char0}\kern.5pt}
-\def\GMM{\copy\GMMbox}
+\newbox\PPbox % the "++" symbol
+\setbox\PPbox=\hbox{\kern.5pt\raise1pt\hbox{\sevenrm+\kern-1pt+}\kern.5pt}
+\def\PP{\copy\PPbox}
+\newbox\MMbox % the "--" symbol
+\setbox\MMbox=\hbox{\kern.5pt\raise1pt\hbox{\sevensy\char0\kern-1pt\char0}\kern.5pt}
+\def\MM{\copy\MMbox}
 
 % Go's short variable declaration ":=", as one symbol you may redefine. WEB set
-% Pascal's ":=" as a left arrow through \K; \GK is the same hook for Go, so a
+% Pascal's ":=" as a left arrow through \K; \K is the same hook for Go, so a
 % document that prefers an arrow need only say, in its limbo,
-%     \let\GK=\Leftarrow
-\def\GK{{:}{=}}
+%     \let\K=\Leftarrow
+\def\K{{:}{=}}
 
 % Go's bit-clear operator "&^", likewise redefinable. It has no C counterpart, so
 % its glyph is a choice rather than a tradition: a circled slash, read as "and
-% not". Say, for instance, \let\GAN=\setminus in your limbo to prefer another.
-\def\GAN{\oslash}
+% not". Say, for instance, \let\AN=\setminus in your limbo to prefer another.
+\def\AN{\oslash}
 
 % ---- running headers --------------------------------------------------------
 % The document title is the upper-cased job name; the current group title is set
@@ -92,59 +92,59 @@
 % verbatim, mixed case and all: cweb likewise upper-cases only the default
 % job-name title, never one the author supplies.
 \edef\title{\jobname}
-\def\Gtitleaux#1{\uppercase{\gdef\title{#1}}}
-\expandafter\Gtitleaux\expandafter{\title}
+\def\titleaux#1{\uppercase{\gdef\title{#1}}}
+\expandafter\titleaux\expandafter{\title}
 \def\Gtitle{\title}
 % A snapshot of the default (job-name) title, taken before limbo runs, so a
 % localization can tell whether the author supplied a \title of their own:
-% \ifx\title\Gdefaulttitle is true exactly when none was given.
-\let\Gdefaulttitle\title
+% \ifx\title\defaulttitle is true exactly when none was given.
+\let\defaulttitle\title
 % The current group (chapter) title, upper-cased, is kept in a token register so
 % each \mark can capture a *snapshot* of it (via \the) rather than a reference to
 % a macro -- otherwise every page would show whatever group is current at shipout
 % time, i.e. the next chapter. \the inserts the tokens without expanding them, so
 % a \. in the title survives into \topmark for typesetting in the header.
-\newtoks\Ggrouptoks
-\def\Gsetmark#1{\mark{{#1}{\the\Ggrouptoks}}}
-\def\Gtakeone#1#2{#1}
-\def\Gtaketwo#1#2{#2}
-\def\Gempty{}
+\newtoks\grouptoks
+\def\setmark#1{\mark{{#1}{\the\grouptoks}}}
+\def\takeone#1#2{#1}
+\def\taketwo#1#2{#2}
+\def\empty{}
 
 \newif\iftitle % true only while shipping the contents page (suppresses the header)
 \def\contentspagenumber{0} % page number of the contents page; redefine in limbo
-\def\Gsechead{\S\thinspace\expandafter\Gtakeone\Gtm} % left/right end: section number
-\def\Ggrouphead{\expandafter\Gtaketwo\Gtm}   % middle: current group title
+\def\sechead{\S\thinspace\expandafter\takeone\tm} % left/right end: section number
+\def\grouphead{\expandafter\taketwo\tm}   % middle: current group title
 % Font for the running-head title and group title (small roman, as in cweb).
 % A localization file may rebind it -- e.g. kotexgweb.tex pairs it with a sans
 % hangul font so Korean in the header matches the upper-cased Latin.
-\def\Gheadfont{\eightrm}
+\def\headfont{\eightrm}
 % The running head sets the document title in \Gtitlefont and the group (chapter)
-% title in \Ggroupfont; both default to \Gheadfont, but a localization may split
+% title in \groupfont; both default to \headfont, but a localization may split
 % them -- e.g. kotexgweb keeps the group title sans (to match the upper-cased
 % Latin) while setting an author-supplied document title in serif, to match its
 % serif rendering on the contents page.
-\def\Gtitlefont{\Gheadfont}
-\def\Ggroupfont{\Gheadfont}
+\def\Gtitlefont{\headfont}
+\def\groupfont{\headfont}
 % Font for the small print: cross-reference notes, the contents columns, and the
 % usage note in the section-name list. A localization file may rebind it -- e.g.
 % kotexgweb.tex pairs it with an 8pt hangul font so Korean there is small too.
-\def\Gsmallfont{\eightrm}
-% \Grunhead builds the header as one \Gpagewidth-wide box (used both by the
+\def\smallfont{\eightrm}
+% \runhead builds the header as one \pagewidth-wide box (used both by the
 % normal \headline and by the index's own output routine).
-\def\Grunhead{%
+\def\runhead{%
   % Capture the mark tokens without expanding them (a \. in the title must not be
-  % expanded here); \expandafter expands \topmark exactly once into \Gtm.
-  \expandafter\def\expandafter\Gtm\expandafter{\topmark}%
-  \ifx\Gtm\Gempty\expandafter\def\expandafter\Gtm\expandafter{\firstmark}\fi
-  \ifx\Gtm\Gempty\def\Gtm{{}{\Gtitle}}\fi
+  % expanded here); \expandafter expands \topmark exactly once into \tm.
+  \expandafter\def\expandafter\tm\expandafter{\topmark}%
+  \ifx\tm\empty\expandafter\def\expandafter\tm\expandafter{\firstmark}\fi
+  \ifx\tm\empty\def\tm{{}{\Gtitle}}\fi
   \ifodd\pageno
-    \hbox to\Gpagewidth{\mainfont\Gsechead\enspace{\Gtitlefont\Gtitle}\hfil
-      {\Ggroupfont\Ggrouphead}\enspace\folio}%
+    \hbox to\pagewidth{\mainfont\sechead\enspace{\Gtitlefont\Gtitle}\hfil
+      {\groupfont\grouphead}\enspace\folio}%
   \else
-    \hbox to\Gpagewidth{\mainfont\folio\enspace{\Ggroupfont\Ggrouphead}\hfil
-      {\Gtitlefont\Gtitle}\enspace\Gsechead}%
+    \hbox to\pagewidth{\mainfont\folio\enspace{\groupfont\grouphead}\hfil
+      {\Gtitlefont\Gtitle}\enspace\sechead}%
   \fi}
-\headline={\iftitle\hfil\else\Grunhead\fi}
+\headline={\iftitle\hfil\else\runhead\fi}
 \footline={\hfil}
 
 % ---- hyperlinks --------------------------------------------------------------
@@ -159,39 +159,39 @@
 % For the dvipdfmx route, destinations are named with roman numerals (as in
 % cwebmac); links and bookmarks reference those names, so they work even though
 % gweave emits all the bookmarks together at the end of the document.
-\newif\ifGpdf      % native pdfTeX/luaTeX PDF output
-\newif\ifGdvipdf   % dvipdfmx \special{pdf:...} route
-\ifx\pdfoutput\undefined\else\ifnum\pdfoutput>0 \Gpdftrue\fi\fi
-\ifGpdf\else\ifx\pdf\undefined\else\Gdvipdftrue\fi\fi
-\newbox\Glinkbox
-\def\Gdest#1{%
-  \ifGpdf \pdfdest num #1 fith\relax
-  \else\ifGdvipdf
+\newif\ifpdf      % native pdfTeX/luaTeX PDF output
+\newif\ifdvipdf   % dvipdfmx \special{pdf:...} route
+\ifx\pdfoutput\undefined\else\ifnum\pdfoutput>0 \pdftrue\fi\fi
+\ifpdf\else\ifx\pdf\undefined\else\dvipdftrue\fi\fi
+\newbox\linkbox
+\def\dest#1{%
+  \ifpdf \pdfdest num #1 fith\relax
+  \else\ifdvipdf
     \smash{\raise\baselineskip\hbox to0pt{%
       \special{pdf: dest (\romannumeral#1) [ @thispage /FitH @ypos ]}\hss}}%
   \fi\fi}
 % The destination for the `Names of the sections' page. It is emitted only when
-% that list is (\ifGsecs), so \nosecs leaves no stray whatsit---and hence no
+% that list is (\ifsecs), so \nosecs leaves no stray whatsit---and hence no
 % blank page---on the sheet the index ejects into.
-\def\Gsecdest#1{\ifGsecs\Gdest{#1}\fi}
-\def\Glink#1#2{%
-  \ifGpdf
+\def\secdest#1{\ifsecs\dest{#1}\fi}
+\def\link#1#2{%
+  \ifpdf
     \pdfstartlink attr{/Border[0 0 0]}goto num #1\relax
     \pdfliteral{0 0 1 rg}#2\pdfliteral{0 g}\pdfendlink
-  \else\ifGdvipdf
-    \setbox\Glinkbox=\hbox{\special{pdf: bc [ 0 0 1 ]}#2\special{pdf: ec}}%
-    \special{pdf: ann width \the\wd\Glinkbox\space height \the\ht\Glinkbox\space
-       depth \the\dp\Glinkbox\space << /Subtype /Link /Border [ 0 0 0 ]
-       /A << /S /GoTo /D (\romannumeral#1) >> >>}\box\Glinkbox\relax
+  \else\ifdvipdf
+    \setbox\linkbox=\hbox{\special{pdf: bc [ 0 0 1 ]}#2\special{pdf: ec}}%
+    \special{pdf: ann width \the\wd\linkbox\space height \the\ht\linkbox\space
+       depth \the\dp\linkbox\space << /Subtype /Link /Border [ 0 0 0 ]
+       /A << /S /GoTo /D (\romannumeral#1) >> >>}\box\linkbox\relax
   \else #2\fi\fi}
-\def\Gs#1{\Glink{#1}{#1}}                        % a linked section number
-\def\GsD#1{\Glink{#1}{$\underline{\hbox{#1}}$}}  % linked + underlined (definition)
+\def\s#1{\link{#1}{#1}}                        % a linked section number
+\def\sD#1{\link{#1}{$\underline{\hbox{#1}}$}}  % linked + underlined (definition)
 % A PDF outline (bookmark) entry: #1 group depth, #2 section number, #3 number of
 % direct children (pdfTeX's open/close model), #4 the plain-text title. The
 % dvipdfmx route nests by depth and links to the named destination.
-\def\Gbookmark#1#2#3#4{%
-  \ifGpdf \pdfoutline goto num #2 count #3 {\pdfescapestring{#4}}%
-  \else\ifGdvipdf
+\def\bookmark#1#2#3#4{%
+  \ifpdf \pdfoutline goto num #2 count #3 {\pdfescapestring{#4}}%
+  \else\ifdvipdf
     \special{pdf: outline #1 << /Title (#4)
        /A << /S /GoTo /D (\romannumeral#2) >> >>}%
   \fi\fi}
@@ -200,281 +200,285 @@
 % typewriter. In the url write @@ for an at-sign (the usual .w escape),
 % \TILDE/ for ~, and \UNDER/ for _, as in cwebmac.
 \def\pdfURL#1#2{%
-  \ifGpdf
+  \ifpdf
     \pdfstartlink attr{/Border[0 0 0]}
       user{/Subtype /Link /A << /S /URI /URI (#2) >>}\relax
     \pdfliteral{0 0 1 rg}#1\pdfliteral{0 g}\pdfendlink
-  \else\ifGdvipdf
-    \setbox\Glinkbox=\hbox{\special{pdf: bc [ 0 0 1 ]}#1\special{pdf: ec}}%
-    \special{pdf: ann width \the\wd\Glinkbox\space height \the\ht\Glinkbox\space
-       depth \the\dp\Glinkbox\space << /Subtype /Link /Border [ 0 0 0 ]
-       /A << /S /URI /URI (#2) >> >>}\box\Glinkbox\relax
+  \else\ifdvipdf
+    \setbox\linkbox=\hbox{\special{pdf: bc [ 0 0 1 ]}#1\special{pdf: ec}}%
+    \special{pdf: ann width \the\wd\linkbox\space height \the\ht\linkbox\space
+       depth \the\dp\linkbox\space << /Subtype /Link /Border [ 0 0 0 ]
+       /A << /S /URI /URI (#2) >> >>}\box\linkbox\relax
   \else #1 ({\tt#2})\fi\fi}
 {\catcode`\~=12 \gdef\TILDE/{~}} % ~ in a URL
 {\catcode`\_=12 \gdef\UNDER/{_}} % _ in a URL
-% \Gmakeheadline places \Grunhead like plain TeX's \makeheadline, for use inside
+% \runheadline places \runhead like plain TeX's \makeheadline, for use inside
 % the index's custom \shipout (where the plain \headline machinery is bypassed).
-\def\Gmakeheadline{\vbox to 0pt{\vskip-22.5pt
-  \hbox to\Gpagewidth{\vbox to8.5pt{}\Grunhead}\vss}\nointerlineskip}
+% It is deliberately not named \makeheadline: plain TeX's own \makeheadline is
+% live here (\output is \plainoutput on ordinary pages), and shadowing it would
+% make the header-suppressing \headline logic yield to an unconditional \runhead
+% on the contents page, where \iftitle is true.
+\def\runheadline{\vbox to 0pt{\vskip-22.5pt
+  \hbox to\pagewidth{\vbox to8.5pt{}\runhead}\vss}\nointerlineskip}
 
-% A starred section records itself in \contentsfile as it is shipped, so \Gcon
+% A starred section records itself in \contentsfile as it is shipped, so \con
 % can build the contents in one pass; the page number is captured by the deferred
 % \write, the title is stashed in a control sequence. \contentsfile (the file the
-% data goes to) and \readcontents (how \Gcon reads it back) are redefinable in
+% data goes to) and \readcontents (how \con reads it back) are redefinable in
 % limbo, as in cwebmac: to split a long document into separately-typeset pieces
 % and gather their contents in the last one, give each piece its own
 % \contentsfile and let the last \readcontents \input them all. The file is
-% opened lazily, by \Gopentoc at the first starred section, so that a limbo
+% opened lazily, by \opentoc at the first starred section, so that a limbo
 % redefinition of \contentsfile is already in force when it opens.
 \def\contentsfile{\jobname.toc}
 \def\readcontents{\input \contentsfile }
-\newwrite\Gtoc
-\newtoks\Gtoctoks % holds a starred section's title, unexpanded, for the deferred \write
-\newif\ifGtocopen
-\def\Gopentoc{\ifGtocopen\else\Gtocopentrue\immediate\openout\Gtoc=\contentsfile \fi}
+\newwrite\toc
+\newtoks\toctoks % holds a starred section's title, unexpanded, for the deferred \write
+\newif\iftocopen
+\def\opentoc{\iftocopen\else\tocopentrue\immediate\openout\toc=\contentsfile \fi}
 
 % ---- section openers --------------------------------------------------------
-% \GM{n} : an ordinary (unstarred) section, run-in bold number. The
+% \M{n} : an ordinary (unstarred) section, run-in bold number. The
 % \vfil\penalty-100\vfilneg makes the section boundary the preferred page break
 % (the \vfil fills the page there, so a short page costs nothing): as in cweave,
 % TeX breaks between sections rather than inside one, so a whole section -- its
 % commentary and its code -- stays together on a page when it fits.
-\def\GM#1{\par\Gemitdate\vfil\penalty-100\vfilneg\vskip\Gsecskip
-  \Gsetmark{#1}\noindent\Gdest{#1}{\bf #1.\quad}\rightskip=0pt\ignorespaces}
+\def\M#1{\par\emitdate\vfil\penalty-100\vfilneg\vskip\secskip
+  \setmark{#1}\noindent\dest{#1}{\bf #1.\quad}\rightskip=0pt\ignorespaces}
 
-% \GN{depth}{n}{title} : a starred section. Major sections (depth < secpagedepth)
+% \N{depth}{n}{title} : a starred section. Major sections (depth < secpagedepth)
 % begin a new page; the first one does not, so it follows any limbo banner.
-\newif\ifGfirst \Gfirsttrue
-\def\GN#1#2#3{\par\Gemitdate
-  % Snapshot the upper-cased title into \Ggrouptoks; \uppercase only upper-cases
+\newif\iffirst \firsttrue
+\def\N#1#2#3{\par\emitdate
+  % Snapshot the upper-cased title into \grouptoks; \uppercase only upper-cases
   % the letter tokens, leaving control sequences (\.) intact for the header.
-  {\uppercase{\global\Ggrouptoks={#3}}}%
-  \Gsetmark{#2}% set the mark before any page break, so the new page's \topmark
-  \ifGfirst \Gfirstfalse \vskip 6pt
-  \else \ifnum#1<\Gsecpagedepth \vfil\eject
-        \else \penalty-200\vfil\penalty-200\vfilneg\vskip\Gsecskip \fi
+  {\uppercase{\global\grouptoks={#3}}}%
+  \setmark{#2}% set the mark before any page break, so the new page's \topmark
+  \iffirst \firstfalse \vskip 6pt
+  \else \ifnum#1<\secpagedepth \vfil\eject
+        \else \penalty-200\vfil\penalty-200\vfilneg\vskip\secskip \fi
   \fi
-  \Gopentoc
+  \opentoc
   % The title (#3) must reach the contents run unexpanded. \unexpanded is an e-TeX
   % primitive, absent from Knuth's tex, so we use plain TeX's own device instead: a
   % token register, whose contents \the emits without re-expanding. The register is
   % set after the page break above and read by the deferred \write at ship-out; a
-  % starred section always begins its own page (\Gsecpagedepth), so no later section
+  % starred section always begins its own page (\secpagedepth), so no later section
   % overwrites it before then. Only \the\pageno is left for the \write to fill in.
-  \Gtoctoks={#3}%
-  \write\Gtoc{\string\GTline{#1}{#2}{\the\Gtoctoks}{\the\pageno}}%
-  \noindent\Gdest{#2}{\bf #2.\quad #3.\quad}\rightskip=0pt\ignorespaces}
+  \toctoks={#3}%
+  \write\toc{\string\Tline{#1}{#2}{\the\toctoks}{\the\pageno}}%
+  \noindent\dest{#2}{\bf #2.\quad #3.\quad}\rightskip=0pt\ignorespaces}
 
 % ---- \datethis: timestamp the listing just above section 1 ------------------
 % cweave's \datethis (said in limbo) prints the date and time, in \eightrm (its
-% \sc), on a left-flush line above the first section. \today and \Ghours compute
-% them; \Gdatefont and \Gdateat -- the font and the date/time separator -- are
+% \sc), on a left-flush line above the first section. \today and \hours compute
+% them; \datefont and \dateat -- the font and the date/time separator -- are
 % overridable, so the Korean backend can localize the wording and the font size.
 \def\today{\ifcase\month\or
   January\or February\or March\or April\or May\or June\or
   July\or August\or September\or October\or November\or December\fi
   \space\number\day, \number\year}
-\newcount\Gtwodigits
-\def\Ghours{\Gtwodigits=\time \divide\Gtwodigits by60 \Gprinttwo
-  \multiply\Gtwodigits by-60 \advance\Gtwodigits by\time :\Gprinttwo}
-\def\Ggobbleone1{}
-\def\Gprinttwo{\advance\Gtwodigits by100
-  \expandafter\Ggobbleone\number\Gtwodigits \advance\Gtwodigits by-100 }
-\def\Gdatefont{\eightrm}  % cweb sets this line in \sc, i.e. \eightrm (8pt)
-\def\Gdateat{\ at\ }      % between the date and the time
-\def\Gdateline{\leftline{\Gdatefont\today\Gdateat\Ghours}\bigskip}
-\let\Gdatehook\empty
-\def\datethis{\let\Gdatehook\Gdateline}
-\def\Gemitdate{\Gdatehook\global\let\Gdatehook\empty} % fires once, at section 1
+\newcount\twodigits
+\def\hours{\twodigits=\time \divide\twodigits by60 \printtwo
+  \multiply\twodigits by-60 \advance\twodigits by\time :\printtwo}
+\def\gobbleone1{}
+\def\printtwo{\advance\twodigits by100
+  \expandafter\gobbleone\number\twodigits \advance\twodigits by-100 }
+\def\datefont{\eightrm}  % cweb sets this line in \sc, i.e. \eightrm (8pt)
+\def\dateat{\ at\ }      % between the date and the time
+\def\dateline{\leftline{\datefont\today\dateat\hours}\bigskip}
+\let\datehook\empty
+\def\datethis{\let\datehook\dateline}
+\def\emitdate{\datehook\global\let\datehook\empty} % fires once, at section 1
 
 % ---- displayed Go code ------------------------------------------------------
-\newdimen\Gcodeindent \Gcodeindent=\Gindentunit % displayed code is indented this
+\newdimen\codeindent \codeindent=\indentunit % displayed code is indented this
                                                 % far (about one tab) from the margin
-% \penalty\Gcodepenalty before the code keeps it joined to its commentary (the
+% \penalty\codepenalty before the code keeps it joined to its commentary (the
 % section breaks as a unit); like the penalty inside \GL it is high but finite,
 % so a section too tall for a page can still break, preferring the commentary.
-\def\GB{\par\penalty\Gcodepenalty\vskip 3pt\begingroup
+\def\B{\par\penalty\codepenalty\vskip 3pt\begingroup
   \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil
   \hfuzz=2pt \emergencystretch=3em \parindent=0pt}
-% \GBr: run-in code start for a code-only section with no commentary -- no \par,
-% so the first code line (set with \GLr) follows the section number; used by
+% \Br: run-in code start for a code-only section with no commentary -- no \par,
+% so the first code line (set with \Lr) follows the section number; used by
 % cweave-style code-only sections that have no name and no commentary.
-\def\GBr{\penalty\Gcodepenalty\begingroup
+\def\Br{\penalty\codepenalty\begingroup
   \rightskip=0pt plus 1fil \parfillskip=0pt plus 1fil
   \hfuzz=2pt \emergencystretch=3em \parindent=0pt}
-\def\GE{\par\endgroup\vskip 3pt}
+\def\E{\par\endgroup\vskip 3pt}
 % One displayed code line: #1 indentation steps, #2 the body (math chunks $...$
-% joined by \GS). The whole display is offset by \Gcodeindent from the margin;
+% joined by \GS). The whole display is offset by \codeindent from the margin;
 % long lines wrap at a \GS, continuation indented one step deeper.
-% \penalty\Gcodepenalty before each line discourages (but, being finite, does not
+% \penalty\codepenalty before each line discourages (but, being finite, does not
 % forbid) a page break between consecutive code lines, so a code part prefers to
 % stay together; a code part longer than a page can still break.
-\def\GL#1#2{\par\penalty\Gcodepenalty
-  \Gtmpcount=#1 \Gtmpdimen=\Gtmpcount\Gindentunit \advance\Gtmpdimen by\Gcodeindent
-  \hangindent=\Gtmpdimen \advance\hangindent by\Gindentunit \hangafter=1
-  \noindent\kern\Gtmpdimen \strut #2}
-% \GLr: the run-in first code line of a code-only section -- no \par and no
+\def\GL#1#2{\par\penalty\codepenalty
+  \tmpcount=#1 \tmpdimen=\tmpcount\indentunit \advance\tmpdimen by\codeindent
+  \hangindent=\tmpdimen \advance\hangindent by\indentunit \hangafter=1
+  \noindent\kern\tmpdimen \strut #2}
+% \Lr: the run-in first code line of a code-only section -- no \par and no
 % indent, so it continues on the section-number line; later lines use \GL.
-\def\GLr#1#2{\strut #2}
+\def\Lr#1#2{\strut #2}
 \def\GS{\penalty0\hskip .222em plus .12em minus .08em\relax} % breakable code space (cweb medmuskip)
-\def\Gpunct{\penalty0\hskip .1667em plus .09em minus .06em\relax} % after a comma (cweb thinmuskip, 3mu)
-\def\Grel{\penalty0\hskip .2778em plus .15em minus .10em\relax} % around a relation (cweb thickmuskip, 5mu)
-\def\GW{\penalty0\hskip .333em plus .167em minus .111em\relax} % between two words (cweb's text interword space)
-\def\GBS{\penalty0\hskip .5em plus .2em minus .12em\relax} % wider structural space around a block brace (cweb's \5)
-\def\GCS{\penalty0\hskip 1em plus .3em minus .1em\relax}  % generous space before a comment (cweb's \5\5\quad)
-\def\GSO{\penalty0\hskip 0pt\relax}                       % @| optional break
-\def\GBL{\par\penalty\Gcodepenalty\smallskip}             % @# blank line in code
-\def\GBK{\par\penalty\Gcodepenalty\vskip 2.5pt} % a blank source line: a little air
+\def\punct{\penalty0\hskip .1667em plus .09em minus .06em\relax} % after a comma (cweb thinmuskip, 3mu)
+\def\rel{\penalty0\hskip .2778em plus .15em minus .10em\relax} % around a relation (cweb thickmuskip, 5mu)
+\def\W{\penalty0\hskip .333em plus .167em minus .111em\relax} % between two words (cweb's text interword space)
+\def\BS{\penalty0\hskip .5em plus .2em minus .12em\relax} % wider structural space around a block brace (cweb's \5)
+\def\CS{\penalty0\hskip 1em plus .3em minus .1em\relax}  % generous space before a comment (cweb's \5\5\quad)
+\def\SO{\penalty0\hskip 0pt\relax}                       % @| optional break
+\def\BL{\par\penalty\codepenalty\smallskip}             % @# blank line in code
+\def\BK{\par\penalty\codepenalty\vskip 2.5pt} % a blank source line: a little air
 
 % A |...| fragment from the TeX parts (prose, comments, section names) is wrapped
-% in \GPB, cweb's ``program brackets'': the code material is math (it uses
-% \mathord and friends), so \GPB supplies the enclosing $...$ only when TeX is
+% in \PB, cweb's ``program brackets'': the code material is math (it uses
+% \mathord and friends), so \PB supplies the enclosing $...$ only when TeX is
 % not already in math mode. That way a |...| the author put inside a $...$ span,
 % or inside a text-mode \halign cell of a $$...$$ display, is set correctly
 % either way -- TeX decides the mode, so gweave need not guess it.
-\def\GPB#1{\ifmmode#1\else$#1$\fi}
+\def\PB#1{\ifmmode#1\else$#1$\fi}
 % ---- code token fonts (called inside the math of \GL) -----------------------
-\def\GID#1{\hbox{\it #1\/}}      % identifier
-\def\GKW#1{\hbox{\bf #1}}        % reserved word or predeclared type
-\def\GST#1{\hbox{\tentex #1}}    % string, rune, or verbatim text (cweb's \tentex)
-\def\GMAC#1{\hbox{\tentex #1}}   % const name, set typewriter like cweb's @d macro
-\def\GSP{{\tt\char32 }}          % a visible space inside a string (cweb's \SP)
-\def\Gnil{\mathord{\Lambda}}     % Go's nil, shown as cweb shows C's NULL (\Lambda)
-\def\GCM#1{\hbox{\cmntfont #1}}  % comment
-\def\GNU#1{\hbox{\rm #1}}        % decimal/floating numeric literal
+\def\ID#1{\hbox{\it #1\/}}      % identifier
+\def\KW#1{\hbox{\bf #1}}        % reserved word or predeclared type
+\def\ST#1{\hbox{\tentex #1}}    % string, rune, or verbatim text (cweb's \tentex)
+\def\MAC#1{\hbox{\tentex #1}}   % const name, set typewriter like cweb's @d macro
+\def\SP{{\tt\char32 }}          % a visible space inside a string (cweb's \SP)
+\def\nil{\mathord{\Lambda}}     % Go's nil, shown as cweb shows C's NULL (\Lambda)
+\def\CM#1{\hbox{\cmntfont #1}}  % comment
+\def\NU#1{\hbox{\rm #1}}        % decimal/floating numeric literal
 % Non-decimal literals, as in cweb: octal with a raised circle and oldstyle
 % italic digits, hex with a superscript "#" in typewriter, binary with a "b".
-\def\Goct#1{\hbox{$^\circ$\kern-.1em{\it #1\/}}}
-\def\Ghex#1{\hbox{$^{\scriptscriptstyle\#}$\tt #1}}
-\def\Gbin#1{\hbox{$^{\scriptscriptstyle b}$\tt #1}}
+\def\oct#1{\hbox{$^\circ$\kern-.1em{\it #1\/}}}
+\def\hex#1{\hbox{$^{\scriptscriptstyle\#}$\tt #1}}
+\def\bin#1{\hbox{$^{\scriptscriptstyle b}$\tt #1}}
 
 % ---- named-section references and headlines ---------------------------------
-\def\Gangle#1#2{$\langle\,$#1\hbox{\eightrm\kern.4em\Gs{#2}}$\,\rangle$}
-\def\GX#1#2{\hbox{\Gangle{#2}{#1}}}        % inline reference in code
-\def\GD#1#2{\par\vskip 3pt\noindent\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
-\def\GDp#1#2{\par\vskip 3pt\noindent
+\def\Gangle#1#2{$\langle\,$#1\hbox{\eightrm\kern.4em\s{#2}}$\,\rangle$}
+\def\X#1#2{\hbox{\Gangle{#2}{#1}}}        % inline reference in code
+\def\D#1#2{\par\vskip 3pt\noindent\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
+\def\Dp#1#2{\par\vskip 3pt\noindent
   \hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
-% Run-in variants \GDr/\GDpr: used when a section has no commentary, so the
+% Run-in variants \Dr/\Dpr: used when a section has no commentary, so the
 % definition's name and equivalence sign follow the section number on the same
 % line (no \par), as cweave does for a code-only section.
-\def\GDr#1#2{\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
-\def\GDpr#1#2{\hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
+\def\Dr#1#2{\hbox{\Gangle{#2}{#1}${}\equiv{}$}\hskip 3pt}
+\def\Dpr#1#2{\hbox{\Gangle{#2}{#1}${}\mathrel{+}\equiv{}$}\hskip 3pt}
 
 % ---- cross-reference notes printed under a definition -----------------------
-\def\Gnote#1{\par\penalty-1\vskip 2pt\noindent{\Gsmallfont #1.}\par}
-\def\GU#1{\Gnote{This code is used in section #1}}
-\def\GUs#1{\Gnote{This code is used in sections #1}}
-\def\GA#1{\Gnote{This code is also defined in section #1}}
-\def\GAs#1{\Gnote{This code is also defined in sections #1}}
+\def\note#1{\par\penalty-1\vskip 2pt\noindent{\smallfont #1.}\par}
+\def\U#1{\note{This code is used in section #1}}
+\def\Us#1{\note{This code is used in sections #1}}
+\def\A#1{\note{This code is also defined in section #1}}
+\def\As#1{\note{This code is also defined in sections #1}}
 % Other human-language strings: the running head over the section-name list and
 % the two column headings on the contents page. Redefine these, and the four
 % notes just above, in a localization file (e.g. kotexgweb.tex for Korean) to
 % translate gweave's output; gweave itself needs no change.
-\def\Gnamesheading{NAMES OF THE SECTIONS}
-\def\Goutsecname{Names of the sections} % title of the section-names PDF bookmark
-\def\Gsectionword{Section}
-\def\Gpageword{Page}
+\def\namesheading{NAMES OF THE SECTIONS}
+\def\outsecname{Names of the sections} % title of the section-names PDF bookmark
+\def\sectionword{Section}
+\def\pageword{Page}
 % The usage note printed beside an entry in the section-name list.
-\def\GNused#1{Used in section #1}
-\def\GNuseds#1{Used in sections #1}
+\def\Nused#1{Used in section #1}
+\def\Nuseds#1{Used in sections #1}
 
 % ---- selectively suppressing the back matter (as in cwebmac) ----------------
 % Put any of these in limbo to drop part of the tail. Following cwebmac they are
 % cumulative in reach: \noinx drops the index, the `Names of the sections' list,
 % and the contents; \nosecs drops the list and the contents; \nocon drops the
-% contents. The three flags guard the matching parts of \Ginx/\GII, \Gfin/\GNS,
-% and \Gcon below, so every group stays balanced whatever is switched off.
+% contents. The three flags guard the matching parts of \inx/\II, \fin/\NS,
+% and \con below, so every group stays balanced whatever is switched off.
 % \noatl is accepted for portability with cwebmac webs but does nothing: GWEB
 % has no \.{@l} transliteration (Go source is Unicode), so there is no such note.
-\newif\ifGinx  \Ginxtrue   % include the index?
-\newif\ifGsecs \Gsecstrue  % include the `Names of the sections' list?
-\newif\ifGcon  \Gcontrue   % include the table of contents?
-\def\noinx{\Ginxfalse\Gsecsfalse\Gconfalse}
-\def\nosecs{\Gsecsfalse\Gconfalse}
-\def\nocon{\Gconfalse}
+\newif\ifinx  \inxtrue   % include the index?
+\newif\ifsecs \secstrue  % include the `Names of the sections' list?
+\newif\ifcon  \contrue   % include the table of contents?
+\def\noinx{\inxfalse\secsfalse\confalse}
+\def\nosecs{\secsfalse\confalse}
+\def\nocon{\confalse}
 \def\noatl{}
 
 % ---- index: title-less, set in two columns ----------------------------------
-% The index is set in two columns. \Ginx stashes the preceding material (the
-% user's `@* Index.' heading and prose) in \Gsbox, then narrows \hsize to one
-% column and installs \Gcoloutput: it fills the left column to the column height,
+% The index is set in two columns. \inx stashes the preceding material (the
+% user's `@* Index.' heading and prose) in \sbox, then narrows \hsize to one
+% column and installs \coloutput: it fills the left column to the column height,
 % saves it, fills the right column, and ships a page carrying the stashed
-% material above the two columns. \Gfin flushes the last column.
-\newbox\Gsbox \newbox\Glbox
-\def\Glr{L}
-\def\Gcoloutput{%
-  \if L\Glr
-    \global\setbox\Glbox=\box255 \gdef\Glr{R}%
+% material above the two columns. \fin flushes the last column.
+\newbox\sbox \newbox\lbox
+\def\lr{L}
+\def\coloutput{%
+  \if L\lr
+    \global\setbox\lbox=\box255 \gdef\lr{R}%
   \else
-    \shipout\vbox{\Gmakeheadline
-      \vbox to\Gpageheight{\boxmaxdepth=\maxdimen
-        \box\Gsbox\vss
-        \hbox to\Gpagewidth{\box\Glbox\hfil\box255}}}%
+    \shipout\vbox{\runheadline
+      \vbox to\pageheight{\boxmaxdepth=\maxdimen
+        \box\sbox\vss
+        \hbox to\pagewidth{\box\lbox\hfil\box255}}}%
     \global\advance\pageno by1
-    \global\setbox\Gsbox=\vbox{}\global\vsize=\Gpageheight \gdef\Glr{L}%
+    \global\setbox\sbox=\vbox{}\global\vsize=\pageheight \gdef\lr{L}%
   \fi}
-\def\Ginx{\ifGinx
+\def\inx{\ifinx
   \par
   \vskip 9pt plus 2pt           % gap between the Index heading/prose and entries
-  \output={\global\setbox\Gsbox=\box255}\eject % stash heading+prose, hold page
-  \setbox\Gsbox=\vbox{\unvbox\Gsbox}%
-  \global\vsize=\Gpageheight
-  \global\advance\vsize by-\ht\Gsbox \global\advance\vsize by-\dp\Gsbox
-  \global\hsize=\Gcolwidth
-  \global\output={\Gcoloutput}\gdef\Glr{L}%
+  \output={\global\setbox\sbox=\box255}\eject % stash heading+prose, hold page
+  \setbox\sbox=\vbox{\unvbox\sbox}%
+  \global\vsize=\pageheight
+  \global\advance\vsize by-\ht\sbox \global\advance\vsize by-\dp\sbox
+  \global\hsize=\colwidth
+  \global\output={\coloutput}\gdef\lr{L}%
   \begingroup
   \baselineskip=12pt \parindent=0pt \parskip=1pt plus .5pt \rm
   \rightskip=0pt plus 2.5em \tolerance=10000 \hyphenpenalty=10000
   \fi}
-\def\GII#1#2{\ifGinx\noindent\hangindent2em #1:\kern.5em #2.\par\fi} % index entry
-\def\GIR#1{{\rm #1}}                          % @^...@>  roman index entry
-\def\GIT#1{{\tentex #1}}                      % @....@>  typewriter index entry
+\def\II#1#2{\ifinx\noindent\hangindent2em #1:\kern.5em #2.\par\fi} % index entry
+\def\IR#1{{\rm #1}}                          % @^...@>  roman index entry
+\def\IT#1{{\tentex #1}}                      % @....@>  typewriter index entry
 \def\9#1{{\rm #1}}                            % default for @:...@> entries
-\def\GIC#1{\9{#1}}
+\def\IC#1{\9{#1}}
 
 % ---- list of section names (a `Names of the Sections' page) -----------------
-% \Gfin ends the index (\Gendindex) and starts the section-name list
-% (\Gbeginsecs); the two halves are split out so \nosecs can end the index and
+% \fin ends the index (\endindex) and starts the section-name list
+% (\beginsecs); the two halves are split out so \nosecs can end the index and
 % stop, and each is guarded by its own flag so the groups stay balanced.
-\def\Gendindex{\par\vfil\eject  % seal/ship the current index column
-  \if L\Glr\else\null\vfil\eject\fi % a left column is pending: ship its page
-  \endgroup                     % close the index paragraph group (from \Ginx)
+\def\endindex{\par\vfil\eject  % seal/ship the current index column
+  \if L\lr\else\null\vfil\eject\fi % a left column is pending: ship its page
+  \endgroup                     % close the index paragraph group (from \inx)
   \global\output={\plainoutput}% back to ordinary single-column pages
-  \global\hsize=\Gpagewidth \global\vsize=\Gpageheight}
-\def\Gbeginsecs{\vfil\eject
-  \global\def\Gsechead{}% no section number in the header here
-  \global\def\Ggrouphead{\Gnamesheading}%
+  \global\hsize=\pagewidth \global\vsize=\pageheight}
+\def\beginsecs{\vfil\eject
+  \global\def\sechead{}% no section number in the header here
+  \global\def\grouphead{\namesheading}%
   \begingroup
   \parindent=0pt \parskip=2pt plus 1pt \rightskip=0pt plus 2em \rm}
-\def\Gfin{\ifGinx\Gendindex\fi \ifGsecs\Gbeginsecs\fi}
-\def\GNS#1#2#3{\ifGsecs\noindent\hangindent2em \Gangle{#1}{#2}%
-  \ifx\Gempty#3\else\quad{\Gsmallfont#3}\fi\par\fi}
+\def\fin{\ifinx\endindex\fi \ifsecs\beginsecs\fi}
+\def\NS#1#2#3{\ifsecs\noindent\hangindent2em \Gangle{#1}{#2}%
+  \ifx\empty#3\else\quad{\smallfont#3}\fi\par\fi}
 
 % ---- contents page: centered title, Section/Page columns, dot leaders --------
-% \GTline{depth}{secno}{title}{page}: one contents entry. The title travels in
-% the toc file itself (written unexpanded by \GN), so the file is self-contained
+% \Tline{depth}{secno}{title}{page}: one contents entry. The title travels in
+% the toc file itself (written unexpanded by \N), so the file is self-contained
 % and \readcontents can gather several pieces' contents in one run.
-\def\GTline#1#2#3#4{\line{\Gconsetup{#1}%
+\def\Tline#1#2#3#4{\line{\consetup{#1}%
   #3\ %
-  \rm\leaders\hbox to .5em{\hss.\hss}\hfil\ \Gs{#2}\hbox to 3em{\hss#4}}}
+  \rm\leaders\hbox to .5em{\hss.\hss}\hfil\ \s{#2}\hbox to 3em{\hss#4}}}
 % A contents entry's leading material by group depth: a top-level @** section
 % (depth -1) sets its title in bold, as cweave does; @* (0) is flush, and deeper
 % groups (@*1, @*2, ...) are indented. The \bf is reset to \rm before the page
-% number back in \GTline.
-\def\Gconsetup#1{\ifnum#1<0 \bf \else
+% number back in \Tline.
+\def\consetup#1{\ifnum#1<0 \bf \else
   \ifcase#1 \or\hskip2em\or\hskip4em\or\hskip6em\else\hskip8em\fi \fi}
 % \topofcontents and \botofcontents open and close the contents page; redefine
 % either in limbo, as in cwebmac, to dress it up (a subtitle, a version line, a
-% cover note). The defaults reproduce \Gcon's own former top and bottom.
+% cover note). The defaults reproduce \con's own former top and bottom.
 \def\topofcontents{\centerline{\titlefont\Gtitle}\vskip .7in \vfill}
 \def\botofcontents{\vfill}
-\def\Gcon{\ifGsecs\par\endgroup\vfil\eject\fi % finish the section names
-  \ifGtocopen\immediate\closeout\Gtoc\fi
-  \ifGcon\ifGtocopen
+\def\con{\ifsecs\par\endgroup\vfil\eject\fi % finish the section names
+  \iftocopen\immediate\closeout\toc\fi
+  \ifcon\iftocopen
     \titletrue \pageno=\contentspagenumber
     \parindent=0pt
     \topofcontents
-    \line{\hfil{\Gsmallfont\Gsectionword}\hbox to 3em{\hss\Gsmallfont\Gpageword}}%
+    \line{\hfil{\smallfont\sectionword}\hbox to 3em{\hss\smallfont\pageword}}%
     \begingroup \rm
       \readcontents\relax
     \endgroup
