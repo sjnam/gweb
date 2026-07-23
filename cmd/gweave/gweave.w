@@ -1626,16 +1626,46 @@ if c == '@@' && i+1 < n {
 		if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
 			end += i + 2
 			wv.xr.addManualIndex(d, s[i+2:end], secNum)
-			i = end + 2
+			i = closeUpBlankedLine(s, i, end+2)
 			continue
 		}
 	case 'q':
 		if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
 			end += i + 2
-			i = end + 2 // drop the source-only comment
+			i = closeUpBlankedLine(s, i, end+2) // drop the source-only comment
 			continue
 		}
 	}
+}
+
+@ An index entry sets no text of its own, and by long habit it is written on a
+line to itself, just under the word it files---as \.{CWEB}'s own sources do.
+Removing it would leave that line blank, and to \TEX/ a blank line is a
+\.{\\par}: the paragraph would break where the author only meant to file an
+entry. So when the entry had the line to itself we take the newline with it, and
+the prose closes up as |cweave| leaves it.
+
+An entry with prose beside it keeps its newline, which \TEX/ reads as the space
+it always was---swallowing that one would run the neighbouring words together.
+The same care serves a \.{@@q...@@>} source comment, which likewise vanishes.
+@<Process commentary \TEX/@>=
+func closeUpBlankedLine(s string, start, after int) int {
+	for k := start - 1; k >= 0; k-- {
+		if s[k] == '\n' {
+			break // nothing but blanks before it: the line was the entry's own
+		}
+		if s[k] != ' ' && s[k] != '\t' && s[k] != '\r' {
+			return after // prose shares the line; its newline is a real space
+		}
+	}
+	j := after
+	for j < len(s) && (s[j] == ' ' || s[j] == '\t' || s[j] == '\r') {
+		j++
+	}
+	if j < len(s) && s[j] == '\n' {
+		return j + 1
+	}
+	return after
 }
 
 @ |renderInline| formats a |...| inline \GO/ fragment from prose, recording its
