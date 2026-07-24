@@ -74,7 +74,20 @@
 % Pascal's ":=" as a left arrow through \K; \K is the same hook for Go, so a
 % document that prefers an arrow need only say, in its limbo,
 %     \let\K=\Leftarrow
-\def\K{{:}{=}}
+\catcode`\@=11
+\def\vc@lon#1#2{%
+  \setbox\z@\hbox{$\m@th#1{:}$}%
+  \setbox\tw@\hbox{$\m@th#1{=}$}%
+  \dimen@=\ht\tw@   \advance\dimen@  -\dp\tw@   % = 의 (ht-dp)
+  \dimen@ii=\ht\z@  \advance\dimen@ii-\dp\z@    % : 의 (ht-dp)
+  \advance\dimen@ -\dimen@ii
+  \advance\dimen@ .35\ht\tw@
+  \raise.5\dimen@\box\z@}
+\def\vcentcolon{\mathrel{\mathpalette\vc@lon\relax}}
+\def\coloneqq{\mathrel{\vcentcolon\mkern-1.2mu=}}
+\catcode`\@=12
+
+\def\K{\coloneqq}
 
 % Go's bit-clear operator "&^", likewise redefinable. It has no C counterpart, so
 % its glyph is a choice rather than a tradition: a circled slash, read as "and
