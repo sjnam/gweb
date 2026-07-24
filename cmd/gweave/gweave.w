@@ -861,16 +861,18 @@ if t.kind == tkIdent || t.kind == tkBuiltin {
 @ A comment goes through |renderComment|, everything else through |renderToken| in
 its effective class---which |structTagged| may refine once more, since only the
 look-behind kept here can tell a field's tag from any other raw string. A trailing
-comment is the one exception to the grammar's spacing: it is set off from the code
-by the generous \.{\\CS} gap \.{cweave} leaves before a comment, in place of the
-ordinary \.{\\GS}.
+comment is the one exception to the grammar's spacing: whatever the code before it
+was---even a \.] or a selector dot, which cling to what follows them---it is set
+off by the generous \.{\\CS} gap \.{cweave} leaves before a comment, in place of
+the ordinary \.{\\GS}. Only a comment that opens its own line takes no \.{\\CS};
+there the indent already stands in for it.
 @<Emit the token@>=
 if t.kind == tkComment {
-	if pendingGap != gTight { // set a trailing comment off from the code with a generous gap, as cweave does
+	if !atLineStart { // a trailing comment is always set off from the code, as cweave does
 		flushRun()
 		line.WriteString("\\CS ")
-		pendingGap = gTight
 	}
+	pendingGap = gTight // never let a grammar gap glue in front of the comment
 	emit(wv.renderComment(secNum, t.text))
 } else {
 	emit(renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
