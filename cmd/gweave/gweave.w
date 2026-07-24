@@ -1628,36 +1628,42 @@ if c == '@@' && i+1 < n {
 		if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
 			end += i + 2
 			wv.xr.addManualIndex(d, s[i+2:end], secNum)
-			i = closeUpBlankedLine(s, i, end+2)
+			i = closeUpBlankedLine(b.String(), s, end+2)
 			continue
 		}
 	case 'q':
 		if end := strings.Index(s[i+2:], "@@>"); end >= 0 {
 			end += i + 2
-			i = closeUpBlankedLine(s, i, end+2) // drop the source-only comment
+			i = closeUpBlankedLine(b.String(), s, end+2) // drop the source-only comment
 			continue
 		}
 	}
 }
 
 @ An index entry sets no text of its own, and by long habit it is written on a
-line to itself, just under the word it files---as \.{CWEB}'s own sources do.
-Removing it would leave that line blank, and to \TEX/ a blank line is a
-\.{\\par}: the paragraph would break where the author only meant to file an
-entry. So when the entry had the line to itself we take the newline with it, and
+line to itself, just under the word it files---as \.{CWEB}'s own sources do,
+sometimes several in a row when a passage files more than one name. Removing them
+would leave that line blank, and to \TEX/ a blank line is a \.{\\par}: the
+paragraph would break where the author only meant to file the entries. So when an
+entry ends a line that its own kind had to itself we take the newline with it, and
 the prose closes up as |cweave| leaves it.
 
-An entry with prose beside it keeps its newline, which \TEX/ reads as the space
-it always was---swallowing that one would run the neighbouring words together.
-The same care serves a \.{@@q...@@>} source comment, which likewise vanishes.
+The test looks at what has been woven so far, not at the source: an entry earlier
+on the line has already been removed and left the built line blank, so a run of
+them---\.{@@\^a@@>@@\^b@@>}---reads as one owned line and only the last swallows
+the newline. An entry with prose beside it finds ink on the line and keeps its
+newline, which \TEX/ reads as the space it always was; swallowing that one would
+run the neighbouring words together. A \.{@@q...@@>} source comment vanishes the
+same way and gets the same care. |b.String()| costs nothing here: a
+|strings.Builder| hands back its buffer without copying it.
 @<Process commentary \TEX/@>=
-func closeUpBlankedLine(s string, start, after int) int {
-	for k := start - 1; k >= 0; k-- {
-		if s[k] == '\n' {
-			break // nothing but blanks before it: the line was the entry's own
+func closeUpBlankedLine(woven, s string, after int) int {
+	for k := len(woven) - 1; k >= 0; k-- {
+		if woven[k] == '\n' {
+			break // the woven line holds only blanks: this kind of entry owned it
 		}
-		if s[k] != ' ' && s[k] != '\t' && s[k] != '\r' {
-			return after // prose shares the line; its newline is a real space
+		if woven[k] != ' ' && woven[k] != '\t' && woven[k] != '\r' {
+			return after // ink shares the line; its newline is a real space
 		}
 	}
 	j := after
