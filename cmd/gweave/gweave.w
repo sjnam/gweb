@@ -676,22 +676,29 @@ flushRun := func() {
 emit := func(s string) {
 	if pendingGap != gTight {
 		flushRun()
-		switch pendingGap {
-		case gBlock:
-			line.WriteString("\\BS ")
-		case gWord:
-			line.WriteString("\\W ")
-		case gRel:
-			line.WriteString("\\rel ")
-		case gPunct:
-			line.WriteString("\\punct ")
-		default:
-			line.WriteString("\\GS ")
-		}
+		line.WriteString(gapMacro(pendingGap))
 		pendingGap = gTight
 	}
 	run.WriteString(s)
 	atLineStart = false
+}
+
+@ |gapMacro| names the breakable code space a grammar gap calls for. A code part
+and an inline |...| fragment share it, so a token pair is spaced the same whether
+it stands in the program or is quoted in the prose.
+@<Space code tokens by grammar@>=
+func gapMacro(g int) string {
+	switch g {
+	case gBlock:
+		return "\\BS " // a statement block's braces, set apart
+	case gWord:
+		return "\\W " // a word space, as between a name and its type
+	case gRel:
+		return "\\rel " // a relation or assignment, cweave's thick space
+	case gPunct:
+		return "\\punct " // after a comma, cweave's thin space
+	}
+	return "\\GS " // the ordinary breakable code space
 }
 
 @ |emitLine| writes the accumulated line as a \.{\\GL}, leaving the indent
@@ -1700,19 +1707,30 @@ right either way---\TEX/ itself, not \.{gweave}, decides the mode.
 @<Render an inline code fragment@>=
 func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	var st lexState
+	var in indenter
 	var b strings.Builder
 	b.WriteString("\\PB{")
-	pendingSpace := false
 	started := false
+	pendingGap := gTight
+	manualGap := false
+	prevCat := catExpr
 	prevSigKind := tkNewline
 	prevSigText := ""
 	prevPrevSigText := ""
-	emit := func(s string) {
-		if pendingSpace {
-			b.WriteString("\\ ")
-			pendingSpace = false
+	emit := func(cat spaceCat, s string) {
+		if started && !manualGap {
+			switch g := gapBetween(prevCat, cat); g {
+			case gPunct, gWide, gRel, gWord, gBlock:
+				pendingGap = g
+			}
+		}
+		manualGap = false
+		if pendingGap != gTight {
+			b.WriteString(gapMacro(pendingGap))
+			pendingGap = gTight
 		}
 		b.WriteString(s)
+		prevCat = cat
 		started = true
 	}
 	for _, a := range common.ScanCode(code) {
@@ -1723,12 +1741,14 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 }
 
 @ The atoms are dispatched by kind, as a code part's are, but written into the
-single math group rather than into broken lines. A paste cancels the pending
-space so its neighbours abut; \GO/ text is handed to the token loop.
+single math group rather than into broken lines. \GO/ text is handed to the token
+loop; a section reference, a \.{@@t} box, or verbatim material stands in for an
+operand, so it is spaced as one; a paste forces its neighbours tight.
 @<Render one inline atom@>=
 switch a.Kind {
 case common.AText:
-	for _, t := range lexGo(a.Text, &st) {
+	toks := lexGo(a.Text, &st)
+	for k, t := range toks {
 		@<Set one token of an inline atom@>
 	}
 case common.AIndex:
@@ -1736,33 +1756,40 @@ case common.AIndex:
 		wv.xr.addManualIndex(a.Index, a.Text, secNum)
 	}
 case common.ATeX:
-	emit("\\hbox{" + a.Text + "}")
+	emit(catExpr, "\\hbox{" + a.Text + "}")
+	prevSigKind, prevSigText = tkString, ""
 case common.AVerbatim:
-	emit("\\ST{" + escTT(a.Text) + "}")
+	emit(catExpr, "\\ST{" + escTT(a.Text) + "}")
+	prevSigKind, prevSigText = tkString, ""
 case common.ARef:
 	name := wv.w.Resolve(a.Text)
 	wv.xr.addSectionUse(name, secNum)
-	emit(fmt.Sprintf("\\X{%d}{%s}", wv.defNum[name], wv.renderName(name)))
+	emit(catExpr, fmt.Sprintf("\\X{%d}{%s}", wv.defNum[name], wv.renderName(name)))
+	prevSigKind, prevSigText = tkIdent, ""
 case common.APaste:
-	pendingSpace = false
+	manualGap = true
+	pendingGap = gTight
 }
 
-@ A blank or newline only arms the pending space; a significant token flushes it,
-is recorded in the index when the run records and the name is indexable, and is
-set in its effective class---a field tag inside a |...| losing its backquotes just
-as one in a code part does.
+@ Source whitespace is ignored, as in a code part: the spacing is the grammar's,
+not the source's. A significant token is classified, recorded in the index when
+the run records and the name is indexable, and set in its effective class---a
+field tag inside a |...| losing its backquotes just as one in a code part does.
+The |indenter| rides along so the classifier can tell a block brace from a
+composite one, a slice colon from a map's, exactly as it does in a code part.
 @<Set one token of an inline atom@>=
 if t.kind == tkSpace || t.kind == tkNewline {
-	if started {
-		pendingSpace = true
-	}
 	continue
 }
+blockBrace := t.kind == tkOp && t.text == "{" && in.opensBlock()
+curCat := classify(t, prevSigKind, prevSigText, toks, k,
+	blockBrace, in.top().isBlock, in.inSquareBracket())
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndexed(t.text, qual) {
 	wv.xr.addIdentUse(t.text, secNum)
 }
-emit(renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
+emit(curCat, renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
+in.advance(t)
 prevPrevSigText = prevSigText
 prevSigKind, prevSigText = t.kind, t.text
 
