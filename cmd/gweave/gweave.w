@@ -1043,8 +1043,8 @@ case ",":
 	return catComma
 case ";":
 	return catSemi
-case ".":
-	return catDot
+case ".", "->":
+	return catDot // C's -> (quoted in prose) clings like a selector dot
 case ")", "{}", "++", "--":
 	return catClose
 case "]":
@@ -2596,11 +2596,13 @@ default:
 
 @ The multi-character operators (longest first) and the greedy matcher that
 combines them into single tokens. The empty pairs |[]|, |{}|, and |()| are kept
-whole so the typesetter can give them a thin space.
+whole so the typesetter can give them a thin space. \.{->} is not a \GO/
+operator at all---no valid program writes one---but prose often quotes C, so we
+keep it whole and set it as \.{CWEB} does (see |renderOp|).
 @<Match a multi-character operator@>=
 var multiOps = []string{
 	"<<=", ">>=", "&^=", "...",
-	"<-", "++", "--", "==", "!=", "<=", ">=", ":=", "&&", "||",
+	"<-", "->", "++", "--", "==", "!=", "<=", ">=", ":=", "&&", "||",
 	"<<", ">>", "&^", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=",
 	"[]", // the empty brackets of a slice/array type, kept as one token
 	"{}", // empty braces (struct{}, interface{}, T{}), kept as one token
@@ -2758,6 +2760,7 @@ func renderOp(s string) string {
 	@<Typeset a bitwise or shift operator@>
 	@<Typeset an increment or decrement@>
 	@<Typeset an ellipsis or an empty bracket pair@>
+	@<Typeset C's arrow@>
 	}
 	if len(s) == 1 {
 		return "\\mathord{" + escMathOp(s) + "}"
@@ -2812,6 +2815,15 @@ case "&^":
 	return "\\mathord{\\AN}" // bit clear (and-not): its own symbol, and its own macro
 case "&^=":
 	return "\\mathord{\\AN}\\mathord{=}" // and-not-assign
+
+@ \.{->} is C's, not \GO/'s; it appears only where the prose quotes C. \.{CWEB}
+sets it as a small lowered arrow, tight against its operands like a selector dot
+(|p->field|, no space either side), through the macro \.{\\MG}. We borrow the
+same macro and the same tight spacing (see |classify|), so a quoted C member
+access reads exactly as it would in a \.{CWEB} document.
+@<Typeset C's arrow@>=
+case "->":
+	return "\\mathord{\\MG}"
 case "<<":
 	return "\\mathord{\\ll}" // left shift, as \.{CWEB} (a tight double angle)
 case ">>":
