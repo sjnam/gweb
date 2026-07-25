@@ -3215,7 +3215,11 @@ for name, secs := range wv.xr.identDef {
 }
 
 @ A manual entry---\.{@@.} typewriter, \.{@@:} raw \TEX/, \.{@@\^} roman---is
-rendered by its kind and recorded at the section where it appeared.
+rendered by its kind and recorded at the section where it appeared. As in
+\.{CWEB}, the roman entry's text is the author's own \TEX/, passed through
+untouched: \.{@@\^Egerv\\'ary@>} keeps its accent, \.{@@\^Jen\\H{o}@>} its
+double one. Only the typewriter entry is escaped---for the \.{cmtex} string
+font, where a backslash is a backslash, not \TEX/.
 @<Collect the manual index entries@>=
 for _, e := range wv.xr.manualIndex {
 	var render string
@@ -3225,7 +3229,7 @@ for _, e := range wv.xr.manualIndex {
 	case ':':
 		render = "\\IC{" + e.text + "}"
 	default: // '\.{\^}'
-		render = "\\IR{" + escProse(e.text) + "}"
+		render = "\\IR{" + e.text + "}"
 	}
 	it := get(render, strings.ToLower(e.text))
 	it.secs[e.sec] = true
