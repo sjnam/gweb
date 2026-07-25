@@ -621,7 +621,7 @@ from the source: each token is sorted into a spacing category and |gapBetween|
 reads the gap off the two neighbouring categories (the \.{Spacing code by grammar}
 section), while the |indenter| decides each line's indent from the block structure
 (the {\bf Structural indentation} section), so even cramped, ragged source is laid
-out the way |gofmt| would. Among the state variables, |prevCat| carries the
+out the way \.{gofmt} would. Among the state variables, |prevCat| carries the
 previous token's category forward for the next gap; |prevSigKind| and |prevSigText|
 track the most recent significant token---so an identifier following
 |func|/|var|/|const|/|type| can be flagged as a definition, and a \.* after an
@@ -910,12 +910,12 @@ neighbouring categories.
 a bottom-up grammar of some forty categories and a hundred productions, each
 production emitting the spacing for the structure it recognizes; a category here is
 one of those scrap categories, named in the comments beside |spaceCat|. The
-difference is that |gofmt| has already normalized the layout before \.{gweave} sees
+difference is that \.{gofmt} has already normalized the layout before \.{gweave} sees
 it, so where \.{cweave} must {\it parse\/} C to know a scrap's category, \.{gweave}
 merely {\it classifies\/} an already-tidy token---no grammar, no precedence table.
 Like \.{cweave}, \.{gweave} sets a comma, an arithmetic operator, and a relation
 with three different widths---\.{cweave}'s thin, medium, and thick math muskips. The
-one thing it still gives up against |gofmt|, which tightens spacing around
+one thing it still gives up against \.{gofmt}, which tightens spacing around
 higher-precedence operators, is that within arithmetic it spaces them all alike:
 \.{a*b} sets like \.{a + b}, not tighter.
 
@@ -969,7 +969,7 @@ context-dependent ambiguities are resolved, once---a statement block's brace fro
 composite literal's, a call's parenthesis from a grouping one, a pointer star from
 a product---so that the gap table that follows is a pure function of two
 categories. Each category corresponds to a \.{cweave} scrap category, noted in the
-comment; the difference is that |gofmt| has already fixed the layout, so |gweave|
+comment; the difference is that \.{gofmt} has already fixed the layout, so |gweave|
 classifies a token where \.{cweave} must parse to reach the same scrap.
 @<Space code tokens by grammar@>=
 type spaceCat int
@@ -1044,7 +1044,7 @@ case ",":
 case ";":
 	return catSemi
 case ".", "->":
-	return catDot // C's -> (quoted in prose) clings like a selector dot
+	return catDot // \CEE/'s $\rightarrow$ (quoted in prose) clings like a selector dot
 case ")", "{}", "++", "--":
 	return catClose
 case "]":
@@ -1178,7 +1178,7 @@ case catRel:
 	return gRel // a relation or assignment gets cweave's wider thick space
 case catArrayType, catSpacedPtr:
 	if left == catExpr || left == catClose || left == catEmptyParen {
-		return gWord // a name or a func result and its array/pointer type: x [3]int, func() [3]int
+		return gWord // a name or a func result and its array/pointer type: |x [3]int|, |func() [3]int|
 	}
 	return gWide
 case catLoneBrackets:
@@ -1199,7 +1199,7 @@ func gapBeforeLone(left spaceCat) int {
 		catIndex, catArrayType, catMapBracket, catOpen, catDot:
 		return gTight
 	case catExpr, catClose, catEmptyParen:
-		return gWord // a name or a func result and its slice type: p []byte, func() []V
+		return gWord // a name or a func result and its slice type: |p []byte|, |func() []V|
 	}
 	return gWide
 }
@@ -1264,7 +1264,7 @@ func afterNonOp(left spaceCat) int {
 	case catBlockOpen, catStmtKw:
 		return gBlock
 	case catExpr, catKeyword, catFunc, catMap, catTypeKw, catClose, catEmptyParen:
-		return gWord // two adjacent words, or a func result and its type: \.{n int}, \.{func() T}
+		return gWord // two adjacent words, or a func result and its type: |n int|, |func() T|
 	case catComma:
 		return gPunct // a comma leaves cweave's narrow thin space
 	case catRel:
@@ -1342,7 +1342,7 @@ func isRelOp(s string) bool {
 The programmer's own spacing usually settles it, and reliably---for the two read
 quite differently. A pointer type keeps a space {\it before\/} the star and runs
 straight into its type after it: \.{p~*int}, \.{w~*W}. A product has either no space
-at all (\.{a*b}, the form |gofmt| uses to group a higher-precedence factor) or a
+at all (\.{a*b}, the form \.{gofmt} uses to group a higher-precedence factor) or a
 space on each side (\.{a~*~b}); either way it is set spaced, the \.{cweave} way. So
 |pointerStar| clings the star to its right when the source put a blank before it but
 none after. That leaves \.{*a**b} a product of two dereferences---the middle star
@@ -1352,7 +1352,7 @@ to the source is the escape hatch \.{cweave} spells
 spacing marks it.
 
 @ Spacing alone cannot settle every star, though. The element type of an array runs
-tight against the brackets---|gofmt| writes \.{[256]*Node}, the star crammed on
+tight against the brackets---\.{gofmt} writes \.{[256]*Node}, the star crammed on
 both sides, exactly as it writes the product \.{a[i]*b}. Here the deciding fact is
 grammatical, not typographic: the \.] before the star closes an {\it array type\/},
 not an {\it index}, so the star is a pointer. |starAfterArrayType| makes that call,
@@ -1371,7 +1371,7 @@ func pointerStar(pk tokKind, pt string, cur token, toks []token, k int) bool {
 	return spaceBefore || starAfterArrayType(toks, k)
 }
 
-@ The gap before a \.[ is settled directly by the source blank |gofmt| writes
+@ The gap before a \.[ is settled directly by the source blank \.{gofmt} writes
 between a declared name and its type (\.{b [256]int}) but never before an index
 (\.{a[i]}). The star after the matching \.] needs the grammatical judgement
 |arrayType| makes for the bracket opening at |open|. A \.[ that follows no operand
@@ -1576,7 +1576,7 @@ func (wv *Weaver) processTex(secNum int, s string) string {
 	for i < n {
 		c := s[i]
 		if c == '\\' && i+1 < n && s[i+1] == '|' {
-			b.WriteString("|") // \| is a literal bar in prose
+			b.WriteString("|") // \.{|} is a literal bar in prose
 			i += 2
 			continue
 		}
@@ -1994,9 +1994,9 @@ func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
 @* Structural indentation.
 Unlike \.{cweave}, which parses \CEE/ and lays out each construct by its grammar,
 \.{gweave} once copied the woven indentation straight from the source whitespace.
-That is exact for |gofmt|'d code but reproduces sloppy code just as sloppily.
+That is exact for \.{gofmt}'d code but reproduces sloppy code just as sloppily.
 Instead we derive each line's indentation from the block structure, the way
-|gofmt| does: a running stack of open brackets, with the special cases a plain
+\.{gofmt} does: a running stack of open brackets, with the special cases a plain
 brace-counter would miss---|switch|/|select| case bodies, dedented labels and
 closers, and a statement continued across a line by a trailing operator.
 
@@ -2006,7 +2006,7 @@ a composite literal or parentheses that is the physical line the bracket opened 
 but for a statement block it is the {\it statement's\/} own indentation, so the body
 of a |func| whose signature wrapped across lines still lines up under the |func|,
 not under the wrapped parameters. A |switch| or |select| body is the exception
-|gofmt| makes: its |case|/|default| labels sit at |openerIndent|, not one deeper,
+\.{gofmt} makes: its |case|/|default| labels sit at |openerIndent|, not one deeper,
 and only the statements beneath a label indent a further level.
 @<Track structural indentation@>=
 type indentFrame struct {
@@ -2674,7 +2674,7 @@ func indexStr(s, sub string, from int) int {
 @* \TEX/ escaping.
 Three contexts need different treatment: identifiers and keywords (only |_| is
 troublesome); typewriter text for strings and comments (every \TEX/ special is
-emitted as a |\charNN| code so it prints literally); and prose names and math
+emitted as a \.{\\charNN} code so it prints literally); and prose names and math
 operators (text- or math-mode-safe sequences).
 @c
 @<Escape an identifier@>
@@ -2775,7 +2775,7 @@ prints as itself, but it goes out as a single macro, \.{\\K}, rather than as two
 atoms: \.{WEB} set Pascal's \.{:=} as a left arrow through \.{\\K}, and \.{\\K} is
 the same hook for \GO/. Its default in \.{gwebmac.tex} is the two characters run
 together, so nothing changes unless a document asks for something else in its
-limbo---say |\let\K=\Leftarrow|.
+limbo---say \.{\\let\\K=\\Leftarrow}.
 @<Typeset a relation or a logical connective@>=
 case "<=":
 	return "\\mathord{\\leq}"
@@ -3722,7 +3722,7 @@ func TestWeaveElidedLiteralBraceSpacing(t *testing.T) {
 }
 
 @ The spacing categories are exercised token by token: a slice result type sits
-apart from the parameter list (\.{func() []T}, as |gofmt| spaces it) while a stacked
+apart from the parameter list (\.{func() []T}, as \.{gofmt} spaces it) while a stacked
 slice type clings (\.{[3][]int}); a named array type keeps the source's blank
 (\.{b [256]int}) but an index clings (\.{a[i]}); and a spaced pointer keeps its
 blank before the star yet clings after (\.{p *int}).
@@ -3927,7 +3927,7 @@ func TestWeaveIotaConst(t *testing.T) {
 
 @ Indentation is derived from the block structure, not the source whitespace, so
 this deliberately flush-left fragment---a range loop with a nested |if|---is
-laid out the way |gofmt| would, each \.{\\GL} carrying its structural level.
+laid out the way \.{gofmt} would, each \.{\\GL} carrying its structural level.
 @(gweave_test.go@>=
 func TestWeaveStructuralIndent(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@<b@@>=\n"+
@@ -3942,7 +3942,7 @@ func TestWeaveStructuralIndent(t *testing.T) {
 	}
 }
 
-@ A \.{switch} is the case a plain brace-counter gets wrong: |gofmt| keeps the
+@ A \.{switch} is the case a plain brace-counter gets wrong: \.{gofmt} keeps the
 |case| labels at the \.{switch}'s own level and indents only the bodies, and so
 does the woven output.
 @(gweave_test.go@>=
@@ -3979,7 +3979,7 @@ func TestWeaveMultilineSignatureIndent(t *testing.T) {
 
 @ Spacing is derived from the grammar, math-like, not copied from the source: a
 pointer type \.{*int} is tight, an index \.{xs[i]} is tight, but a product---%
-even the tight \.{a*b} |gofmt| writes to group a factor---is set spaced, as in
+even the tight \.{a*b} \.{gofmt} writes to group a factor---is set spaced, as in
 \.{cweave}.
 @(gweave_test.go@>=
 func TestWeaveGrammarSpacing(t *testing.T) {
@@ -4019,7 +4019,7 @@ func TestWeaveStarSpacing(t *testing.T) {
 @ A pointer element type is crammed against its array brackets, so spacing alone
 cannot tell \.{[256]*Node} (a pointer) from \.{a[i]*b} (a product); the closing
 \.] settles it by grammar. And a declared name keeps the space before its array
-type (\.{b [256]int}) that |gofmt| never puts before an index.
+type (\.{b [256]int}) that \.{gofmt} never puts before an index.
 @(gweave_test.go@>=
 func TestWeaveArrayPointer(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\n"+
