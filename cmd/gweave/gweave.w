@@ -716,7 +716,7 @@ emitLine := func() {
 		}
 		macro := "GL"
 		if runin && !haveContent {
-			macro = "GLr"
+			macro = "Lr"
 		}
 		fmt.Fprintf(&out, "\\%s{%d}{%s}%%\n", macro, indent, line.String())
 		haveContent = true
