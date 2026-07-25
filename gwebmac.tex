@@ -454,7 +454,12 @@
 \def\II#1#2{\ifinx\noindent\hangindent2em #1:\kern.5em #2.\par\fi} % index entry
 \def\IR#1{{\rm #1}}                          % @^...@>  roman index entry
 \def\IT#1{{\tentex #1}}                      % @....@>  typewriter index entry
-\def\9#1{{\rm #1}}                            % default for @:...@> entries
+% @:...@> is typeset by the user macro \9, exactly as in cwebmac. Its default
+% supports CWEB's sort-key idiom @:key}{text@>: \9 swallows the key, and the
+% {text} that follows it is what prints -- so `@:Konig}{K\H{o}nig, D\'enes@>'
+% files under Konig but shows K\H{o}nig, D\'enes. Redefine \9 in limbo to make a
+% bare @:text@> visible, e.g. \def\9#1{{\rm #1}} to set it in roman.
+\def\9#1{}
 \def\IC#1{\9{#1}}
 
 % ---- list of section names (a `Names of the Sections' page) -----------------

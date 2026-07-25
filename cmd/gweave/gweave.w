@@ -3214,24 +3214,35 @@ for name, secs := range wv.xr.identDef {
 	}
 }
 
-@ A manual entry---\.{@@.} typewriter, \.{@@:} raw \TEX/, \.{@@\^} roman---is
-rendered by its kind and recorded at the section where it appeared. As in
-\.{CWEB}, the roman entry's text is the author's own \TEX/, passed through
-untouched: \.{@@\^Egerv\\'ary@>} keeps its accent, \.{@@\^Jen\\H{o}@>} its
-double one. Only the typewriter entry is escaped---for the \.{cmtex} string
-font, where a backslash is a backslash, not \TEX/.
+@ A manual entry---\.{@@.} typewriter, \.{@@:} through the user macro \.{\\9},
+\.{@@\^} roman---is rendered by its kind and recorded at the section where it
+appeared. As in \.{CWEB}, the roman entry's text is the author's own \TEX/,
+passed through untouched: \.{@@\^Egerv\\'ary@>} keeps its accent,
+\.{@@\^Jen\\H{o}@>} its double one. Only the typewriter entry is escaped---for
+the \.{cmtex} string font, where a backslash is a backslash, not \TEX/.
+
+The \.{@@:} entry carries \.{CWEB}'s sort-key idiom: \.{@@:key\char'175\char'173
+text@>} sorts under |key| but sets |text|, the split done by \.{\\9} (see
+\.{gwebmac.tex}). So a name the reader should find under its plain letters yet see
+with its accents---\.{@@:Konig\char'175\char'173 K\\H{o}nig, D\\'enes@>}---files
+under \.{Konig} but prints ``K\H{o}nig, D\'enes''. We honor the same split when we
+sort: the key is what precedes the \.{\char'175\char'173}.
 @<Collect the manual index entries@>=
 for _, e := range wv.xr.manualIndex {
 	var render string
+	key := e.text
 	switch e.kind {
 	case '.':
 		render = "\\IT{" + escTT(e.text) + "}"
 	case ':':
 		render = "\\IC{" + e.text + "}"
+		if i := strings.Index(e.text, "}{"); i >= 0 {
+			key = e.text[:i] // sort by the key, not the text set after it
+		}
 	default: // '\.{\^}'
 		render = "\\IR{" + e.text + "}"
 	}
-	it := get(render, strings.ToLower(e.text))
+	it := get(render, strings.ToLower(key))
 	it.secs[e.sec] = true
 }
 
