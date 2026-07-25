@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"go/format"
 	"go/scanner"
-	"go/token"
+	gotoken "go/token"
 	"os"
 	"path/filepath"
 	"slices"
@@ -321,20 +321,21 @@ func thinLineMarks(src []byte) []byte {
 
 @ |lineMarkLines| returns the physical line numbers that begin a \.{//line}
 directive, and whether the scan was clean enough to trust.
+@d gotoken.Position gotoken.EOF gotoken.COMMENT
 @<Render and gofmt one output@>=
 func lineMarkLines(src []byte) (map[int]bool, bool) {
-	fset := token.NewFileSet()
+	fset := gotoken.NewFileSet()
 	f := fset.AddFile("", fset.Base(), len(src))
 	var s scanner.Scanner
 	bad := false
-	s.Init(f, src, func(token.Position, string) { bad = true }, scanner.ScanComments)
+	s.Init(f, src, func(gotoken.Position, string) { bad = true }, scanner.ScanComments)
 	marks := map[int]bool{}
 	for {
 		pos, tok, lit := s.Scan()
-		if tok == token.EOF {
+		if tok == gotoken.EOF {
 			break
 		}
-		if tok != token.COMMENT || !strings.HasPrefix(lit, "//line ") {
+		if tok != gotoken.COMMENT || !strings.HasPrefix(lit, "//line ") {
 			continue
 		}
 		if p := f.PositionFor(pos, false); p.Column == 1 {
@@ -628,7 +629,7 @@ import (
 	"fmt"
 	"go/format"
 	"go/parser"
-	"go/token"
+	gotoken "go/token"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -957,7 +958,7 @@ The tangle engine's integration tests: every example tangles to compilable \GO/.
 
 @ @(gtangle_test.go@>=
 func importsThirdParty(content []byte) bool {
-	f, err := parser.ParseFile(token.NewFileSet(), "", content, parser.ImportsOnly)
+	f, err := parser.ParseFile(gotoken.NewFileSet(), "", content, parser.ImportsOnly)
 	if err != nil {
 		return false
 	}
