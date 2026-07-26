@@ -359,10 +359,12 @@
 % either way -- TeX decides the mode, so gweave need not guess it.
 \def\PB#1{\ifmmode#1\else$#1$\fi}
 % ---- code token fonts (called inside the math of \GL) -----------------------
-\def\ID#1{\hbox{\it #1\/}}      % identifier
-\def\KW#1{\hbox{\bf #1}}        % reserved word or predeclared type
-\def\ST#1{\hbox{\tentex #1}}    % string, rune, or verbatim text (cweb's \tentex)
-\def\MAC#1{\hbox{\tentex #1}}   % const name, set typewriter like cweb's @d macro
+\def\ID#1{\hbox{\it #1\/\kern.05em}} % identifier (\kern as in cwebmac's \\)
+\def\KW#1{\hbox{\bf % reserved word/type (\& in cwebmac)
+  \def\_{\kern.04em\vbox{\hrule width.3em height .6pt}\kern.08em}%
+  #1\/\kern.05em}}
+\def\ST#1{\hbox{\tentex #1\kern.05em}} % string/verbatim (cwebmac's \. trails a kern)
+\def\MAC#1{\hbox{\tentex #1\kern.05em}} % const/@d name, typewriter like cwebmac's \.
 \def\SP{{\tt\char32 }}          % a visible space inside a string (cweb's \SP)
 \def\nil{\mathord{\Lambda}}     % Go's nil, shown as cweb shows C's NULL (\Lambda)
 \def\CM#1{\hbox{\cmntfont #1}}  % comment
