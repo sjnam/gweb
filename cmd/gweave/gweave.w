@@ -456,10 +456,11 @@ func (wv *Weaver) effKind(t token, qual string) tokKind {
 	return t.kind
 }
 
-@ A struct field's tag is a raw string, and the backquotes that delimit it are
-\GO/'s syntax rather than part of what the tag says---so the woven page drops them
-and sets the tag itself in the typewriter of any other string. The tangled \.{.go}
-file of course keeps them; this is a matter of display alone.
+@ A struct field's tag is a raw string. The woven page keeps its delimiting
+backquotes but sets them in the roman font, lighter than the typewriter backquote
+they would take as an ordinary raw string, while the tag itself stays in that
+typewriter (the macro is \.{\\STtag}). The tangled \.{.go} file of course keeps the
+backquotes verbatim; the roman rendering is a matter of display alone.
 
 No look at the enclosing |struct| is needed to know a tag when we see one. In \GO/
 two operands never abut without an operator between them {\it except\/} in a
@@ -1499,7 +1500,7 @@ func renderToken(t token) string {
 	case tkString:
 		return "\\ST{" + escTT(t.text) + "}"
 	case tkStructTag:
-		return "\\ST{" + escTT(t.text[1:len(t.text)-1]) + "}"
+		return "\\STtag{" + escTT(t.text[1:len(t.text)-1]) + "}"
 	case tkComment:
 		if rest, ok := strings.CutPrefix(t.text, "//"); ok {
 			return "\\CM{/\\kern\\commentkern/" + escComment(rest) + "}"
@@ -2379,7 +2380,7 @@ const (
 	tkNewline                // a single '\.{\\.\{\\\\n\}}'
 	tkMacro                  // typewriter: an \.{@@d} name or a predeclared constant
 	tkTeXCS                  // \.{@@f name TeX}: set as a custom control sequence
-	tkStructTag              // a field's \.{`...`} tag, set without its backquotes
+	tkStructTag              // a field's \.{`...`} tag, backquotes kept but set roman
 )
 
 @ A |token| pairs a kind with its text; |lexState| carries the cross-fragment
@@ -4440,21 +4441,21 @@ func TestWeaveMultilineRawString(t *testing.T) {
 witness puts one of each in every place a raw string can stand---after a type
 (the tag), and after a paren, a brace, a comma, a key's colon, and a keyword.
 @(gweave_test.go@>=
-func TestWeaveStructTagUnquoted(t *testing.T) {
+func TestWeaveStructTag(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\ntype T struct {\n\tA int      `json:\"a\"`\n"+
 		"\tB []string `json:\"b\"`\n}\n\nvar v = f(`p`, `q`)\nvar w = []string{`r`}\n"+
 		"var y = map[string]string{\"k\": `s`}\n\nfunc g() string { return `t` }\n")
-	for _, want := range []string{`\ST{json:"a"}`, `\ST{json:"b"}`} {
+	for _, want := range []string{`\STtag{json:"a"}`, `\STtag{json:"b"}`} {
 		if !strings.Contains(out, want) {
-			t.Errorf("a field tag should lose its backquotes; want %q in:\n%s", want, out)
+			t.Errorf("a field tag should keep its backquotes via \\STtag; want %q in:\n%s", want, out)
 		}
 	}
 	for _, want := range []string{"\\ST{`p`}", "\\ST{`q`}", "\\ST{`r`}", "\\ST{`s`}", "\\ST{`t`}"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("a raw string that is not a tag should keep them; want %q in:\n%s", want, out)
+			t.Errorf("a raw string that is not a tag stays a plain \\ST; want %q in:\n%s", want, out)
 		}
 	}
-	if !strings.Contains(out, "\\tagkern $\\ST{json:\"a\"}") {
+	if !strings.Contains(out, "\\tagkern $\\STtag{json:\"a\"}") {
 		t.Errorf("a field's type-to-tag gap should be the tunable \\tagkern:\n%s", out)
 	}
 }

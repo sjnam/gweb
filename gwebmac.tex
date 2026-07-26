@@ -365,6 +365,7 @@
   \def\_{\kern.04em\vbox{\hrule width.3em height .6pt}\kern.08em}%
   #1\/\kern.05em}}
 \def\ST#1{\hbox{\tentex #1\kern.05em}} % string/verbatim (cwebmac's \. trails a kern)
+\def\STtag#1{\hbox{{\rm`}\tentex #1{\rm`}\kern.05em}} % struct field tag: backquotes kept but set roman, content typewriter
 \def\MAC#1{\hbox{\tentex #1\kern.05em}} % const/@d name, typewriter like cwebmac's \.
 \def\SP{{\tt\char32 }}          % a visible space inside a string (cweb's \SP)
 \def\nil{\mathord{\Lambda}}     % Go's nil, shown as cweb shows C's NULL (\Lambda)
