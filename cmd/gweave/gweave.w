@@ -661,7 +661,7 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 @ The rendered code is built up chunk by chunk. |flushRun| closes the current
 tight math chunk into the line, and |emit| adds a token's \TEX/ to the chunk,
 first turning a pending grammar space (|pendingGap|) into the breakable code
-space its width calls for: an ordinary \.{\\GS}, or the wider \.{\\BS} that sets
+space its width calls for: an ordinary \.{\\GS}, or the \.{\\BS} that sets
 a statement block's braces apart.
 @<Accumulate a chunk into the current line@>=
 flushRun := func() {
@@ -933,24 +933,24 @@ receiver \.(&a full space (|func (r T)|)\cr
 index \.[, selector \..&tight (|a[i]|, |x.f|)\cr
 comma&tight before, a thin space after (|a, b|)\cr
 header semicolon&tight before, a full clause space after, as \.{cweave} breaks a \.{for} header\cr
-\.{if}, \.{for}, \.{switch}, \.{select}&a structural space before the clause, as before the brace\cr
-block brace \.{\char123}\thinspace\.{\char125}&a wider structural space, both sides\cr
+\.{if}, \.{for}, \.{switch}, \.{select}&the interword space before the clause, as before the brace\cr
+block brace \.{\char123}\thinspace\.{\char125}&the interword space, both sides, as \.{cweave} sets an inline brace\cr
 literal brace \.{\char123}\thinspace\.{\char125}&tight against its type (|T{a}|); as an element, spaced like one\cr
 }}$$
 Every other pair falls to the default: a full space between words, and the ``space
 a token leaves after it'' for whatever follows an open bracket or a unary sign.
 
-@ Six widths of gap, in increasing order. |gTight| (no space, as before a call's
+@ Six gap grades, in non-decreasing width. |gTight| (no space, as before a call's
 parenthesis, \.{cweave}'s tight |f(x)|); then \.{cweave}'s three math muskips, each
 a breakable chunk boundary: |gPunct| (a \.{\\punct}, the thinmuskip after a comma),
 |gWide| (a
 \.{\\GS}, the medmuskip around an arithmetic operator), |gRel| (a \.{\\rel}, the
-thickmuskip around a relation or assignment); |gWord| (a wider \.{\\W} between two
-words---cweave's text interword space, as in \.{int foo}); and |gBlock| (a wider
-\.{\\BS} that sets a statement block's braces off from the block's head and body,
-and a \.{for} or \.{if} header's semicolon off from the next clause---where
-\.{cweave} breaks the math and leaves a half-em, its punctuation thin space plus a
-text interword space).
+thickmuskip around a relation or assignment); |gWord| (a \.{\\W} between two
+words---cweave's text interword space, as in \.{int foo}); and |gBlock| (a \.{\\BS}
+of that same interword width, marking a statement block's braces off from the
+block's head and body, and a \.{for} or \.{if} header's semicolon off from the next
+clause---the space \.{cweave} leaves before an inline brace and after \.{if} or
+\.{for}, having no wider block space of its own).
 The three operator widths are why \.{a,\ b}, \.{a+b}, and \.{a==b} set with visibly
 different spaces, exactly as \.{cweave} does.
 @<Space code tokens by grammar@>=
@@ -1154,8 +1154,8 @@ func gapBetween(left, right spaceCat) int {
 
 @ Most categories fix the gap outright. A lone \.{[]} clings to a preceding
 bracket, brace, or selector dot but takes a space after a name; a block brace
-breathes, except a composite type's body brace, which \.{cweave} sets off its
-|struct| or |interface| with a plain word space, not the structural \.{\\5}; an
+takes the interword space, the same plain word space with which \.{cweave} sets a
+composite type's body brace off its |struct| or |interface|; an
 open bracket or a unary sign, whose leading gap follows whatever came before,
 defers to |gapAfterCat|; an ordinary word defers to |afterNonOp|.
 @<Read the gap off the right-hand category@>=
@@ -1169,9 +1169,9 @@ case catBlockOpen:
 	if left == catTypeKw {
 		return gWord // \.{struct \char123}, \.{interface \char123}: a word space, as in \.{cweave}
 	}
-	return gBlock // a statement block's opening brace breathes, as in \.{cweave}
+	return gBlock // a statement block's opening brace takes the interword space, as \.{cweave} sets an inline brace
 case catBlockClose:
-	return gBlock // a statement block's closing brace breathes, as in \.{cweave}
+	return gBlock // a statement block's closing brace, the same interword space
 case catRecvParen, catBinop:
 	return gWide
 case catRel:
@@ -1227,7 +1227,7 @@ func gapBeforeLit(left spaceCat) int {
 when the following token is an open bracket or a unary sign. The brackets, the
 selector dot, and the increment operators leave none; |map| and |func| run straight
 into what follows and an operand leaves no inherent space; a block-heading keyword
-sets off its clause with the same structural space its brace gets; a keyword, a
+sets off its clause with the same interword space its brace gets; a keyword, a
 comma, a colon, or a binary operator leaves a plain space.
 @<Space code tokens by grammar@>=
 func gapAfterCat(left spaceCat) int {
@@ -3598,7 +3598,7 @@ func f(ch chan int) {
 		`\mathord{\gets}`:          "<- should render as a left arrow",
 		`\mathord{\PP}`:           "++ should render as cweave's tight \\PP symbol",
 		`\mathord{\MM}`:           "-- should render as cweave's tight \\MM symbol",
-		`$\KW{if}$\BS `:          "if is set off from its clause with the wider \\BS",
+		`$\KW{if}$\BS `:          "if is set off from its clause with \\BS",
 		`\KW{default}\mathord{:}`: "default: should be tight (no space before colon)",
 	}
 	for sub, msg := range checks {
@@ -3680,7 +3680,7 @@ func TestWeaveWordSpacing(t *testing.T) {
 	}
 }
 
-@ A statement block's braces are set off with the wider \.{\\BS} on every open
+@ A statement block's braces are set off with \.{\\BS} on every open
 side---before the opening \.{\char123}, after it, and before the closing
 \.{\char125}---while a composite literal's braces cling to their contents, as
 \.{cweave} sets them.
@@ -3767,7 +3767,7 @@ func TestGoOnlySpacingDecisions(t *testing.T) {
 }
 
 @ A block-heading keyword---|if|, |for|, |switch|, |select|---is set off from its
-clause with the same wider \.{\\BS} its brace gets, so \.{if x \char123} reads
+clause with the same \.{\\BS} its brace gets, so \.{if x \char123} reads
 evenly on both sides of the clause. An ordinary keyword like |case| or |func| keeps
 the plain \.{\\GS}. The header's own semicolons take that same block space after
 them, clinging to the clause before---as \.{cweave} breaks a \.{for} header.
