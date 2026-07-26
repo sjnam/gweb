@@ -2,7 +2,9 @@
 \nocon
 \nosecs
 
+@s MaxInt true
 \def\x#1{x_{#1}} @f x1 TeX @f x2 TeX
+\let\tagkern=\quad
 
 @* Introduction. @q torture @>
 This program implements a {\sl 1-indexed Fenwick tree.\/} However, to test
@@ -18,10 +20,12 @@ import "fmt"
 @<Type Definition@>
 @<Subroutines@>
 
-func main() {var x1, x2 int
+func main(){
+	var x1, x2 int
     x1, x2 = x2, x1
 fw:=NewFenwick(10)
 
+const MaxInt = 23
 fw.Add(1,5)
 fw.Add(2,@,5)
 fw.Add(3,@/2) 
@@ -38,11 +42,11 @@ tree[]int
 }
 
 type Action struct {
-	Actor    int        `json:"player"` // who plays this move
-	FieldNo  int        `json:"field"`  // the field to sow or to reap
-	FaceUpNo int        `json:"card"`   // which face-up card, in |TakeRevealed|
-	HandNo   int        `json:"hand"`   // which card of the hand, in |TossHand|
-	To       int        `json:"to"`     // the other party to a trade
+	Actor    int `json:"player"` // who plays this move
+	FieldNo  int `json:"field"`  // the field to sow or to reap
+	FaceUpNo int `json:"card"`   // which face-up card, in |TakeRevealed|
+	HandNo   int `json:"hand"`   // which card of the hand, in |TossHand|
+	To       int `json:"to"`     // the other party to a trade
 }
 
 @ @<Sub...@>=
@@ -71,9 +75,7 @@ return sum
 
 @ @<Sub...@>=
 func (f *Fenwick) RangeSum(l, r int) int {
-if l > r {
-return 0
-}
+if l > r {return 0}
 return f.Sum(r)-f.Sum(l-1)
 }
 

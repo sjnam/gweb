@@ -59,6 +59,7 @@
 \newcount\codepenalty \codepenalty=9999 % discourage page breaks inside code
                                           % (high but finite, so >1-page code can still break)
 \newdimen\commentkern \commentkern=-1.7pt % tighten the "//" comment marker
+\def\tagkern{\W} % gap between a struct field's type and its `...' tag; \let\tagkern=\quad (or \def it) to taste
 \newcount\secpagedepth \secpagedepth=1 % starred sections this deep start a page
 
 % "++" and "--" as tight, small, raised symbols, exactly as cweave sets them:

@@ -873,6 +873,11 @@ was---even a \.] or a selector dot, which cling to what follows them---it is set
 off by the generous \.{\\CS} gap \.{cweave} leaves before a comment, in place of
 the ordinary \.{\\GS}. Only a comment that opens its own line takes no \.{\\CS};
 there the indent already stands in for it.
+
+A field tag is the other exception. Its gap from the type---|name Type `tag`|---is
+neither grammar nor cweave's to fix (a tag has no \CEE/ analog), so we set it with
+\.{\\tagkern}, a macro the user can \.{\\let} or \.{\\def} at will (it defaults to
+the ordinary word space \.{\\W}), just as \.{\\commentkern} tunes the \.{//} marker.
 @<Emit the token@>=
 if t.kind == tkComment {
 	if !atLineStart { // a trailing comment is always set off from the code, as cweave does
@@ -882,7 +887,13 @@ if t.kind == tkComment {
 	pendingGap = gTight // never let a grammar gap glue in front of the comment
 	emit(wv.renderComment(secNum, t.text))
 } else {
-	emit(renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
+	tok := structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)
+	if tok.kind == tkStructTag && !atLineStart {
+		flushRun()
+		line.WriteString("\\tagkern ") // the type-to-tag gap, the user's to set
+		pendingGap = gTight            // \tagkern is the whole gap; hold back the grammar's
+	}
+	emit(renderToken(tok))
 }
 
 @ With the token set, it becomes the past: |advance| updates the |indenter|, and
@@ -4442,5 +4453,8 @@ func TestWeaveStructTagUnquoted(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("a raw string that is not a tag should keep them; want %q in:\n%s", want, out)
 		}
+	}
+	if !strings.Contains(out, "\\tagkern $\\ST{json:\"a\"}") {
+		t.Errorf("a field's type-to-tag gap should be the tunable \\tagkern:\n%s", out)
 	}
 }
