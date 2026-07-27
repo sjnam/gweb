@@ -762,13 +762,7 @@ case common.AText:
 	toks := lexGo(a.Text, &st)
 	@<Render the tokens of a text atom@>
 case common.ARef:
-	if atLineStart {
-		indent = in.beginGeneric()
-	}
-	name := wv.w.Resolve(a.Text)
-	wv.xr.addSectionUse(name, secNum)
-	emit(fmt.Sprintf("\\X{%d}{%s}", wv.defNum[name], wv.renderName(name)))
-	in.advanceGeneric()
+	@<Set a section reference, spaced as an operand@>
 case common.AVerbatim:
 	if atLineStart {
 		indent = in.beginGeneric()
@@ -800,6 +794,30 @@ case common.ALayout:
 case common.AIndexDef:
 	forceDef = true // @@!: the next identifier is a definition
 }
+
+@ A section reference is not a \GO/ token, yet it stands in the code where an
+operand would---so it takes the operand's gap from whatever precedes it, and leaves
+an operand (|catExpr|) behind for whatever follows, exactly as the inline path sets
+it. A reference that opens its own line takes the |indenter|'s indent and no leading
+space; a hand-placed \.{@@;} that already fixed the gap is left alone.
+@<Set a section reference, spaced as an operand@>=
+if atLineStart {
+	indent = in.beginGeneric()
+} else if manualGap {
+	manualGap = false
+} else {
+	switch g := gapBetween(prevCat, catExpr); g {
+	case gPunct, gWide, gRel, gWord, gBlock:
+		pendingGap = g
+	}
+}
+name := wv.w.Resolve(a.Text)
+wv.xr.addSectionUse(name, secNum)
+emit(fmt.Sprintf("\\X{%d}{%s}", wv.defNum[name], wv.renderName(name)))
+prevCat = catExpr
+prevPrevSigText = prevSigText
+prevSigKind, prevSigText = tkIdent, ""
+in.advanceGeneric()
 
 @ Within a text atom, a newline flushes the woven line and closes the
 |indenter|'s view of it; whitespace is ignored entirely, since both the
