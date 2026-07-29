@@ -1557,7 +1557,10 @@ func texControlSeq(name string) string {
 literal (|0x|\dots) is set in typewriter with a superscript \.{\#}; an octal literal
 (a classic |0|\dots, or |0o|\dots) gets a small raised circle and oldstyle italic
 digits; a binary literal (|0b|\dots) a superscript |b|; a decimal or floating
-literal stays roman. A |_| digit separator becomes a thin space.
+literal stays roman. In a decimal literal a |_| digit separator becomes a comma
+with no trailing space (\.{\{,\}}), so |10_000_000_000| reads as the grouped
+$10{,}000{,}000{,}000$; in the other bases, where a comma would read oddly, the
+separator stays a thin space (\.{\\,}).
 @<Render a numeric literal@>=
 func renderNumber(s string) string {
 	if len(s) >= 2 && s[0] == '0' {
@@ -1573,11 +1576,12 @@ func renderNumber(s string) string {
 			return "\\oct{" + numDigits(s[1:]) + "}"
 		}
 	}
-	return "\\NU{" + numDigits(s) + "}"
+	return "\\NU{" + groupDigits(s) + "}"
 }
 
 @ |isOctalDigits| recognizes a classic octal literal (all digits |0|--|7|, with an
-optional |_| separator), and |numDigits| turns each |_| separator into a thin space.
+optional |_| separator). |numDigits| sets a hex/octal/binary separator as a thin
+space, while |groupDigits| sets a decimal one as a spaceless comma (\.{\{,\}}).
 @<Render a numeric literal@>=
 func isOctalDigits(s string) bool {
 	if s == "" {
@@ -1593,6 +1597,10 @@ func isOctalDigits(s string) bool {
 
 func numDigits(s string) string {
 	return strings.ReplaceAll(s, "_", "\\,")
+}
+
+func groupDigits(s string) string {
+	return strings.ReplaceAll(s, "_", "{,}")
 }
 
 @ |processTex| transforms commentary: \GO/ code inline, \.{@@<refs@@>}, \.{@@@@} to
@@ -3529,6 +3537,21 @@ func TestWeaveNilSymbol(t *testing.T) {
 	}
 	if !strings.Contains(out, `\MAC{true}`) {
 		t.Errorf("true should stay typewriter:\n%s", out)
+	}
+}
+
+@ A \.{\_} digit separator in a decimal literal becomes a spaceless comma
+(\.{\{,\}}), so |10_000_000_000| reads with grouped thousands and no gap trailing
+each comma. In a hex (or octal, binary) literal the same separator stays a thin
+space, since a comma reads oddly there.
+@(gweave_test.go@>=
+func TestWeaveNumberSeparator(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\nvar n = 10_000_000_000\nconst k = 0xff_ff\n")
+	if !strings.Contains(out, `\NU{10{,}000{,}000{,}000}`) {
+		t.Errorf("decimal separator should become a spaceless comma:\n%s", out)
+	}
+	if !strings.Contains(out, `\hex{ff\,ff}`) {
+		t.Errorf("hex separator should stay a thin space:\n%s", out)
 	}
 }
 
