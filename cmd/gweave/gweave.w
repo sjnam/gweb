@@ -755,7 +755,10 @@ forceBreak := func(blank bool) {
 @ Each atom of the scanned code is rendered in turn: \GO/ text is tokenized and
 pretty-printed, a section reference becomes a \.{\\X} link, verbatim and \TEX/
 material passes through, and the layout hints (\.{@@,} \.{@@/} \.{@@\#} \.{@@\|})
-shape the woven line.
+shape the woven line. A \.{@@t} box is transparent to the line start: it is set at
+the indent but does not count as the line's first token, so a real token following
+it still drives the indent and takes no leading space---the box neither steals the
+indentation nor lets a stale grammar gap glue in front of that first token.
 @<Render one code atom@>=
 switch a.Kind {
 case common.AText:
@@ -770,7 +773,12 @@ case common.AVerbatim:
 	emit(fmt.Sprintf("\\ST{%s}", escTT(a.Text)))
 	in.advanceGeneric()
 case common.ATeX:
+	wasLineStart := atLineStart
+	if wasLineStart { // a box alone on its line still needs an indent
+		indent = in.beginGeneric()
+	}
 	emit("\\hbox{" + a.Text + "}") // \.{@@t}: a \TEX/ box set amid the code, as in cweave
+	atLineStart = wasLineStart     // stay transparent: the first real token drives the line's indent and takes no leading gap
 case common.AIndex:
 	wv.xr.addManualIndex(a.Index, a.Text, secNum)
 case common.APaste:
