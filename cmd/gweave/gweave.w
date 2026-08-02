@@ -1,9 +1,9 @@
 @i ../../common/types.w
-\def\title{GWEAVE (Version 0.9.8)}
+\def\title{GWEAVE (Version 0.10.0)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GWEAVE} processor}
   \vskip 15pt
-  \centerline{(Version 0.9.8)}
+  \centerline{(Version 0.10.0)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
   Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
