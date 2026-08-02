@@ -160,11 +160,11 @@
   \ifx\tm\empty\expandafter\def\expandafter\tm\expandafter{\firstmark}\fi
   \ifx\tm\empty\def\tm{{}{\Gtitle}}\fi
   \ifodd\pageno
-    \hbox to\pagewidth{\mainfont\sechead\enspace{\Gtitlefont\Gtitle}\hfil
-      {\groupfont\grouphead}\enspace\folio}%
+    \hbox to\pagewidth{\mainfont\sechead\qquad{\Gtitlefont\Gtitle}\hfil
+      {\groupfont\grouphead}\qquad\folio}%
   \else
-    \hbox to\pagewidth{\mainfont\folio\enspace{\groupfont\grouphead}\hfil
-      {\Gtitlefont\Gtitle}\enspace\sechead}%
+    \hbox to\pagewidth{\mainfont\folio\qquad{\groupfont\grouphead}\hfil
+      {\Gtitlefont\Gtitle}\qquad\sechead}%
   \fi}
 \headline={\iftitle\hfil\else\runhead\fi}
 \footline={\hfil}

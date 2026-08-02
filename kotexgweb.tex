@@ -337,7 +337,7 @@
 % contents page it is serif; so when the author supplies a \def\title we set it
 % in serif hangul (\ninemj, Noto Serif) here too, to match. A default job-name
 % title keeps the sans of the group titles, since it reads like one of them.
-\def\Gtitlefont{\eightrm\ifx\title\defaulttitle\ninegt\else\ninemj\fi}
+\def\Gtitlefont{\headfont}
 
 % ---- LuaTeX PDF back end: blue links and Korean (UTF-16BE) bookmarks --------
 % gwebmac's \dest/\link/\bookmark are written for pdfTeX primitives that
