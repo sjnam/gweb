@@ -476,7 +476,7 @@
   \global\output={\plainoutput}% back to ordinary single-column pages
   \global\hsize=\pagewidth \global\vsize=\pageheight}
 \def\beginsecs{\vfil\eject
-  \global\def\sechead{}% no section number in the header here
+  \global\def\sechead{\kern-2em}% no section number here; the \kern cancels \runhead's adjacent \qquad so the title sits flush to the margin, as cweave's \nullsec does
   \global\def\grouphead{\namesheading}%
   \begingroup
   \parindent=0pt \parskip=2pt plus 1pt \rightskip=0pt plus 2em \rm}
