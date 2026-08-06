@@ -989,7 +989,7 @@ of that same interword width, marking a statement block's braces off from the
 block's head and body, and a \.{for} or \.{if} header's semicolon off from the next
 clause---the space \.{cweave} leaves before an inline brace and after \.{if} or
 \.{for}, having no wider block space of its own).
-The three operator widths are why \.{a,\ b}, \.{a+b}, and \.{a==b} set with visibly
+The three operator widths are why \.{a, b}, \.{a+b}, and \.{a==b} set with visibly
 different spaces, exactly as \.{cweave} does.
 @<Space code tokens by grammar@>=
 const (
@@ -1744,7 +1744,7 @@ each identifier to the index. Like a code part, the fragment is first split by
 honored rather than lexed as \GO/: an index entry (\.{@@\^ @@. @@:}) is recorded, a
 \TEX/ box (\.{@@t}) and verbatim output (\.{@@=}) are set as they are in a code
 part, a section name is linked, and an \.{@@q} comment has already been dropped.
-The lone |emit| both flushes a pending source blank (as \.{\\\ }) and marks the
+The lone |emit| both flushes a pending source blank (as \.{\\ }) and marks the
 run started, so the next blank counts. The whole fragment is wrapped in \.{\\PB},
 which supplies the enclosing \.{\$...\$} only when \TEX/ is not already in math
 mode. So a \.{\|...\|} the author placed inside a \.{\$...\$} (as \.{CWEB} allows),
@@ -4367,7 +4367,7 @@ var spacingLockMisc = []struct{ src, want string }{
 	{"c <- d", `\ID{c}$\GS $\mathord{\gets}$\GS $\ID{d}`},
 }
 
-@ The three tables run through one check: weave \.{var\ \_\ =\ }{\it src\/} and look
+@ The three tables run through one check: weave \.{var \_ = }{\it src\/} and look
 for the frozen fragment.
 @(gweave_test.go@>=
 func TestOperatorSpacingLockedToCweave(t *testing.T) {

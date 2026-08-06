@@ -89,7 +89,8 @@ i-=i&-i
 return sum
 }
 
-@ @<Sub...@>=
+@ \.{r1 r2 r3} \.{r1\ r2\ r3}
+@<Sub...@>=
 func (f *Fenwick) RangeSum(l, r int) int {
 if l > r {return 0}
 return f.Sum(r)-f.Sum(l-1)
