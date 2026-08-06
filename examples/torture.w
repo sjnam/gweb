@@ -6,8 +6,11 @@
 \def\x#1{x_{#1}} @f x1 TeX @f x2 TeX
 \let\tagkern=\quad
 
-\def\redon{\pdfextension literal{1 0 0 rg}}
-\def\redoff{\pdfextension literal{0 g}}
+\ifx\pdfextension\undefined % pdftex: the primitive is \pdfliteral
+  \def\redon{\pdfliteral{1 0 0 rg}}\def\redoff{\pdfliteral{0 g}}
+\else                       % luatex: it is \pdfextension literal
+  \def\redon{\pdfextension literal{1 0 0 rg}}\def\redoff{\pdfextension literal{0 g}}
+\fi
 
 @* Introduction. @q torture @>
 This program implements a {\sl 1-indexed Fenwick tree.\/} However, to test
