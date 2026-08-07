@@ -288,6 +288,12 @@
 \fontdimen7\tentex=0pt  % restore cmtex10's "no extra space after sentence"
                         % (the \font\tentex above drops gwebmac's setting)
 
+% Displayed code sets at \codebaselineskip (gwebmac's default is 12pt, plain TeX's
+% leading for the Latin 10pt code font). Korean prose is set at 15pt
+% (\normalbaselineskip above), so a bit more air suits the code beside it; 13.5pt
+% loosens it a touch while staying well under the prose's 15pt.
+\codebaselineskip=13.5pt
+
 % gwebmac sets strings (\ST) and @d names (\MAC) in cmtex10, which has no
 % Hangul; pair it with the monospace hangul (\tentz) so Korean inside a Go
 % string or an @d name is also typewriter, not the serif fallback.
