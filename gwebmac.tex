@@ -42,7 +42,7 @@
   \def\&{\char38 }\def\^{\char94 }\def\_{\char95 }\def\~{\char126 }%
   \def\${\char36 }\def\#{\char35 }\def\%{\char37 }%
   \let\ =\SP % a control space in a string shows a visible blank, as in cweb
-  #1}}
+  \ifmmode\hbox{#1}\else #1\fi}} % in math ($$\.{...}$$) box it, so it stays typewriter as in cweb; in text leave it open so a long string can still break
 
 % ---- page layout ------------------------------------------------------------
 \newdimen\pagewidth  \pagewidth=6.5in

@@ -17,7 +17,8 @@ This program implements a {\sl 1-indexed Fenwick tree.\/} However, to test
 \.{gweave}, I intentionally made the code---including the indentation and the
 code on each line---a mess, even though it compiles and runs. Of course, there
 is almost no explanation in the \TEX/ part. @^ Fenwick@> @.tree@>
-\pdfURL{codeforces 1093E}{https://codeforces.com/problemset/problem/1093/E} 
+\pdfURL{codeforces 1093E}{https://codeforces.com/problemset/problem/1093/E}
+$$\.{happy*774,92,121,2,26,8,1}$$
 @c
 package main
 
