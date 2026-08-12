@@ -303,8 +303,16 @@
 % \.{...} (typewriter text in comments and the limbo) is cmtex10 too; bring the
 % monospace hangul (\tentz) into scope so Korean inside \.{...} is typewriter as
 % well. The original \. then sets cmtex10 for the Latin part as before.
+% \leavevmode has to stay outside the group.  A paragraph that begins with
+% \.{...} would otherwise begin inside it, so \everypar would fire inside the
+% group; a hook that clears itself -- \everypar{\hskip-\parindent\everypar{}},
+% the usual way of unindenting the paragraph after a heading -- would then be
+% restored when the group closed and would go on unindenting later paragraphs.
+% (gwebmac's own \. opens a group before any horizontal material too, so the
+% \leavevmode has to come ahead of both groups.)
 \let\ttdot\.
-\def\.#1{{\tentz\ttdot{#1}}}
+\def\.{\leavevmode\kottdot}
+\def\kottdot#1{{\tentz\ttdot{#1}}}
 
 % The small print (cross-reference notes, contents columns, section-name notes)
 % is cmr8, which has no Hangul; pair it with the 8pt serif hangul (\eightmj) so

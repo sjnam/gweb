@@ -37,7 +37,14 @@
 % This is a plain \def (not e-TeX's \protected, so bare `tex' works for the DVI
 % route): the running-head and contents machinery below is written to carry the
 % title without ever expanding \. (see \setmark and \runhead).
-\def\.#1{{\tentex
+% The \leavevmode comes first, ahead of the group: a paragraph beginning with
+% \.{...} would otherwise begin inside it, so \everypar would fire inside the
+% group, and a hook that clears itself -- \everypar{\hskip-\parindent
+% \everypar{}}, the usual way of unindenting the paragraph after a heading --
+% would be restored when the group closed and would go on unindenting the
+% paragraphs after it.  \leavevmode boxes nothing, so a long string in text mode
+% can still break across lines, as the last line below intends.
+\def\.#1{\leavevmode{\tentex
   \def\\{\char92 }\def\{{\char123 }\def\}{\char125 }%
   \def\&{\char38 }\def\^{\char94 }\def\_{\char95 }\def\~{\char126 }%
   \def\${\char36 }\def\#{\char35 }\def\%{\char37 }%
