@@ -69,6 +69,7 @@ type Section struct {
 	IsFile  bool   // |true| if the name is an output file (\.{@@(file@@>=})
 	Code    string // raw code text with in-code \.{@@}-codes still embedded
 	CodeLine int   // 1-based combined-source line where |Code| begins (0 if none)
+	Changed bool   // |true| if a change file altered any of the section's lines
 }
 
 @ A |Web| is a fully parsed \.{GWEB} document: the limbo text, the global format
@@ -105,6 +106,7 @@ func ParseWithChange(filename, changeFile string) (*Web, error) {
 	w := parse(src)
 	w.file = filename
 	w.locs = locs
+	@<Flag the sections a change file touched@>
 	w.finish(src)
 	return w, nil
 }
@@ -125,6 +127,26 @@ if changeFile != "" {
 	lines, locs, err = applyChangesMapped(lines, locs, changes, changeFile)
 	if err != nil {
 		return nil, err
+	}
+}
+
+@ With the web parsed and its origin map in hand, we flag the sections a change
+file touched, the way \.{CWEAVE} marks them with a \.{\\*} beside the number. A
+section owns the combined-source lines from its own start line up to the next
+section's; if any of those lines carries the |changed| stamp |applyChangesMapped|
+left on a replacement line, the section is changed. (With no change file every
+|changed| flag is false, so the loop is a cheap no-op we can always run.)
+@<Flag the sections a change file touched@>=
+for k, sec := range w.Sections {
+	end := len(w.locs)
+	if k+1 < len(w.Sections) {
+		end = w.Sections[k+1].Line - 1
+	}
+	for j := sec.Line - 1; j < end && j < len(w.locs); j++ {
+		if w.locs[j].changed {
+			sec.Changed = true
+			break
+		}
 	}
 }
 
@@ -212,7 +234,7 @@ func expandIncludes(file string, depth int) ([]string, []srcLoc, error) {
 			continue
 		}
 		lines = append(lines, line)
-		locs = append(locs, srcLoc{file, i + 1})
+		locs = append(locs, srcLoc{file: file, line: i + 1})
 	}
 	return append(hoisted, lines...), append(hoistedLocs, locs...), nil
 }
@@ -1076,8 +1098,9 @@ type change struct {
 }
 
 type srcLoc struct {
-	file string
-	line int
+	file    string
+	line    int
+	changed bool // |true| if this line came from a change file's replacement part
 }
 
 func (l srcLoc) String() string {
@@ -1193,7 +1216,7 @@ func applyChangesMapped(master []string, locs []srcLoc, changes []change, chFile
 			}
 			for r, rl := range changes[ci].repl {
 				out = append(out, rl)
-				outLocs = append(outLocs, srcLoc{chFile, changes[ci].replLine + r})
+				outLocs = append(outLocs, srcLoc{chFile, changes[ci].replLine + r, true})
 			}
 			i += len(changes[ci].match)
 			ci++
@@ -1550,6 +1573,39 @@ func TestChangeFilePartialMismatch(t *testing.T) {
 func TestChangeFileMalformed(t *testing.T) {
 	if _, err := parseChangeFile("@@x\nfind\n@@z\n"); err == nil {
 		t.Error("want error for @@x without @@y")
+	}
+}
+
+@ A change file flags every section it touches, whether it altered a section's
+lines or added a whole new one. Here the replacement both rewrites section two's
+code line and appends a brand-new section; section one, untouched, stays clear.
+@(common_test.go@>=
+func TestChangedSectionFlagged(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite := func(name, content string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	master := mustWrite("m.w", "@@* One.\n@@c\nx := 1\n@@ Two.\n@@c\ny := 2\n")
+	change := mustWrite("m.ch", "@@x\ny := 2\n@@y\ny := 22\n@@ Added.\n@@c\nz := 3\n@@z\n")
+	w, err := ParseWithChange(master, change)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(w.Sections) != 3 {
+		t.Fatalf("want 3 sections, got %d", len(w.Sections))
+	}
+	if w.Sections[0].Changed {
+		t.Error("section one was not touched, but is flagged")
+	}
+	if !w.Sections[1].Changed {
+		t.Error("section two's code line was replaced, but it is not flagged")
+	}
+	if !w.Sections[2].Changed {
+		t.Error("section three was added by the change file, but it is not flagged")
 	}
 }
 

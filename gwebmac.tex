@@ -268,13 +268,25 @@
 \def\opentoc{\iftocopen\else\tocopentrue\immediate\openout\toc=\contentsfile \fi}
 
 % ---- section openers --------------------------------------------------------
+% A change file marks the sections it altered: gweave opens such a section with
+% \Ms or \Ns (instead of \M or \N), and a star is printed just after its number,
+% exactly as cweave does. \changemark is that star, emitted only when \ifsecchanged
+% is set and reset immediately, so the number itself stays bare everywhere it is
+% used programmatically -- the destination, the running-head mark, the contents
+% line. \lapstar laps the star to the right with zero width, hugging the number
+% without disturbing anything (cweave's \lapstar).
+\newif\ifsecchanged
+\def\lapstar{\rlap{*}}
+\def\changemark{\ifsecchanged\lapstar\fi\global\secchangedfalse}
+\def\Ms#1{\global\secchangedtrue\M{#1}}          % \M for a change-file section
+\def\Ns#1#2#3{\global\secchangedtrue\N{#1}{#2}{#3}} % \N for a change-file section
 % \M{n} : an ordinary (unstarred) section, run-in bold number. The
 % \vfil\penalty-100\vfilneg makes the section boundary the preferred page break
 % (the \vfil fills the page there, so a short page costs nothing): as in cweave,
 % TeX breaks between sections rather than inside one, so a whole section -- its
 % commentary and its code -- stays together on a page when it fits.
 \def\M#1{\par\emitdate\vfil\penalty-100\vfilneg\vskip\secskip
-  \setmark{#1}\noindent\dest{#1}{\bf #1.\quad}\rightskip=0pt\ignorespaces}
+  \setmark{#1}\noindent\dest{#1}{\bf #1\changemark.\quad}\rightskip=0pt\ignorespaces}
 
 % \N{depth}{n}{title} : a starred section. Major sections (depth < secpagedepth)
 % begin a new page; the first one does not, so it follows any limbo banner.
@@ -297,7 +309,7 @@
   % overwrites it before then. Only \the\pageno is left for the \write to fill in.
   \toctoks={#3}%
   \write\toc{\string\Tline{#1}{#2}{\the\toctoks}{\the\pageno}}%
-  \noindent\dest{#2}{\bf #2.\quad #3.\quad}\rightskip=0pt\ignorespaces}
+  \noindent\dest{#2}{\bf #2\changemark.\quad #3.\quad}\rightskip=0pt\ignorespaces}
 
 % ---- \datethis: timestamp the listing just above section 1 ------------------
 % cweave's \datethis (said in limbo) prints the date and time, in \eightrm (its

@@ -561,8 +561,18 @@ terminating period (matching the |common| package's title rule, so a period
 inside \. does not split early). A plain section just emits its number and its
 commentary.
 @<Write the section headline and commentary@>=
+// A change file marks a section: \.{cweave} prints a star just after its number.
+// gweave opens such a section with \.{\\Ms}/\.{\\Ns} rather than \.{\\M}/\.{\\N};
+// the number stays bare, and \.{gwebmac} adds the star to the printed form alone.
+mac := "M"
 if sec.Starred {
-	fmt.Fprintf(bw, "\n\\N{%d}{%d}{%s}", sec.Depth, sec.Number, wv.processTex(sec.Number, sec.Title))
+	mac = "N"
+}
+if sec.Changed {
+	mac += "s"
+}
+if sec.Starred {
+	fmt.Fprintf(bw, "\n\\%s{%d}{%d}{%s}", mac, sec.Depth, sec.Number, wv.processTex(sec.Number, sec.Title))
 	rest := sec.Tex
 	for i := 0; i < len(rest); i++ {
 		if rest[i] == '.' && (i+1 == len(rest) || rest[i+1] == ' ' ||
@@ -573,7 +583,7 @@ if sec.Starred {
 	}
 	bw.WriteString(wv.processTex(sec.Number, rest))
 } else {
-	fmt.Fprintf(bw, "\n\\M{%d}", sec.Number)
+	fmt.Fprintf(bw, "\n\\%s{%d}", mac, sec.Number)
 	bw.WriteString(wv.processTex(sec.Number, sec.Tex))
 }
 
@@ -3462,6 +3472,26 @@ func TestNamesBookmark(t *testing.T) {
 	}
 	if !strings.Contains(out, "\\ifsecs\n\\bookmark{0}{3}{-1}{\\outsecname}") {
 		t.Errorf("Names-of-the-sections outline should be guarded by \\ifsecs:\n%s", out)
+	}
+}
+
+@ A section a change file touched (|Changed|) opens with \.{\\Ms} (or \.{\\Ns} when
+starred) instead of \.{\\M}/\.{\\N}, so \.{gwebmac} prints \.{cweave}'s star beside
+its number; an untouched section keeps the plain opener.
+@(gweave_test.go@>=
+func TestWeaveChangedSectionStar(t *testing.T) {
+	w := common.ParseString("@@* One.\n@@c\npackage main\n@@ Two.\n@@c\n_ = 0\n")
+	w.Sections[1].Changed = true // as if a change file replaced section two's code
+	var b strings.Builder
+	if err := New(w).Weave(&b); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, `\Ms{2}`) {
+		t.Errorf("changed section should open with \\Ms{2}:\n%s", out)
+	}
+	if !strings.Contains(out, `\N{0}{1}`) {
+		t.Errorf("untouched starred section one should stay \\N{0}{1}:\n%s", out)
 	}
 }
 
