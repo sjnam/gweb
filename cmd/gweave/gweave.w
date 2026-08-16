@@ -234,7 +234,7 @@ and any name can be set in typewriter with \.{@@d}.
 @<Detect type declarations@>=
 func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
 	wv.scanAllCode(func(toks []token) {
-		scanDecls(toks, keyword, func(name string) { wv.noteFormat(name, kind) })
+		scanDecls(toks, keyword, func(i int) { wv.noteFormat(toks[i].text, kind) })
 	})
 }
 
@@ -269,14 +269,16 @@ func (wv *Weaver) scanAllCode(visit func([]token)) {
 	}
 }
 
-@ |scanDecls| walks a token list and, at each |keyword| (here |type|), records the
-declared name. The keyword followed by |(| opens a parenthesized group of
-declarations, each naming an entry on its own line; |scanDeclGroup| collects those
-until the matching |)|, tracking brace and bracket nesting so that struct fields
-are not mistaken for names. (A |type| inside a type switch, |x.(type)|, is
-followed by |)| and so names nothing.)
+@ |scanDecls| walks a token list and, at each |keyword| (|type| for the bold
+detector, and each of |type|/|var|/|const| for the index's definition sites),
+reports the {\it index\/} of every name the declaration introduces---the caller
+reads off the name or marks the site as it likes. The keyword followed by |(|
+opens a parenthesized group of declarations, each naming an entry on its own line;
+|scanDeclGroup| reports those until the matching |)|, tracking brace and bracket
+nesting so that struct fields are not mistaken for names. (A |type| inside a type
+switch, |x.(type)|, is followed by |)| and so names nothing.)
 @<Scan a declaration group@>=
-func scanDecls(toks []token, keyword string, add func(string)) {
+func scanDecls(toks []token, keyword string, add func(int)) {
 	for i := 0; i < len(toks); i++ {
 		if toks[i].kind != tkKeyword || toks[i].text != keyword {
 			continue
@@ -288,7 +290,7 @@ func scanDecls(toks []token, keyword string, add func(string)) {
 		if toks[j].kind == tkOp && toks[j].text == "(" {
 			i = scanDeclGroup(toks, j+1, add)
 		} else if toks[j].kind == tkIdent {
-			add(toks[j].text)
+			add(j)
 		}
 	}
 }
@@ -314,11 +316,12 @@ func prevSignificant(toks []token, i int) int {
 	return -1
 }
 
-@ |scanDeclGroup| collects the names in a parenthesized declaration group---%
-each entry that starts a line at the group's own nesting level---tracking brace
-and bracket depth so that struct fields and the like are not mistaken for names.
+@ |scanDeclGroup| reports the index of each name in a parenthesized declaration
+group---each entry that starts a line at the group's own nesting level---tracking
+brace and bracket depth so that struct fields and the like are not mistaken for
+names.
 @<Scan a declaration group@>=
-func scanDeclGroup(toks []token, i int, add func(string)) int {
+func scanDeclGroup(toks []token, i int, add func(int)) int {
 	depth := 0
 	atStart := true
 	for ; i < len(toks); i++ {
@@ -346,7 +349,7 @@ func scanDeclGroup(toks []token, i int, add func(string)) int {
 			atStart = false
 		default:
 			if atStart && depth == 0 && t.kind == tkIdent {
-				add(t.text)
+				add(i)
 			}
 			atStart = false
 		}
@@ -370,7 +373,7 @@ is used, just as |detectDecls| registers |type| names as bold.
 @<Detect |iota| constant declarations@>=
 func (wv *Weaver) detectIotaConsts() {
 	wv.scanAllCode(func(toks []token) {
-		scanIotaConsts(toks, func(name string) { wv.noteFormat(name, tkMacro) })
+		scanIotaConsts(toks, func(i int) { wv.noteFormat(toks[i].text, tkMacro) })
 	})
 }
 
@@ -379,7 +382,7 @@ enumeration, collects its declared names with the shared |scanDeclGroup|. A plai
 |const| block with no |iota|, and a one-line |const|, match neither arm and are
 left exactly as before; only the enumerations change.
 @<Detect |iota| constant declarations@>=
-func scanIotaConsts(toks []token, add func(string)) {
+func scanIotaConsts(toks []token, add func(int)) {
 	for i := 0; i < len(toks); i++ {
 		if toks[i].kind != tkKeyword || toks[i].text != "const" {
 			continue
@@ -390,7 +393,7 @@ func scanIotaConsts(toks []token, add func(string)) {
 		}
 		names := add
 		if !constGroupUsesIota(toks, j+1) {
-			names = func(string) {}
+			names = func(int) {}
 		}
 		i = scanDeclGroup(toks, j+1, names)
 	}
@@ -787,6 +790,7 @@ indentation nor lets a stale grammar gap glue in front of that first token.
 switch a.Kind {
 case common.AText:
 	toks := lexGo(a.Text, &st)
+	defSites := declSites(toks) // names a grouped var/const/type declaration defines
 	@<Render the tokens of a text atom@>
 case common.ARef:
 	@<Set a section reference, spaced as an operand@>
@@ -899,13 +903,14 @@ if atLineStart {
 }
 
 @ An identifier or builtin earns an index entry under the current section---a
-definition when a preceding declaration keyword or a following |:=| marks it as
-one, a use otherwise. The |qualifierOf| result is computed here because it settles
-both what to index and, in a moment, the token's effective display class.
+definition when a preceding declaration keyword, a following |:=|, or membership in
+a grouped declaration (|defSites|) marks it as one, a use otherwise. The
+|qualifierOf| result is computed here because it settles both what to index and, in
+a moment, the token's effective display class.
 @<Record the token's index entry@>=
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if t.kind == tkIdent || t.kind == tkBuiltin {
-	def := forceDef || isDefinition(prevSigKind, prevSigText, toks, k)
+	def := forceDef || defSites[k] || isDefinition(prevSigKind, prevSigText, toks, k)
 	forceDef = false
 	if indexable(t.text) && !wv.noIndexed(t.text, qual) {
 		if def {
@@ -2059,6 +2064,24 @@ func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
 		}
 	}
 	return false
+}
+
+@ A |var|, |const|, or |type| declaration written as a parenthesized group names
+its entries on their own lines, lines away from the keyword---out of reach of
+|isDefinition|'s single-token look-behind. |declSites| runs the same |scanDecls|
+the bold detector uses, over the three grouping keywords, and returns the token
+indices of the names, so the index underlines a grouped |type Meter float64| just
+as it does a plain |type Meter float64|. The non-grouped forms it also reports are
+definitions by |isDefinition| already, so the overlap changes nothing.
+@<Decide whether an identifier is a definition@>=
+var groupDeclKeywords = []string{"type", "var", "const"}
+
+func declSites(toks []token) map[int]bool {
+	sites := map[int]bool{}
+	for _, kw := range groupDeclKeywords {
+		scanDecls(toks, kw, func(i int) { sites[i] = true })
+	}
+	return sites
 }
 
 @* Structural indentation.
@@ -4014,6 +4037,21 @@ func TestWeaveTypeBoldInIndex(t *testing.T) {
 	}
 	if !strings.Contains(out, `\II{\ID{x}}`) {
 		t.Errorf("an ordinary field name should stay italic:\n%s", out)
+	}
+}
+
+@ A name declared inside a parenthesized |var|/|const|/|type| group is a
+definition, so the index underlines it (\.{\\sD}), just as it would the same
+declaration written on one line---even though the keyword is lines away.
+@(gweave_test.go@>=
+func TestWeaveGroupedDeclIsDefinition(t *testing.T) {
+	out := weaveString(t,
+		"@@ x\n@@c\ntype (\n\tMeter float64\n)\nvar (\n\ttotal int\n)\n")
+	if !strings.Contains(out, `\II{\KW{Meter}}{\sD{1}}`) {
+		t.Errorf("a grouped type should be an underlined definition:\n%s", out)
+	}
+	if !strings.Contains(out, `\II{\ID{total}}{\sD{1}}`) {
+		t.Errorf("a grouped var should be an underlined definition:\n%s", out)
 	}
 }
 
