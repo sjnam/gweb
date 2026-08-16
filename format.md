@@ -54,7 +54,7 @@ semicolon) have no effect; they are accepted and ignored for portability.
 | code            | meaning                                                          |
 |-----------------|------------------------------------------------------------------|
 | `@f a b`        | format identifier `a` like identifier/keyword `b`                 |
-| `@s a b`        | like `@f` but the entry is omitted from the index                 |
+| `@s a b`        | a synonym for `@f` (as in CWEB)                                   |
 | `@!`            | index the next identifier as a definition (underline it)          |
 | `@^text@>`      | index entry, typeset in roman                                    |
 | `@.text@>`      | index entry, typeset in typewriter                               |
@@ -100,6 +100,11 @@ change's first match line the whole block must match, and is then replaced.
 Matching ignores trailing whitespace. It is an error if a change never matches,
 or matches its first line but not the rest.
 
+When `gweave` runs with a change file, every section the change file alters or adds
+is marked with a `*` after its number — on the section heading, in the index, and
+in cross-reference notes — and the changed sections are listed just before the
+index, exactly as `cweave` does. A change confined to limbo marks nothing.
+
 ## Notes specific to Go
 
 * Go has no preprocessor, so `@d` never tangles to code (`gtangle` ignores it;
@@ -116,9 +121,8 @@ or matches its first line but not the rest.
 * `@f a b` makes `gweave` typeset identifier `a` in the class of `b` — most
   usefully `@f MyType int` to set a user type in bold like a predeclared type, or
   `@f Name x` (any ordinary identifier) to override the automatic classification
-  back to plain italic. `@s` does the same but also omits `a` from the index.
-  These directives apply globally and may appear in limbo or in a section's
-  definition part.
+  back to plain italic. `@s` is a synonym for `@f` (as in CWEB). These directives
+  apply globally and may appear in limbo or in a section's definition part.
 * The default tangled output file is `<basename>.go`; additional files are
   produced with `@(file@>=`.
 * `gtangle` runs `gofmt` on its output, so the emitted Go is canonically

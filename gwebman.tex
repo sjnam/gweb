@@ -250,10 +250,22 @@ reindents and re-spaces from the \CEE/ grammar.
 \section{Index and formatting codes}
 The hand-index codes \cw{@\char94 text@>} (roman), \cw{@.text@>} (typewriter),
 and \cw{@:text@>} (formatted by \cw{\bs9}) work as in \.{CWEB}, as do \cw{@!} to
-force a definition entry and \cw{@f}/\cw{@s} to reclassify a name. An identifier
-is marked as ``defined'' (its index number underlined) when it follows \cw{func},
-\cw{var}, \cw{const}, or \cw{type}, or sits just left of \cw{:=}; this is a
-heuristic, not a type analysis, and \cw{@!} overrides it.
+force a definition entry and \cw{@f}/\cw{@s} (synonyms, as in \.{CWEB}) to
+reclassify a name. An identifier is marked as ``defined'' (its index number
+underlined) when it follows \cw{func}, \cw{var}, \cw{const}, or \cw{type}---%
+whether written singly or as an entry of a parenthesized group---or sits just
+left of \cw{:=}; this is a heuristic, not a type analysis, and \cw{@!} overrides
+it. A type's index entry, like its every appearance, is set bold, the way
+\.{CWEB} sets a \cw{typedef}.
+
+\section{Change marks} When you weave with a change file, \cw{gweave} marks every
+section it altered---whether the change rewrote the section's lines or added the
+section outright---with a \cw{*} just after the section number, exactly as
+\.{cweave} does. The mark follows that number wherever it is shown: on the section
+heading, in the index, and in the cross-reference notes. A small-font line just
+before the index lists all the changed sections, and the index section itself is
+marked, since a change anywhere may shift the numbers it prints. A change confined
+to limbo marks nothing, having no section of its own.
 
 \section{Hyperlinks and bookmarks}
 Section numbers shown as references, in the index, in cross-reference notes, and

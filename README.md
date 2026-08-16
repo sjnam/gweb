@@ -103,7 +103,10 @@ Both commands accept `-o <dir>` to choose an output directory, and an optional
 **change file** as a second argument — `gtangle foo.w foo.ch` — which patches the
 master source without editing it (**CWEB**'s `.ch` mechanism; see
 [format.md](format.md)). For example,
-`gtangle examples/wc.w examples/wc.ch` builds a CSV variant of the word counter. `gwebmac.tex`
+`gtangle examples/wc.w examples/wc.ch` builds a CSV variant of the word counter. When
+`gweave` runs with a change file it marks each altered or added section with a `*`
+after its number (on the heading, in the index, and in cross-reference notes) and
+lists the changed sections just before the index, exactly as **CWEB** does. `gwebmac.tex`
 lives at the repository root; point `TEXINPUTS` there, or copy the file
 next to your document.
 
@@ -179,7 +182,9 @@ bootstrap`, `make selfdoc`) works, see the manual as well.
   spaces, with continuation lines indented one step deeper. Write the code in
   your sections in gofmt style for the best-looking output.
 * **Definition detection** in the index is heuristic (an identifier following
-  `func`/`var`/`const`/`type`, or just left of `:=`), not a full type check.
+  `func`/`var`/`const`/`type` — whether written singly or as an entry of a
+  parenthesized group — or just left of `:=`), not a full type check. A defined
+  type's index entry, like its uses, is set bold, as **CWEB** sets a `typedef`.
 * **Diagnostics.** Both tools report, with `file:line` locations, unterminated
   control codes, references to undefined sections, ambiguous `...` abbreviations,
   and named sections defined but never used. These are warnings; `gtangle` still
