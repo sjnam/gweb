@@ -216,6 +216,11 @@
   \else #2\fi\fi}
 \def\s#1{\link{#1}{#1}}                        % a linked section number
 \def\sD#1{\link{#1}{$\underline{\hbox{#1}}$}}  % linked + underlined (definition)
+% Starred forms, for a section a change file touched: the link target stays the
+% bare number, and \lapstar (defined below) laps cweave's star past the printed
+% number without widening it.
+\def\ss#1{\link{#1}{#1\lapstar}}
+\def\sDs#1{\link{#1}{$\underline{\hbox{#1}}\lapstar$}}
 % A PDF outline (bookmark) entry: #1 group depth, #2 section number, #3 number of
 % direct children (pdfTeX's open/close model), #4 the plain-text title. The
 % dvipdfmx route nests by depth and links to the named destination.
@@ -422,10 +427,15 @@
 \def\Us#1{\note{This code is used in sections #1}}
 \def\A#1{\note{This code is also defined in section #1}}
 \def\As#1{\note{This code is also defined in sections #1}}
+% The small-font roster of change-file sections, printed just before the index
+% (gweave emits \ch only when a change file altered something). The numbers come
+% ready-joined as \s links (unstarred) -- so it is just a labelled note.
+\def\ch#1{\note{The following sections were changed by the change file: #1}}
 % Other human-language strings: the running head over the section-name list and
 % the two column headings on the contents page. Redefine these, and the four
 % notes just above, in a localization file (e.g. kotexgweb.tex for Korean) to
-% translate gweave's output; gweave itself needs no change.
+% translate gweave's output (the change-file roster \ch too); gweave itself
+% needs no change.
 \def\namesheading{NAMES OF THE SECTIONS}
 \def\outsecname{Names of the sections} % title of the section-names PDF bookmark
 \def\sectionword{Section}

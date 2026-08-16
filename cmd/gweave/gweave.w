@@ -513,6 +513,7 @@ from the limbo.
 @<Weave the document in two passes@>=
 func (wv *Weaver) Weave(out io.Writer) error {
 	wv.xr = newXref()
+	@<Flag the index section if the change file touched anything@>
 	scan := bufio.NewWriter(io.Discard)
 	for _, sec := range wv.w.Sections {
 		wv.writeSection(scan, sec)
@@ -541,6 +542,19 @@ func stripGwebmacInput(limbo string) string {
 		kept = append(kept, ln)
 	}
 	return strings.Join(kept, "\n")
+}
+
+@ \.{cweave} reasons that the index changes whenever anything does---its entries
+carry the very section numbers a change file may have renumbered---so it marks
+the final section (the \.{@@* Index.} one) changed as soon as any section is.
+We do the same, which both stars the index section's own number and lets it
+appear in the change-file roster below.
+@<Flag the index section if the change file touched anything@>=
+for _, sec := range wv.w.Sections {
+	if sec.Changed {
+		wv.w.Sections[len(wv.w.Sections)-1].Changed = true
+		break
+	}
 }
 
 @ |writeSection| emits one section: its headline (starred or numbered), its
@@ -3047,7 +3061,10 @@ func (x *xref) addManualIndex(kind byte, text string, sec int) {
 }
 
 @ |sortedKeys| orders a section set, and |secList| renders it as hyperlinks with
-the defining sections underlined.
+the defining sections underlined. A section a change file touched has its number
+starred wherever it is cited, exactly as \.{cweave} does: the plain \.{\\s}/\.{\\sD}
+macros give way to their starred forms \.{\\ss}/\.{\\sDs}, which lap \.{cweave}'s
+star past the number.
 @<Render a section list@>=
 func sortedKeys(m map[int]bool) []int {
 	ks := make([]int, 0, len(m))
@@ -3058,15 +3075,18 @@ func sortedKeys(m map[int]bool) []int {
 	return ks
 }
 
-func secList(secs, def map[int]bool) string {
+func (wv *Weaver) secList(secs, def map[int]bool) string {
 	nums := sortedKeys(secs)
 	parts := make([]string, len(nums))
 	for i, n := range nums {
+		mac := "\\s"
 		if def != nil && def[n] {
-			parts[i] = fmt.Sprintf("\\sD{%d}", n)
-		} else {
-			parts[i] = fmt.Sprintf("\\s{%d}", n)
+			mac = "\\sD"
 		}
+		if n >= 1 && n <= len(wv.w.Sections) && wv.w.Sections[n-1].Changed {
+			mac += "s"
+		}
+		parts[i] = fmt.Sprintf("%s{%d}", mac, n)
 	}
 	return strings.Join(parts, ", ")
 }
@@ -3079,12 +3099,33 @@ with a section's own destination.
 @<Write the back matter@>=
 func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 	wv.writeBookmarks(bw)
+	@<List the sections a change file touched@>
 	bw.WriteString("\n\\inx\n")
 	wv.writeIndex(bw)
 	bw.WriteString("\\fin\n")
 	fmt.Fprintf(bw, "\\secdest{%d}%%\n", len(wv.w.Sections)+1)
 	wv.writeSectionNames(bw)
 	bw.WriteString("\\con\n\\end\n")
+}
+
+@ Just before the index, \.{cweave} prints a small-font roster of every section a
+change file altered, headed ``The following sections were changed by the change
+file.'' Each number links to its section, as \.{cweave}'s \.{\\pdfnote} makes it,
+but wears no star (the whole list is about change), so we join them as plain
+\.{\\s} links---not the starred \.{\\ss}---and hand them to the \.{\\ch} macro,
+whose wording a localization file can translate.
+@<List the sections a change file touched@>=
+var b strings.Builder
+for _, sec := range wv.w.Sections {
+	if sec.Changed {
+		if b.Len() > 0 {
+			b.WriteString(", ")
+		}
+		fmt.Fprintf(&b, "\\s{%d}", sec.Number)
+	}
+}
+if b.Len() > 0 {
+	fmt.Fprintf(bw, "\\ch{%s}\n", b.String())
 }
 
 @ |writeBookmarks| emits one \.{\\bookmark} per starred section, in document
@@ -3316,7 +3357,7 @@ sort.Slice(list, func(i, j int) bool {
 	return list[i].render < list[j].render
 })
 for _, it := range list {
-	fmt.Fprintf(bw, "\\II{%s}{%s}\n", it.render, secList(it.secs, it.defs))
+	fmt.Fprintf(bw, "\\II{%s}{%s}\n", it.render, wv.secList(it.secs, it.defs))
 }
 
 @ |writeSectionNames| emits the list of named sections with their defining and
@@ -3326,7 +3367,7 @@ here and for the {\sc PDF} outline children beneath ``Names of the sections''.
 func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	for _, n := range wv.sortedSectionNames() {
 		fmt.Fprintf(bw, "\\NS{%s}{%d}{%s}\n",
-			wv.renderName(n), wv.defNum[n], usedNote(wv.xr.sectionUses[n]))
+			wv.renderName(n), wv.defNum[n], wv.usedNote(wv.xr.sectionUses[n]))
 	}
 }
 
@@ -3353,7 +3394,7 @@ list, or |""| when the section is never used. The wording is deferred to the
 |\Nused|/|\Nuseds| macros (singular/plural) so a localization file can
 translate it, exactly as |\U|/|\Us| do for the under-definition notes.
 @<The ``used in'' note@>=
-func usedNote(uses map[int]bool) string {
+func (wv *Weaver) usedNote(uses map[int]bool) string {
 	if len(uses) == 0 {
 		return ""
 	}
@@ -3361,7 +3402,7 @@ func usedNote(uses map[int]bool) string {
 	if len(uses) > 1 {
 		macro = "\\Nuseds"
 	}
-	return macro + "{" + secList(uses, nil) + "}"
+	return macro + "{" + wv.secList(uses, nil) + "}"
 }
 
 @ |crossRefNotes| returns the ``also defined in'' and ``used in'' notes printed
@@ -3384,14 +3425,14 @@ func (wv *Weaver) crossRefNotes(name string, secNum int) string {
 		if len(others) > 1 {
 			macro = "\\As"
 		}
-		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(others, nil))
+		fmt.Fprintf(&b, "%s{%s}%%\n", macro, wv.secList(others, nil))
 	}
 	if uses := wv.xr.sectionUses[name]; len(uses) > 0 {
 		macro := "\\U"
 		if len(uses) > 1 {
 			macro = "\\Us"
 		}
-		fmt.Fprintf(&b, "%s{%s}%%\n", macro, secList(uses, nil))
+		fmt.Fprintf(&b, "%s{%s}%%\n", macro, wv.secList(uses, nil))
 	}
 	return b.String()
 }
@@ -3477,10 +3518,14 @@ func TestNamesBookmark(t *testing.T) {
 
 @ A section a change file touched (|Changed|) opens with \.{\\Ms} (or \.{\\Ns} when
 starred) instead of \.{\\M}/\.{\\N}, so \.{gwebmac} prints \.{cweave}'s star beside
-its number; an untouched section keeps the plain opener.
+its number; an untouched section keeps the plain opener. As \.{cweave} does, the
+mark also follows the number wherever it is cited (\.{\\ss}/\.{\\sDs} in the
+index), the final section is starred once anything is, and a small-font roster
+(\.{\\ch}) lists the touched sections just before the index.
 @(gweave_test.go@>=
 func TestWeaveChangedSectionStar(t *testing.T) {
-	w := common.ParseString("@@* One.\n@@c\npackage main\n@@ Two.\n@@c\n_ = 0\n")
+	w := common.ParseString(
+		"@@* One.\n@@c\npackage main\nvar foo int\n@@ Two.\n@@c\nfoo = 0\n@@* Index.\n")
 	w.Sections[1].Changed = true // as if a change file replaced section two's code
 	var b strings.Builder
 	if err := New(w).Weave(&b); err != nil {
@@ -3492,6 +3537,15 @@ func TestWeaveChangedSectionStar(t *testing.T) {
 	}
 	if !strings.Contains(out, `\N{0}{1}`) {
 		t.Errorf("untouched starred section one should stay \\N{0}{1}:\n%s", out)
+	}
+	if !strings.Contains(out, `\Ns{0}{3}{Index}`) {
+		t.Errorf("index section should be starred once anything changed:\n%s", out)
+	}
+	if !strings.Contains(out, `\ch{\s{2}, \s{3}}`) {
+		t.Errorf("roster should be linked and unstarred:\n%s", out)
+	}
+	if !strings.Contains(out, `\ss{2}`) {
+		t.Errorf("a changed section's number should be starred in the index:\n%s", out)
 	}
 }
 
