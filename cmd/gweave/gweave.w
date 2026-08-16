@@ -151,9 +151,8 @@ type Weaver struct {
 	w      *common.Web
 	defNum map[string]int // canonical named-section $\rightarrow$ first defining section
 
-	format  map[string]tokKind // \.{@@f}/\.{@@s}: identifier $\rightarrow$ the token class to use
-	noIndex map[string]bool    // \.{@@s}: identifiers omitted from the index
-	isFile  map[string]bool    // \.{@@(file@@>=} outputs: names are literal file paths
+	format map[string]tokKind // \.{@@f}/\.{@@s}: identifier $\rightarrow$ the token class to use
+	isFile map[string]bool    // \.{@@(file@@>=} outputs: names are literal file paths
 
 	xr *xref // identifier and section cross-references (built lazily)
 }
@@ -163,11 +162,10 @@ global and per-section format directives (later ones win).
 @<Create a weaver@>=
 func New(w *common.Web) *Weaver {
 	wv := &Weaver{
-		w:       w,
-		defNum:  map[string]int{},
-		format:  map[string]tokKind{},
-		noIndex: map[string]bool{},
-		isFile:  map[string]bool{},
+		w:      w,
+		defNum: map[string]int{},
+		format: map[string]tokKind{},
+		isFile: map[string]bool{},
 	}
 	@<Number the refinements and file outputs@>
 	@<Install the format directives@>
@@ -211,9 +209,6 @@ apply := func(fs []common.Format) {
 			wv.format[f.Original] = tkTeXCS // \.{@@f name TeX}: a custom control sequence
 		default:
 			wv.format[f.Original] = classifyWord(f.Like)
-		}
-		if f.NoIndex {
-			wv.noIndex[f.Original] = true
 		}
 	}
 }
@@ -446,8 +441,7 @@ overrides for identifiers, keywords, and builtins. A directive may be {\it
 qualified\/}: \.{@@s foo.Bar int} sets only the |Bar| written as |foo.Bar|, while
 the unqualified \.{@@s Bar int} sets every |Bar|. |lookupFormat| therefore tries
 the qualified key |qual.name| first (|qual| is the identifier just before the
-|.|, supplied by the caller) and falls back to the bare name; |noIndexed|
-resolves the index-suppression flag the same way.
+|.|, supplied by the caller) and falls back to the bare name.
 @<The effective token class@>=
 func (wv *Weaver) effKind(t token, qual string) tokKind {
 	switch t.kind {
@@ -489,10 +483,6 @@ func (wv *Weaver) lookupFormat(name, qual string) (tokKind, bool) {
 	}
 	k, ok := wv.format[name]
 	return k, ok
-}
-
-func (wv *Weaver) noIndexed(name, qual string) bool {
-	return (qual != "" && wv.noIndex[qual+"."+name]) || wv.noIndex[name]
 }
 
 @ |qualifierOf| gives the qualifier of the token now being typeset: the text of
@@ -912,7 +902,7 @@ qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if t.kind == tkIdent || t.kind == tkBuiltin {
 	def := forceDef || defSites[k] || isDefinition(prevSigKind, prevSigText, toks, k)
 	forceDef = false
-	if indexable(t.text) && !wv.noIndexed(t.text, qual) {
+	if indexable(t.text) {
 		if def {
 			wv.xr.addIdentDef(t.text, secNum)
 		} else {
@@ -1860,7 +1850,7 @@ blockBrace := t.kind == tkOp && t.text == "{" && in.opensBlock()
 curCat := classify(t, prevSigKind, prevSigText, toks, k,
 	blockBrace, in.top().isBlock, in.inSquareBracket())
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
-if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) && !wv.noIndexed(t.text, qual) {
+if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) {
 	wv.xr.addIdentUse(t.text, secNum)
 }
 emit(curCat, renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
@@ -4021,8 +4011,8 @@ var hidden int
 	if !strings.Contains(out, `\II{\KW{Counts}}`) {
 		t.Errorf("@@f keeps the type in the index, bold:\n%s", out)
 	}
-	if strings.Contains(out, `\II{\ID{hidden}}`) {
-		t.Errorf("@@s should omit the identifier from the index:\n%s", out)
+	if !strings.Contains(out, `\II{\KW{hidden}}`) {
+		t.Errorf("@@s type used in the program is indexed bold, as cweave does:\n%s", out)
 	}
 }
 

@@ -42,13 +42,12 @@ const Version = "0.10.1"
 
 @ The |Format| record captures one directive's request for a single identifier:
 an \.{@@f} or \.{@@s} asks that identifier |Original| be typeset the way identifier
-or keyword |Like| is. |NoIndex| is true for \.{@@s}, and |Macro| is true for a
-name listed in \.{@@d} (one |Format| per name, since \.{@@d} may name several).
+or keyword |Like| is (the two are synonyms, as in \.{CWEB}), and |Macro| is true
+for a name listed in \.{@@d} (one |Format| per name, since \.{@@d} may name several).
 @<Records shared across the web@>=
 type Format struct {
 	Original string
 	Like     string
-	NoIndex  bool
 	Macro    bool // \.{@@d}: typeset Original in \.{typewriter} (a \.{CWEB}-style macro)
 }
 
@@ -492,7 +491,6 @@ type ctrl struct {
 	starred bool   // for |cSection| (distinguishes \.{@@**} from an unstarred section)
 	name    string // for |cNamed|
 	isFile  bool   // for |cNamed| (\.{@@(} vs \.{@@<})
-	noIndex bool   // for |cFormat| (\.{@@s})
 }
 
 @ |scanStruct| finds the next structural control at or after |i|. It skips
@@ -521,10 +519,8 @@ func scanStruct(src string, i int) ctrl {
 			return ctrl{kind: cCode, pos: i, end: i + 2}
 		case c == 'd':
 			return ctrl{kind: cDefn, pos: i, end: i + 2}
-		case c == 'f':
+		case c == 'f' || c == 's':
 			return ctrl{kind: cFormat, pos: i, end: i + 2}
-		case c == 's':
-			return ctrl{kind: cFormat, pos: i, end: i + 2, noIndex: true}
 		case c == '<' || c == '(':
 			@<Classify a named-section definition@>
 		case c == '=' || c == 't' || c == '^' || c == '.' || c == ':' || c == 'q':
@@ -684,7 +680,7 @@ for ct.kind == cDefn || ct.kind == cFormat {
 	seg := src[ct.end:nx.pos]
 	if ct.kind == cDefn {
 		sec.Formats = append(sec.Formats, parseMacro(seg)...)
-	} else if f, ok := parseFormat(seg, ct.noIndex); ok {
+	} else if f, ok := parseFormat(seg); ok {
 		sec.Formats = append(sec.Formats, f)
 	}
 	ct = nx
@@ -783,12 +779,12 @@ func (w *Web) scanDiagnostics(src string) []string {
 
 @ |parseFormat| parses the body of an \.{@@f} or \.{@@s} directive: two identifiers.
 @<Parse the definition-part directives@>=
-func parseFormat(seg string, noIndex bool) (Format, bool) {
+func parseFormat(seg string) (Format, bool) {
 	fields := strings.Fields(seg)
 	if len(fields) < 2 {
 		return Format{}, false
 	}
-	return Format{Original: fields[0], Like: fields[1], NoIndex: noIndex}, true
+	return Format{Original: fields[0], Like: fields[1]}, true
 }
 
 @ |parseMacro| parses the body of an \.{@@d} directive. Where \.{CWEB}'s \.{@@d}
@@ -877,7 +873,7 @@ if c == 'd' {
 	fs = parseMacro(src[i+2 : j])
 } else {
 	j = endOfFormatArgs(src, i+2, n)
-	if f, ok := parseFormat(src[i+2:j], c == 's'); ok {
+	if f, ok := parseFormat(src[i+2:j]); ok {
 		fs = []Format{f}
 	}
 }
@@ -1409,10 +1405,10 @@ package main
 	if len(w.Formats) != 2 {
 		t.Fatalf("limbo formats = %d, want 2: %+v", len(w.Formats), w.Formats)
 	}
-	if w.Formats[0].Original != "Counts" || w.Formats[0].Like != "int" || w.Formats[0].NoIndex {
+	if w.Formats[0].Original != "Counts" || w.Formats[0].Like != "int" {
 		t.Errorf("format[0] = %+v", w.Formats[0])
 	}
-	if w.Formats[1].Original != "hidden" || !w.Formats[1].NoIndex {
+	if w.Formats[1].Original != "hidden" || w.Formats[1].Like != "int" {
 		t.Errorf("format[1] = %+v", w.Formats[1])
 	}
 	if contains(w.Limbo, "@@f") || contains(w.Limbo, "@@s") {
