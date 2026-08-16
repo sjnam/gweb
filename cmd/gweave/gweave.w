@@ -552,13 +552,18 @@ for _, sec := range wv.w.Sections {
 
 @ |writeSection| emits one section: its headline (starred or numbered), its
 commentary, and -- if present -- its code part bracketed by \.{\\B...\\E}, with
-the definition headline and cross-reference notes for a named section.
+the definition headline and cross-reference notes for a named section. The
+closing \.{\\fi} matches the \.{\\ifon} that \.{\\M}/\.{\\N} leave open: with
+\.{\\let\\maybe=\\iffalse} in a change file it lets \TEX/ skip the whole body of a
+section the change file did not touch, so the woven document shows only the
+changed sections, exactly as \.{cweave} does.
 @<Write one section@>=
 func (wv *Weaver) writeSection(bw *bufio.Writer, sec *common.Section) {
 	@<Write the section headline and commentary@>
 	if sec.HasCode {
 		@<Write the section's code part@>
 	}
+	bw.WriteString("\n\\fi\n") // close the on-conditional the section headline opens
 }
 
 @ A starred section's title is free \TEX/ (it may contain \. typewriter and other
@@ -3531,6 +3536,25 @@ func TestNamesBookmark(t *testing.T) {
 	}
 	if !strings.Contains(out, "\\ifsecs\n\\bookmark{0}{3}{-1}{\\outsecname}") {
 		t.Errorf("Names-of-the-sections outline should be guarded by \\ifsecs:\n%s", out)
+	}
+}
+
+@ Every section closes with a \.{\\fi}: it matches the \.{\\ifon} its \.{\\M}/\.{\\N}
+headline leaves open, so \.{\\let\\maybe=\\iffalse} in a change file can make \TEX/
+skip an untouched section's whole body (\.{cweave}'s change-only listing). There is
+exactly one closer per section, so the conditionals stay balanced.
+@(gweave_test.go@>=
+func TestWeaveSectionClosesConditional(t *testing.T) {
+	out := weaveString(t, "@@* One.\n@@c\nx := 1\n@@ Two.\ntwo.\n@@ Three.\n@@c\ny := 2\n")
+	opens := 0
+	for _, m := range []string{`\M{`, `\N{`, `\Ms{`, `\Ns{`} {
+		opens += strings.Count(out, m)
+	}
+	// Each headline opens one \ifon that a \fi closes; the back matter's \ifsecs
+	// bookmark block adds one more balanced \fi.
+	if fis := strings.Count(out, "\n\\fi\n"); fis != opens+1 {
+		t.Errorf("want one closing \\fi per headline (%d) plus the \\ifsecs block, got %d:\n%s",
+			opens+1, fis, out)
 	}
 }
 

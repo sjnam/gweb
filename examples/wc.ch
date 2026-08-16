@@ -4,6 +4,12 @@ instead of column-aligned. Apply it with
     gtangle wc.w wc.ch        (or: gweave wc.w wc.ch)
 
 @x
+\def\title{Word Count Example}
+@y
+\let\maybe=\iffalse % print only sections that change
+@z
+
+@x
 		fmt.Printf("%8d %8d %8d\n", c.lines, c.words, c.chars)
 @y
 		fmt.Printf("%d,%d,%d\n", c.lines, c.words, c.chars)

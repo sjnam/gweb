@@ -285,18 +285,33 @@
 \def\changemark{\ifsecchanged\lapstar\fi\global\secchangedfalse}
 \def\Ms#1{\global\secchangedtrue\M{#1}}          % \M for a change-file section
 \def\Ns#1#2#3{\global\secchangedtrue\N{#1}{#2}{#3}} % \N for a change-file section
+% \maybe/\ifon reproduce cweave's change-only listing: put \let\maybe=\iffalse in
+% a change file and only the sections it altered are printed. Each \M/\N opens
+% \ifon (on for a changed section, otherwise \maybe) and leaves it open; gweave
+% closes it with \fi at the section's end, so an off section's whole body -- its
+% heading, commentary, and code -- is skipped by TeX. \maybe is \iftrue by
+% default, so with no change file (or without the \let) every section prints.
+\newif\ifon
+\let\maybe=\iftrue
+% \onmaybe must stay a macro, not an inline \let\ifon=\maybe: \ifon and \maybe are
+% \let to \iftrue/\iffalse, so \TEX/ skipping the untaken \seton branch would miscount
+% them as conditionals. A macro name is skipped harmlessly. (This is cweave's idiom.)
+\def\onmaybe{\let\ifon=\maybe}
+\def\seton{\ifsecchanged\ontrue\else\onmaybe\fi}
 % \M{n} : an ordinary (unstarred) section, run-in bold number. The
 % \vfil\penalty-100\vfilneg makes the section boundary the preferred page break
 % (the \vfil fills the page there, so a short page costs nothing): as in cweave,
 % TeX breaks between sections rather than inside one, so a whole section -- its
 % commentary and its code -- stays together on a page when it fits.
-\def\M#1{\par\emitdate\vfil\penalty-100\vfilneg\vskip\secskip
+\def\M#1{\par\seton
+  \ifon\emitdate\vfil\penalty-100\vfilneg\vskip\secskip
   \setmark{#1}\noindent\dest{#1}{\bf #1\changemark.\quad}\rightskip=0pt\ignorespaces}
 
 % \N{depth}{n}{title} : a starred section. Major sections (depth < secpagedepth)
 % begin a new page; the first one does not, so it follows any limbo banner.
 \newif\iffirst \firsttrue
-\def\N#1#2#3{\par\emitdate
+\def\N#1#2#3{\par\seton
+  \ifon\emitdate
   % Snapshot the upper-cased title into \grouptoks; \uppercase only upper-cases
   % the letter tokens, leaving control sequences (\.) intact for the header.
   {\uppercase{\global\grouptoks={#3}}}%
