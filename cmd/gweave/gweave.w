@@ -3285,8 +3285,11 @@ func (wv *Weaver) writeIndex(bw *bufio.Writer) {
 
 @ An identifier's index head follows its display class: a typewriter name (a
 \.{@@d} macro or a predeclared constant) is set in typewriter, an \.{@@f name TeX}
-name as its own control sequence, everything else italic. A use adds the section;
-a definition also flags it in |defs|.
+name as its own control sequence, a type (declared with \.{\|type\|}, or so named
+by \.{@@f name int}) in bold, everything else italic. Setting a type's index head
+bold is what \.{cweave} does---its \.{common.idx} lists a |typedef| like
+\.{boolean} as \.{\\I\\\&\{boolean\}}---and \.{\\KW} is \.{GWEB}'s \.{\\\&}. A use
+adds the section; a definition also flags it in |defs|.
 @<Collect the identifier index entries@>=
 head := func(name string) string {
 	switch wv.format[name] {
@@ -3294,6 +3297,8 @@ head := func(name string) string {
 		return "\\MAC{" + escTT(name) + "}"
 	case tkTeXCS:
 		return "$\\" + texControlSeq(name) + "$" // its macro assumes math mode
+	case tkBuiltin:
+		return "\\KW{" + escIdent(name) + "}" // a defined type: bold, as cweave's \&
 	}
 	return "\\ID{" + escIdent(name) + "}"
 }
@@ -3990,11 +3995,25 @@ var hidden int
 	if !strings.Contains(out, `\KW{hidden}`) {
 		t.Errorf("@@s should also change the typeset class:\n%s", out)
 	}
-	if !strings.Contains(out, `\II{\ID{Counts}}`) {
-		t.Errorf("@@f keeps the identifier in the index:\n%s", out)
+	if !strings.Contains(out, `\II{\KW{Counts}}`) {
+		t.Errorf("@@f keeps the type in the index, bold:\n%s", out)
 	}
 	if strings.Contains(out, `\II{\ID{hidden}}`) {
 		t.Errorf("@@s should omit the identifier from the index:\n%s", out)
+	}
+}
+
+@ A name declared with \.{\|type\|} is a type, so \.{cweave} sets it bold in the
+index (\.{\\\&}); \.{gweave} does the same with \.{\\KW}. An ordinary identifier
+stays italic (\.{\\ID}).
+@(gweave_test.go@>=
+func TestWeaveTypeBoldInIndex(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\ntype Point struct{ x int }\n")
+	if !strings.Contains(out, `\II{\KW{Point}}`) {
+		t.Errorf("a defined type should be bold in the index:\n%s", out)
+	}
+	if !strings.Contains(out, `\II{\ID{x}}`) {
+		t.Errorf("an ordinary field name should stay italic:\n%s", out)
 	}
 }
 
