@@ -216,11 +216,11 @@
   \else #2\fi\fi}
 \def\s#1{\link{#1}{#1}}                        % a linked section number
 \def\sD#1{\link{#1}{$\underline{\hbox{#1}}$}}  % linked + underlined (definition)
-% Starred forms, for a section a change file touched: the link target stays the
-% bare number, and \lapstar (defined below) laps cweave's star past the printed
-% number without widening it.
-\def\ss#1{\link{#1}{#1\lapstar}}
-\def\sDs#1{\link{#1}{$\underline{\hbox{#1}}\lapstar$}}
+% Starred forms, for a section a change file touched: only the number is linked;
+% \lapstar (defined below) laps cweave's star past it, outside the link, so the
+% star is plain black rather than part of the blue hyperlink, as in cweave.
+\def\ss#1{\link{#1}{#1}\lapstar}
+\def\sDs#1{\link{#1}{$\underline{\hbox{#1}}$}\lapstar}
 % A PDF outline (bookmark) entry: #1 group depth, #2 section number, #3 number of
 % direct children (pdfTeX's open/close model), #4 the plain-text title. The
 % dvipdfmx route nests by depth and links to the named destination.
