@@ -3553,8 +3553,7 @@ func TestWeaveSectionClosesConditional(t *testing.T) {
 	// Each headline opens one \ifon that a \fi closes; the back matter's \ifsecs
 	// bookmark block adds one more balanced \fi.
 	if fis := strings.Count(out, "\n\\fi\n"); fis != opens+1 {
-		t.Errorf("want one closing \\fi per headline (%d) plus the \\ifsecs block, got %d:\n%s",
-			opens+1, fis, out)
+		t.Errorf("want %d closing \\fi, got %d:\n%s", opens+1, fis, out)
 	}
 }
 
