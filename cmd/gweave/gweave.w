@@ -913,6 +913,9 @@ if t.kind == tkIdent || t.kind == tkBuiltin {
 		} else {
 			wv.xr.addIdentUse(t.text, secNum)
 		}
+		if k, ok := wv.lookupFormat(t.text, qual); ok {
+			wv.xr.noteHead(t.text, k) // so a qualified type's head is bold too
+		}
 	}
 }
 
@@ -1857,6 +1860,9 @@ curCat := classify(t, prevSigKind, prevSigText, toks, k,
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) {
 	wv.xr.addIdentUse(t.text, secNum)
+	if k, ok := wv.lookupFormat(t.text, qual); ok {
+		wv.xr.noteHead(t.text, k) // so a qualified type's head is bold too
+	}
 }
 emit(curCat, renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
 in.advance(t)
@@ -3041,6 +3047,7 @@ consulted during the real pass and when emitting the back matter.
 type xref struct {
 	identUse    map[string]map[int]bool
 	identDef    map[string]map[int]bool
+	identHead   map[string]tokKind // effective index-head class, qualifier resolved
 	sectionDefs map[string]map[int]bool
 	sectionUses map[string]map[int]bool
 	manualIndex []manualEntry
@@ -3058,6 +3065,7 @@ func newXref() *xref {
 	return &xref{
 		identUse:    map[string]map[int]bool{},
 		identDef:    map[string]map[int]bool{},
+		identHead:   map[string]tokKind{},
 		sectionDefs: map[string]map[int]bool{},
 		sectionUses: map[string]map[int]bool{},
 	}
@@ -3072,6 +3080,7 @@ func addTo(m map[string]map[int]bool, key string, sec int) {
 
 func (x *xref) addIdentUse(name string, sec int)   { addTo(x.identUse, name, sec) }
 func (x *xref) addIdentDef(name string, sec int)   { addTo(x.identDef, name, sec) }
+func (x *xref) noteHead(name string, k tokKind)    { x.identHead[name] = k }
 func (x *xref) addSectionDef(name string, sec int) { addTo(x.sectionDefs, name, sec) }
 func (x *xref) addSectionUse(name string, sec int) { addTo(x.sectionUses, name, sec) }
 func (x *xref) addManualIndex(kind byte, text string, sec int) {
@@ -3308,9 +3317,19 @@ by \.{@@f name int}) in bold, everything else italic. Setting a type's index hea
 bold is what \.{cweave} does---its \.{common.idx} lists a |typedef| like
 \.{boolean} as \.{\\I\\\&\{boolean\}}---and \.{\\KW} is \.{GWEB}'s \.{\\\&}. A use
 adds the section; a definition also flags it in |defs|.
+
+The class comes from |identHead|, filled as the tokens were indexed: it holds the
+same qualifier-resolved kind the body was set in, so \.{@@s bufio.Writer int} makes
+the head of |Writer| bold even though |wv.format| keys it under \.{bufio.Writer},
+not the bare |Writer| the index sorts by. Only names never given a format fall
+back to |wv.format|, which is empty for them, so they end up italic.
 @<Collect the identifier index entries@>=
 head := func(name string) string {
-	switch wv.format[name] {
+	kind, ok := wv.xr.identHead[name]
+	if !ok {
+		kind = wv.format[name]
+	}
+	switch kind {
 	case tkMacro:
 		return "\\MAC{" + escTT(name) + "}"
 	case tkTeXCS:
@@ -4036,6 +4055,18 @@ var hidden int
 	}
 	if !strings.Contains(out, `\II{\KW{hidden}}`) {
 		t.Errorf("@@s type used in the program is indexed bold, as cweave does:\n%s", out)
+	}
+}
+
+@ A qualified \.{@@s foo.Bar} keys the format under \.{foo.Bar}, but the index
+sorts |Bar| under its bare name. The head must still come out bold: the class is
+remembered as the token is indexed, qualifier already resolved.
+@(gweave_test.go@>=
+func TestWeaveQualifiedTypeBoldInIndex(t *testing.T) {
+	out := weaveString(t,
+		"@@s bufio.Writer int\n@@ x\n@@c\nvar w *bufio.Writer\n")
+	if !strings.Contains(out, `\II{\KW{Writer}}`) {
+		t.Errorf("a qualified type's index head should be bold:\n%s", out)
 	}
 }
 
