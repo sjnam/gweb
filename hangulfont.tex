@@ -1,0 +1,190 @@
+% hangulfont.tex -- the Hangul typeface choices for GWEB's Korean back end.
+%
+% kotexgweb.tex reads this file (\input hangulfont). Everything that names a
+% Korean typeface lives here, so switching to a different Korean font -- say from
+% Noto to another CJK family -- is a change to this one file; kotexgweb.tex need
+% not be touched. It defines the body fonts \tenmj ... \twelvemj, the math-hangul
+% fonts, the title companions \hangultitlefont/\hantitlefont, and \sectionfont.
+%
+% luatexko provides Hangul shaping (and automatic fallback, so Korean appears
+% even through gwebmac's CM fonts). The plain-TeX hangul setup is borrowed from
+% luatexko-doc.tex: a serif body (Noto Serif), a sans group/title (Noto Sans),
+% and a monospace face (Noto Sans Mono) paired with the matching CM fonts.
+%
+% Sizes.  Hangul fills nearly its whole em box while CM's lowercase reaches only
+% an unusually small x-height (0.431em, against 0.511em for the Latin that Noto
+% itself ships), so Hangul set at the nominal size looks too big next to CM.
+% Matching the ink each script actually spans -- CM's ascender-to-descender is
+% 0.889em, an average Hangul syllable 0.924em -- gives 0.962 of the Latin size;
+% against cmtt, whose span is only 0.833em, the monospace face wants 0.93.  So
+% each Hangul font below is (its CM partner's design size) times that ratio.  CM
+% keeps the same proportions at every design size (x-height is 0.431em in cmr10,
+% cmr9 and cmr8 alike), which is why a constant ratio is right and the fixed
+% -0.2pt offset used before was not: it drifted from .980 at ten point to .971
+% at seven.  The interhangul/interlatincjk/charraise settings are all in em and
+% therefore follow the size on their own; they are not restated per size.
+\input luatexko.sty
+
+\sethangulfont\tenmj="Noto Serif CJK KR Light:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default;" at 9.62pt
+\sethangulfont\tentz="Noto Sans Mono CJK KR:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.03em;%
+  +compresspunctuations;%
+  expansion=default;" at 9.3pt
+\sethangulfont\tenbd="Noto Serif CJK KR Bold:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default;" at 9.62pt
+\sethangulfont\tengt="Noto Sans CJK KR Light:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 9.62pt
+\sethangulfont\tengtd="Noto Sans CJK KR DemiLight:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 9.62pt
+
+\sethangulfont\ninemj="Noto Serif CJK KR Light:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 8.66pt
+\sethangulfont\ninetz="Noto Sans Mono CJK KR:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.03em;%
+  +compresspunctuations;%
+  expansion=default;" at 8.37pt
+\sethangulfont\ninebd="Noto Serif CJK KR Bold:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 8.66pt
+\sethangulfont\ninegt="Noto Sans CJK KR Light:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 8.66pt
+\sethangulfont\ninegtd="Noto Sans CJK KR DemiLight:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 8.66pt
+
+\sethangulfont\eightmj="Noto Serif CJK KR Light:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 7.7pt
+\sethangulfont\eighttz="Noto Sans Mono CJK KR:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.03em;%
+  +compresspunctuations;%
+  expansion=default" at 7.44pt
+\sethangulfont\eightbd="Noto Serif CJK KR Bold:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 7.7pt
+\sethangulfont\eightgt="Noto Sans CJK KR Light:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 7.7pt
+\sethangulfont\eightgtd="Noto Sans CJK KR DemiLight:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 7.7pt
+
+\sethangulfont\sevenmj="Noto Serif CJK KR Light:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 6.73pt
+
+\sethangulfont\twelvemj="Noto Serif CJK KR:%
+  language=KOR;%
+  script=hang;%
+  interhangul=-0.04em;%
+  interlatincjk=.125em;%
+  charraise=-0.06em;%
+  +compresspunctuations;%
+  expansion=default" at 11.54pt
+
+% hangul in math mode
+\font\texthangul="Noto Serif CJK KR Regular" at 9.62pt
+\font\texthangulnine="Noto Serif CJK KR Regular" at 8.66pt
+\font\texthanguleight="Noto Serif CJK KR Regular" at 7.7pt
+\font\scripthangul="Noto Serif CJK KR Regular" at 6.73pt
+\font\scripthangulsix="Noto Serif CJK KR Regular" at 5.77pt
+\font\scriptscripthangul="Noto Serif CJK KR Medium" at 4.81pt
+
+% Title companions for the contents-page title (\con) and the typewriter limbo
+% title: kotexgweb.tex pairs these Hangul faces with gwebmac's Latin \titlefont
+% and \ttitlefont. The ratios follow the body fonts', 0.962 of the serif partner
+% and 0.93 of the typewriter one.
+\sethangulfont\hangultitlefont="Noto Serif CJK KR Medium:%
+  language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
+  charraise=-0.06em;+compresspunctuations" at 13.96pt
+
+\sethangulfont\hantitlefont="Noto Sans Mono CJK KR:%
+  language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
+  charraise=-0.06em;+compresspunctuations" at 13.39pt
+
+% Korean section-heading font (overrides the manual's Latin \sectionfont).
+\font\sectionfont="Noto Sans CJK KR Light" at 18pt
