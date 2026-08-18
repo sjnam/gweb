@@ -33,7 +33,7 @@ plain TeX, not LaTeX. Beyond that:
   must be installed, providing the `tex`, `pdftex`, and `luatex` engines the
   woven output is typeset with.
 * For Korean output (`\input kotexgweb`; see [Usage](#usage)), the
-  **Noto Serif/Sans CJK KR** fonts must be installed locally — `kotexgweb.tex`
+  **Noto Serif/Sans CJK KR** fonts must be installed locally — `hangulfont.tex`
   selects them by name.
 
 ## Build
@@ -154,7 +154,8 @@ cmd/
                    pretty-printer, cross-references)
 common/            common.w -> the shared parser (CWEB's common.w)        ◇
 gwebmac.tex        TeX macros for woven output (CWEB's cwebmac.tex)
-kotexgweb.tex      Korean (luatexko) localization + fonts + LuaTeX PDF back end
+kotexgweb.tex      Korean (luatexko) localization + LuaTeX PDF back end
+hangulfont.tex     the Hangul typeface choices (\input by kotexgweb.tex)
 gweb.1             the man page for both commands (CWEB's cweb.1)
 format.md          the .w file-format reference
 gwebman.tex        the GWEB manual

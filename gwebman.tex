@@ -354,8 +354,9 @@ fonts, translates \cw{gweave}'s wording into Korean, and supplies a LuaTeX PDF
 back end so the blue cross-reference links and the bookmark outline---with
 Korean titles---keep working; \cw{gweave} itself needs no special flag. The
 fonts are selected by name, not embedded, so they must already be installed
-locally; edit the \cw{\bs sethangulfont} lines in \cw{kotexgweb.tex} if you
-want different typefaces. The \cw{rps} example is a complete web built this
+locally; the \cw{\bs sethangulfont} lines live in their own \cw{hangulfont.tex}
+(loaded by \cw{kotexgweb.tex}), so edit that one file if you want different
+typefaces. The \cw{rps} example is a complete web built this
 way, and \cw{kotexgweb.tex} is the file to copy as a model for a language of
 your own.
 
