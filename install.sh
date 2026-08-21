@@ -3,7 +3,7 @@
 #
 # Installs:
 #   gtangle, gweave        -> BINDIR        (default $PREFIX/bin)
-#   gwebmac.tex, gwebluapdf.tex, kotexgweb.tex, hangulfont.tex
+#   gwebmac.tex, kotexgweb.tex, hangulfont.tex
 #                          -> TEXMFDIR/tex/plain/gweb  (default your TEXMFHOME)
 #   gweb.1                 -> MANDIR        (default $PREFIX/share/man/man1)
 #
@@ -56,8 +56,7 @@ if [ "$uninstall" = 1 ]; then
 	echo "Uninstalling GWEB..."
 	rm -f "$BINDIR/gtangle" "$BINDIR/gweave"
 	rm -f "$MANDIR/gweb.1"
-	rm -f "$GWEBMACDIR/gwebmac.tex" "$GWEBMACDIR/gwebluapdf.tex" \
-		"$GWEBMACDIR/kotexgweb.tex" "$GWEBMACDIR/hangulfont.tex"
+	rm -f "$GWEBMACDIR/gwebmac.tex" "$GWEBMACDIR/kotexgweb.tex" "$GWEBMACDIR/hangulfont.tex"
 	rmdir "$GWEBMACDIR" 2>/dev/null || true
 	[ -f "$TEXMFDIR/ls-R" ] && command -v mktexlsr >/dev/null 2>&1 && mktexlsr "$TEXMFDIR" >/dev/null 2>&1 || true
 	echo "Removed gtangle, gweave, the man page, and the TeX macros."
@@ -80,9 +79,6 @@ mkdir -p "$BINDIR"
 echo "Installing TeX macros into $GWEBMACDIR ..."
 mkdir -p "$GWEBMACDIR"
 cp gwebmac.tex "$GWEBMACDIR/gwebmac.tex"
-# gwebmac.tex \inputs gwebluapdf.tex by itself under luatex (for the blue links
-# and PDF bookmarks a luatex web would otherwise lack), so it must travel along.
-cp gwebluapdf.tex "$GWEBMACDIR/gwebluapdf.tex"
 # Korean (luatexko) support: kotexgweb.tex is loaded from a .w file's limbo,
 # and it \inputs hangulfont.tex, so both must sit on TeX's search path.
 # Harmless to install even if you never write Korean webs.
@@ -98,7 +94,7 @@ echo
 echo "Done. Installed:"
 echo "  $BINDIR/gtangle"
 echo "  $BINDIR/gweave"
-echo "  $GWEBMACDIR/gwebmac.tex, gwebluapdf.tex, kotexgweb.tex, hangulfont.tex"
+echo "  $GWEBMACDIR/gwebmac.tex, kotexgweb.tex, hangulfont.tex"
 echo "  $MANDIR/gweb.1"
 echo
 case ":$PATH:" in

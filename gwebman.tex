@@ -270,19 +270,18 @@ to limbo marks nothing, having no section of its own.
 \section{Hyperlinks and bookmarks}
 Section numbers shown as references, in the index, in cross-reference notes, and
 on the contents page become links, and the starred sections form a PDF outline.
-Three back ends produce them:
+Two back ends produce them, exactly as in \.{CWEB}:
 
-\bull with \cw{pdftex} in PDF mode, the engine's own primitives, as in \.{CWEB};
-
-\bull with \cw{luatex} in PDF mode, its \cw{\bs pdfextension} forms---\cw{luatex}
-has none of the \cw{\bs pdf} primitives, so \cw{gwebmac.tex} loads its \cw{luatex}
-back end (\cw{gwebluapdf.tex}) by itself the moment it sees such a run. A web that
-must be woven for \cw{luatex}---one drawing MetaPost figures through
-\cw{luamplib}, say, or a Korean web---thus gets the same links and outline a
-\cw{pdftex} run gives, with nothing to ask for;
+\bull the engine's PDF primitives, in PDF mode. \cw{pdftex} has them directly;
+\cw{luatex} has none of the \cw{\bs pdf} primitives---they became spellings of
+its \cw{\bs pdfextension}---so \cw{gwebmac.tex} shims those names onto
+\cw{\bs pdfextension} when it finds itself on a \cw{luatex} PDF run, and the same
+code path serves both. A web that must be woven for \cw{luatex}---one drawing
+MetaPost figures through \cw{luamplib}, say, or a Korean web---thus gets the same
+links and outline a \cw{pdftex} run gives, with nothing to ask for;
 
 \bull through DVI, by requesting the \cw{\bs special} back end with
-\cw{\bs let\bs pdf+} and converting the result with \cw{dvipdfmx}, as in \.{CWEB}.
+\cw{\bs let\bs pdf+} and converting the result with \cw{dvipdfmx}.
 
 \noindent A plain DVI run with no \cw{\bs pdf} simply omits the links and outline.
 
@@ -358,9 +357,10 @@ luatex foo.tex
 |endcode
 \cw{kotexgweb.tex} loads \cw{luatexko} and the Noto Serif/Sans CJK\thinspace KR
 fonts and translates \cw{gweave}'s wording into Korean; the blue cross-reference
-links and the bookmark outline---with Korean titles---come from \cw{gwebmac}'s own
-\cw{luatex} back end (see {\it Hyperlinks and bookmarks\/} above), which every
-\cw{luatex} run gets. \cw{gweave} itself needs no special flag. The
+links and the bookmark outline already work under \cw{luatex} through
+\cw{gwebmac} itself (see {\it Hyperlinks and bookmarks\/} above), and
+\cw{kotexgweb.tex} adds only the UTF-16BE conversion the Korean outline titles
+need. \cw{gweave} itself needs no special flag. The
 fonts are selected by name, not embedded, so they must already be installed
 locally; the \cw{\bs sethangulfont} lines live in their own \cw{hangulfont.tex}
 (loaded by \cw{kotexgweb.tex}), so edit that one file if you want different

@@ -154,7 +154,6 @@ cmd/
                    pretty-printer, cross-references)
 common/            common.w -> the shared parser (CWEB's common.w)        ◇
 gwebmac.tex        TeX macros for woven output (CWEB's cwebmac.tex)
-gwebluapdf.tex     the LuaTeX PDF back end (links + bookmarks; \input by gwebmac)
 kotexgweb.tex      Korean (luatexko) localization
 hangulfont.tex     the Hangul typeface choices (\input by kotexgweb.tex)
 gweb.1             the man page for both commands (CWEB's cweb.1)
@@ -208,12 +207,12 @@ bootstrap`, `make selfdoc`) works, see the manual as well.
   index, in a cross-reference note, or on the contents page is a blue link to that
   section; clicking it jumps there (for the underlined index entries, to where the
   identifier is defined). The starred sections also become a PDF outline (bookmark
-  tree), nested by their `@*`, `@*1`, `@*2` depths. Three back ends produce these:
-  `pdftex` in PDF mode uses the engine's own primitives; `luatex` in PDF mode uses
-  its `\pdfextension` forms (`gwebmac.tex` loads that back end, `gwebluapdf.tex`, by
-  itself — so a web woven for `luatex`, e.g. for `luamplib` figures or Korean, gets
-  the links and outline too); and the DVI route emits `\special{pdf:…}` commands
-  for `dvipdfmx` when you ask for them with `\let\pdf+` (the same convention as
+  tree), nested by their `@*`, `@*1`, `@*2` depths. Two back ends produce these:
+  the engine's PDF primitives in PDF mode — `pdftex` has them directly, and under
+  `luatex` `gwebmac.tex` shims them onto `\pdfextension` (as **CWEB** does), so a
+  web woven for `luatex`, e.g. for `luamplib` figures or Korean, gets the links
+  and outline too; and the DVI route, which emits `\special{pdf:…}` commands for
+  `dvipdfmx` when you ask for them with `\let\pdf+` (the same convention as
   **CWEB**). With a plain DVI engine and no `\let\pdf+`, they are simply omitted.
 
 ## License

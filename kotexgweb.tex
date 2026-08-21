@@ -3,9 +3,9 @@
 % Put  \input kotexgweb.tex  in the limbo of a .w file and process the woven
 % output with luatex (not pdftex):  luatex foo.tex.  gweave emits
 % "\input gwebmac" as the very first line, so this file is read afterwards and
-% overrides gwebmac wherever Korean text needs it. The blue links and PDF
-% bookmarks are not our concern here: gwebmac itself loads its LuaTeX back end
-% (gwebluapdf.tex) once it sees a luatex run, so this file inherits them.
+% overrides gwebmac wherever Korean text needs it. The blue links and the PDF
+% outline already work under luatex through gwebmac itself; the one thing left
+% to Korean is UTF-16BE bookmark titles, at the end of this file.
 %
 % Requires luatexko and the Noto Serif/Sans CJK KR fonts. The Hangul typefaces
 % are set in hangulfont.tex (\input below); edit that file alone to change them.
@@ -222,3 +222,49 @@
 % in serif hangul (\ninemj, Noto Serif) here too, to match. A default job-name
 % title keeps the sans of the group titles, since it reads like one of them.
 \def\Gtitlefont{\headfont}
+
+% ---- Korean PDF bookmarks (UTF-16BE outline titles) -------------------------
+% gwebmac already made the blue links and the outline work under luatex (it
+% shims the \pdf... primitives; see its "hyperlinks" section). Only the outline
+% titles need us: a PDF outline title must be a UTF-16BE string, and luatex
+% writes gwebmac's \bookmark argument as raw bytes, so a Korean title would come
+% out as mojibake. We convert it with a small Lua helper, gweb_pdfutf16(s),
+% which prints s as the body of a PDF literal string: the UTF-16BE byte-order
+% mark followed by each code unit as a pair of octal-escaped bytes
+% (surrogate-paired above the BMP). ASCII passes through it unharmed.
+%
+% The helper is built inline. Two cautions about Lua inside \directlua: (1) the
+% TeX-special characters % # _ & ^ ~ $ are made catcode 12 below (% is Lua's
+% modulo operator, not a TeX comment; # is its length operator), and the
+% backslash is produced as string.char(92) so none appears in the source; and
+% (2) \directlua turns the source's newlines into spaces, so a Lua "--" comment
+% would run to the end of the whole chunk -- hence there are none here.
+\begingroup
+\catcode`\%=12 \catcode`\#=12 \catcode`\_=12 \catcode`\&=12
+\catcode`\^=12 \catcode`\~=12 \catcode`\$=12
+\directlua{
+  local function oct(v)
+    local d1 = math.floor(v / 64); v = v % 64
+    local d2 = math.floor(v / 8); local d3 = v % 8
+    return tostring(d1) .. tostring(d2) .. tostring(d3)
+  end
+  function gweb_pdfutf16(s)
+    local bs = string.char(92)
+    local t = { bs .. oct(254) .. bs .. oct(255) }
+    for _, c in utf8.codes(s) do
+      if c >= 65536 then
+        c = c - 65536
+        local w1 = 55296 + math.floor(c / 1024)
+        local w2 = 56320 + (c % 1024)
+        t[#t + 1] = bs .. oct(math.floor(w1 / 256)) .. bs .. oct(w1 % 256)
+        t[#t + 1] = bs .. oct(math.floor(w2 / 256)) .. bs .. oct(w2 % 256)
+      else
+        t[#t + 1] = bs .. oct(math.floor(c / 256)) .. bs .. oct(c % 256)
+      end
+    end
+    tex.sprint(-2, table.concat(t))
+  end
+}
+\endgroup
+\def\bookmark#1#2#3#4{\pdfoutline goto num #2 count #3
+  {\directlua{gweb_pdfutf16("\luaescapestring{#4}")}}}
