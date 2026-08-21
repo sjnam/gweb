@@ -181,7 +181,13 @@
 % Each section deposits a numbered destination; section numbers shown as
 % references, in the index, in cross-reference notes, and in the contents link
 % to those destinations, drawn in blue like cweave. Two back ends are supported:
-%   * pdfTeX/luaTeX primitives, when producing PDF directly (\pdfoutput>0);
+%   * pdfTeX primitives, when producing PDF directly with pdfTeX (\pdfoutput>0);
+%   * luatex's \pdfextension forms, when producing PDF with luatex -- luatex has
+%     none of the \pdf... primitives, so its back end lives in gwebluapdf.tex,
+%     which this file \inputs by itself the moment it sees a luatex PDF run. A
+%     web that needs luatex (say, for luamplib figures) thus gets links and
+%     bookmarks with nothing to ask for; a Korean web gets them the same way,
+%     through kotexgweb.tex's own \input gwebmac.
 %   * \special{pdf:...} commands for the  tex -> dvipdfmx  route. As in cweb,
 %     that route is requested by defining \pdf, e.g.
 %         tex "\let\pdf+ \input foo.tex"   then   dvipdfmx foo.dvi
@@ -189,10 +195,12 @@
 % For the dvipdfmx route, destinations are named with roman numerals (as in
 % cwebmac); links and bookmarks reference those names, so they work even though
 % gweave emits all the bookmarks together at the end of the document.
-\newif\ifpdf      % native pdfTeX/luaTeX PDF output
+\newif\ifpdf      % native pdfTeX PDF output
 \newif\ifdvipdf   % dvipdfmx \special{pdf:...} route
+\newif\ifluapdf   % luatex \pdfextension PDF output
 \ifx\pdfoutput\undefined\else\ifnum\pdfoutput>0 \pdftrue\fi\fi
-\ifpdf\else\ifx\pdf\undefined\else\dvipdftrue\fi\fi
+\ifx\pdfextension\undefined\else\ifnum\outputmode>0 \luapdftrue\fi\fi
+\ifpdf\else\ifluapdf\else\ifx\pdf\undefined\else\dvipdftrue\fi\fi\fi
 \newbox\linkbox
 \def\dest#1{%
   \ifpdf \pdfdest num #1 fith\relax
@@ -247,6 +255,11 @@
   \else #1 ({\tt#2})\fi\fi}
 {\catcode`\~=12 \gdef\TILDE/{~}} % ~ in a URL
 {\catcode`\_=12 \gdef\UNDER/{_}} % _ in a URL
+% Under luatex the four macros just defined are no-ops (neither \ifpdf nor
+% \ifdvipdf holds); gwebluapdf.tex restates them with \pdfextension. Loaded
+% here, after the defaults, so its definitions win. The \input sits inside the
+% conditional, so pdfTeX never reads (nor tokenizes) the Lua-laden file.
+\ifluapdf\input gwebluapdf \fi
 % \runheadline places \runhead like plain TeX's \makeheadline, for use inside
 % the index's custom \shipout (where the plain \headline machinery is bypassed).
 % It is deliberately not named \makeheadline: plain TeX's own \makeheadline is
