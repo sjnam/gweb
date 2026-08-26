@@ -240,10 +240,16 @@
 \def\s#1{\link{#1}{#1}}                        % a linked section number
 \def\sD#1{\link{#1}{$\underline{\hbox{#1}}$}}  % linked + underlined (definition)
 % Starred forms, for a section a change file touched: only the number is linked;
-% \lapstar (defined below) laps cweave's star past it, outside the link, so the
-% star is plain black rather than part of the blue hyperlink, as in cweave.
-\def\ss#1{\link{#1}{#1}\lapstar}
-\def\sDs#1{\link{#1}{$\underline{\hbox{#1}}$}\lapstar}
+% \xrefstar sits past it, outside the link, so the star is plain black rather than
+% part of the blue hyperlink, as in cweave. \xrefstar is a normal-width star by
+% default---in a cross-reference note the number is hugged by the following word
+% (``19*절'', ``19*.''), which a zero-width lapping star would collide with. The
+% index sets it to \lapstar (below), where the entry is followed by a comma the
+% star may lap into, so the columns line up on the digits. This is cweave's
+% \let\*=* / \let\*=\lapstar split, kept inside the macro instead of a bare token.
+\def\xrefstar{*}
+\def\ss#1{\link{#1}{#1}\xrefstar}
+\def\sDs#1{\link{#1}{$\underline{\hbox{#1}}$}\xrefstar}
 % A PDF outline (bookmark) entry: #1 group depth, #2 section number, #3 number of
 % direct children (pdfTeX's open/close model), #4 the plain-text title. The
 % dvipdfmx route nests by depth and links to the named destination.
@@ -529,6 +535,7 @@
   \begingroup
   \baselineskip=12pt \parindent=0pt \parskip=1pt plus .5pt \rm
   \rightskip=0pt plus 2.5em \tolerance=10000 \hyphenpenalty=10000
+  \let\xrefstar=\lapstar        % index entries lap the star into the following comma
   \fi}
 \def\II#1#2{\ifinx\noindent\hangindent2em #1:\kern.5em #2.\par\fi} % index entry
 \def\IR#1{{\rm #1}}                          % @^...@>  roman index entry
