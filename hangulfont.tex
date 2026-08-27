@@ -24,147 +24,159 @@
 % at seven.  The interhangul/interlatincjk/charraise settings are all in em and
 % therefore follow the size on their own; they are not restated per size.
 \input luatexko.sty
+% Deferred loading.  \font reads the font the moment it runs, so without this
+% every face named below is read at startup whether or not the document ever
+% selects it -- some two seconds of a run, most of it for faces nobody asked
+% for.  So we hold the specification as text and run the real \font on the
+% switch's first use; a document pays only for what it sets.  \globaldefs makes
+% that first load outlive whatever group we happen to be in (the first use is
+% usually inside one, as in {\tenbd ...}), so each face is still read once per
+% run.  The six math fonts below stay eager: \setmathhangulfonts wants real
+% font identifiers to hand to \textfont, and cannot take a macro.
+\def\lazyhangulfont#1#2{\protected\gdef#1{\lazyhfload#1{#2}}}
+\def\lazyhfload#1#2{\begingroup\globaldefs=1 \sethangulfont#1#2\endgroup #1}
+\def\lazyplainfont#1#2{\protected\gdef#1{\begingroup\globaldefs=1 \font#1#2\endgroup #1}}
 
-\sethangulfont\tenmj="Noto Serif CJK KR Light:%
+\lazyhangulfont\tenmj{="Noto Serif CJK KR Light:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default;" at 9.62pt
-\sethangulfont\tentz="Noto Sans Mono CJK KR:%
+  expansion=default;" at 9.62pt}
+\lazyhangulfont\tentz{="Noto Sans Mono CJK KR:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.03em;%
   +compresspunctuations;%
-  expansion=default;" at 9.3pt
-\sethangulfont\tenbd="Noto Serif CJK KR Bold:%
+  expansion=default;" at 9.3pt}
+\lazyhangulfont\tenbd{="Noto Serif CJK KR Bold:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default;" at 9.62pt
-\sethangulfont\tengt="Noto Sans CJK KR Light:%
+  expansion=default;" at 9.62pt}
+\lazyhangulfont\tengt{="Noto Sans CJK KR Light:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 9.62pt
-\sethangulfont\tengtd="Noto Sans CJK KR DemiLight:%
+  expansion=default" at 9.62pt}
+\lazyhangulfont\tengtd{="Noto Sans CJK KR DemiLight:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 9.62pt
+  expansion=default" at 9.62pt}
 
-\sethangulfont\ninemj="Noto Serif CJK KR Light:%
+\lazyhangulfont\ninemj{="Noto Serif CJK KR Light:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 8.66pt
-\sethangulfont\ninetz="Noto Sans Mono CJK KR:%
+  expansion=default" at 8.66pt}
+\lazyhangulfont\ninetz{="Noto Sans Mono CJK KR:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.03em;%
   +compresspunctuations;%
-  expansion=default;" at 8.37pt
-\sethangulfont\ninebd="Noto Serif CJK KR Bold:%
+  expansion=default;" at 8.37pt}
+\lazyhangulfont\ninebd{="Noto Serif CJK KR Bold:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 8.66pt
-\sethangulfont\ninegt="Noto Sans CJK KR Light:%
+  expansion=default" at 8.66pt}
+\lazyhangulfont\ninegt{="Noto Sans CJK KR Light:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 8.66pt
-\sethangulfont\ninegtd="Noto Sans CJK KR DemiLight:%
+  expansion=default" at 8.66pt}
+\lazyhangulfont\ninegtd{="Noto Sans CJK KR DemiLight:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 8.66pt
+  expansion=default" at 8.66pt}
 
-\sethangulfont\eightmj="Noto Serif CJK KR Light:%
+\lazyhangulfont\eightmj{="Noto Serif CJK KR Light:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 7.7pt
-\sethangulfont\eighttz="Noto Sans Mono CJK KR:%
+  expansion=default" at 7.7pt}
+\lazyhangulfont\eighttz{="Noto Sans Mono CJK KR:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.03em;%
   +compresspunctuations;%
-  expansion=default" at 7.44pt
-\sethangulfont\eightbd="Noto Serif CJK KR Bold:%
+  expansion=default" at 7.44pt}
+\lazyhangulfont\eightbd{="Noto Serif CJK KR Bold:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 7.7pt
-\sethangulfont\eightgt="Noto Sans CJK KR Light:%
+  expansion=default" at 7.7pt}
+\lazyhangulfont\eightgt{="Noto Sans CJK KR Light:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 7.7pt
-\sethangulfont\eightgtd="Noto Sans CJK KR DemiLight:%
+  expansion=default" at 7.7pt}
+\lazyhangulfont\eightgtd{="Noto Sans CJK KR DemiLight:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 7.7pt
+  expansion=default" at 7.7pt}
 
-\sethangulfont\sevenmj="Noto Serif CJK KR Light:%
+\lazyhangulfont\sevenmj{="Noto Serif CJK KR Light:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 6.73pt
+  expansion=default" at 6.73pt}
 
-\sethangulfont\twelvemj="Noto Serif CJK KR:%
+\lazyhangulfont\twelvemj{="Noto Serif CJK KR:%
   language=KOR;%
   script=hang;%
   interhangul=-0.04em;%
   interlatincjk=.125em;%
   charraise=-0.06em;%
   +compresspunctuations;%
-  expansion=default" at 11.54pt
+  expansion=default" at 11.54pt}
 
 % hangul in math mode
 \font\texthangul="Noto Serif CJK KR Regular" at 9.62pt
@@ -178,13 +190,13 @@
 % title: kotexgweb.tex pairs these Hangul faces with gwebmac's Latin \titlefont
 % and \ttitlefont. The ratios follow the body fonts', 0.962 of the serif partner
 % and 0.93 of the typewriter one.
-\sethangulfont\hangultitlefont="Noto Serif CJK KR Medium:%
+\lazyhangulfont\hangultitlefont{="Noto Serif CJK KR Medium:%
   language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
-  charraise=-0.06em;+compresspunctuations" at 13.96pt
+  charraise=-0.06em;+compresspunctuations" at 13.96pt}
 
-\sethangulfont\hantitlefont="Noto Sans Mono CJK KR:%
+\lazyhangulfont\hantitlefont{="Noto Sans Mono CJK KR:%
   language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
-  charraise=-0.06em;+compresspunctuations" at 13.39pt
+  charraise=-0.06em;+compresspunctuations" at 13.39pt}
 
 % Korean section-heading font (overrides the manual's Latin \sectionfont).
-\font\sectionfont="Noto Sans CJK KR Light" at 18pt
+\lazyplainfont\sectionfont{="Noto Sans CJK KR Light" at 18pt}
