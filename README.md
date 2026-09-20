@@ -134,12 +134,17 @@ the tools. For **GWEB** used in earnest, see the companion repository:
 **[sjnam/gweb-examples](https://github.com/sjnam/gweb-examples)** — thirty-odd
 standalone literate Go programs, plus two curated collections that work through a
 single technique across several problems (`cdq-dc/`, CDQ divide-and-conquer;
-`cht/`, the convex hull trick). The programs range over algorithms and data
-structures (`ntt.w`, `ziptree.w`, `suffixautomaton.w`, `runningmedian.w`),
-concurrency (`fast_cancel.w`, `pmap.w`, `pipeline.w`), and competitive-programming
-solutions. Several are written in Korean via `\input kotexgweb`, and some carry
-MetaPost figures — so the repository doubles as a demonstration of what a
-finished **GWEB** document can look like.
+`cht/`, the convex hull trick) and three small multi-file projects
+(`guitar-tuner/`, `life-game/`, `skew-ternary/`). The programs lean toward
+combinatorial search and exact cover (`back-pi-day.w`, `dlx-pre.w`,
+`word-cube-dlx.w`), graph algorithms (`tarjan-strong.w`, `hopcroft-karp.w`,
+`matula.w`), combinatorial generation (`koda-ruskey.w`, `ulam-gibbs.w`), and
+number theory and data structures (`ntt.w`, `prjeuler152.w`, `ziptree.w`), with
+the odd literary detour — `perec.w` retraces the knight's tour behind Perec's
+*Life A User's Manual*. They are written in Korean via `\input kotexgweb`, and
+most carry MetaPost figures drawn during typesetting by `luamplib`, so the
+repository doubles as a demonstration of what a finished **GWEB** document can
+look like — and of the Korean and LuaTeX support described above.
 
 ## How it is organized
 
