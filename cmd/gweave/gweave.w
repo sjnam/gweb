@@ -3286,11 +3286,11 @@ if i+1 < n {
 
 @ The text logos \.{gweave} may meet in a title, each with the plain-text form
 \.{CWEB} gives it in an outline. They are the slash-delimited macros of
-\.{gwebmac.tex} (\.{\\CEE/}, \.{\\GO/}, \.{\\UNIX/}, \.{\\TEX/}), so the
-terminating \.{/} is swallowed after the substitution.
+\.{gwebmac.tex} (\.{\\CEE/}, \.{\\GO/}, \.{\\UNIX/}, \.{\\TEX/},
+\.{\\CPLUSPLUS/}), so the terminating \.{/} is swallowed after the substitution.
 @<Reduce a title for the outline@>=
 var bookmarkLogos = map[string]string{
-	"CEE": "C", "GO": "Go", "UNIX": "UNIX", "TEX": "TeX",
+	"CEE": "C", "GO": "Go", "UNIX": "UNIX", "TEX": "TeX", "CPLUSPLUS": "C++",
 }
 
 @ The index. Each |indexItem| collects the sections where an entry appears (the
@@ -4665,6 +4665,7 @@ func TestBookmarkTitle(t *testing.T) {
 		"\\TEX/ escaping":      "TeX escaping",
 		"The \\GO/ way":        "The Go way",
 		"\\CEE/ and \\UNIX/":   "C and UNIX",
+		"From \\CPLUSPLUS/":    "From C++",
 		"drop \\unknown macro": "drop  macro",
 	}
 	for in, want := range cases {
