@@ -268,8 +268,8 @@ func (wv *Weaver) scanAllCode(visit func([]token)) {
 detector, and each of |type|/|var|/|const| for the index's definition sites),
 reports the {\it index\/} of every name the declaration introduces---the caller
 reads off the name or marks the site as it likes. The keyword followed by |(|
-opens a parenthesized group of declarations, each naming an entry on its own line;
-|scanDeclGroup| reports those until the matching |)|, tracking brace and bracket
+opens a parenthesized group of declarations, each naming an entry on its own line
+or after a |;|; |scanDeclGroup| reports those until the matching |)|, tracking brace and bracket
 nesting so that struct fields are not mistaken for names. (A |type| inside a type
 switch, |x.(type)|, is followed by |)| and so names nothing.)
 @<Scan a declaration group@>=
@@ -312,9 +312,10 @@ func prevSignificant(toks []token, i int) int {
 }
 
 @ |scanDeclGroup| reports the index of each name in a parenthesized declaration
-group---each entry that starts a line at the group's own nesting level---tracking
+group---each entry that starts a spec at the group's own nesting level---tracking
 brace and bracket depth so that struct fields and the like are not mistaken for
-names.
+names. A spec starts a line or follows a |;|: \GO/ ends a spec at either, so a
+dense table like \.{TRAP = iota; FCMP; FUN} declares three names, not one.
 @<Scan a declaration group@>=
 func scanDeclGroup(toks []token, i int, add func(int)) int {
 	depth := 0
@@ -329,6 +330,11 @@ func scanDeclGroup(toks []token, i int, add func(int)) int {
 			// keep |atStart|
 		case tkOp:
 			switch t.text {
+			case ";":
+				if depth == 0 { // |A; B| on one line: |B| opens a spec too
+					atStart = true
+					continue
+				}
 			case "(", "{", "[":
 				depth++
 			case ")":
@@ -394,9 +400,9 @@ func scanIotaConsts(toks []token, add func(int)) {
 	}
 }
 
-@ |constGroupUsesIota| judges a group by its first spec line alone: if |iota|
-appears there, before the line ends at the group's own nesting level, the group
-is an enumeration. Blank and comment lines ahead of the first spec are skipped,
+@ |constGroupUsesIota| judges a group by its first spec alone: if |iota|
+appears there, before the spec ends (at a newline or a |;|) at the group's own
+nesting level, the group is an enumeration. Blank and comment lines ahead of the first spec are skipped,
 and brace and bracket nesting is tracked so a composite value cannot end the line
 early.
 @<Detect |iota| constant declarations@>=
@@ -413,6 +419,13 @@ func constGroupUsesIota(toks []token, i int) bool {
 			// not part of the spec proper
 		case tkOp:
 			switch t.text {
+			case ";":
+				if depth == 0 { // ends the spec, just as a newline does
+					if seen {
+						return false
+					}
+					continue
+				}
 			case "(", "{", "[":
 				depth++
 			case ")":
@@ -4167,6 +4180,20 @@ func TestWeaveIotaConst(t *testing.T) {
 	for _, name := range []string{"Pi", "Limit", "Color"} {
 		if !strings.Contains(out, `\ID{`+name+`}`) {
 			t.Errorf("%s should stay italic:\n%s", name, out)
+		}
+	}
+}
+
+@ A dense opcode table puts several specs on one line, split by |;|, as in
+\.{TRAP = iota; FCMP; FUN}. Every name there is an |iota| constant and a
+definition, not only the one that starts the line.
+@(gweave_test.go@>=
+func TestWeaveIotaConstSemicolons(t *testing.T) {
+	out := weaveString(t, "\\input gwebmac\n@@ x\n@@c\n"+
+		"const (\n\tTRAP = iota; FCMP; FUN\n\tFLOT; FLOTI\n)\n")
+	for _, name := range []string{"TRAP", "FCMP", "FUN", "FLOT", "FLOTI"} {
+		if !strings.Contains(out, `\II{\MAC{`+name+`}}{\sD{1}}`) {
+			t.Errorf("%s should be a typewriter definition:\n%s", name, out)
 		}
 	}
 }
