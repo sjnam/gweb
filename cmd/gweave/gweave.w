@@ -3174,9 +3174,10 @@ func (x *xref) addManualIndex(kind byte, text string, sec int) {
 
 @ |sortedKeys| orders a section set, and |secList| renders it as hyperlinks with
 the defining sections underlined. A section a change file touched has its number
-starred wherever it is cited, exactly as \.{cweave} does: the plain \.{\\s}/\.{\\sD}
-macros give way to their starred forms \.{\\ss}/\.{\\sDs}, which lap \.{cweave}'s
-star past the number.
+starred wherever it is cited, exactly as \.{cweave} does: the plain
+\.{\\SN}/\.{\\SND} macros give way to their starred forms \.{\\SNs}/\.{\\SNDs},
+which set \.{cweave}'s star past the number---lapped into the comma in the index,
+at full width in a note, where a word follows it.
 @<Render a section list@>=
 func sortedKeys(m map[int]bool) []int {
 	ks := make([]int, 0, len(m))
@@ -3191,9 +3192,9 @@ func (wv *Weaver) secList(secs, def map[int]bool) string {
 	nums := sortedKeys(secs)
 	parts := make([]string, len(nums))
 	for i, n := range nums {
-		mac := "\\s"
+		mac := "\\SN"
 		if def != nil && def[n] {
-			mac = "\\sD"
+			mac = "\\SND"
 		}
 		if n >= 1 && n <= len(wv.w.Sections) && wv.w.Sections[n-1].Changed {
 			mac += "s"
@@ -3224,7 +3225,7 @@ func (wv *Weaver) writeBackMatter(bw *bufio.Writer) {
 change file altered, headed ``The following sections were changed by the change
 file.'' Each number links to its section, as \.{cweave}'s \.{\\pdfnote} makes it,
 but wears no star (the whole list is about change), so we join them as plain
-\.{\\s} links---not the starred \.{\\ss}---and hand them to the \.{\\ch} macro,
+\.{\\SN} links---not the starred \.{\\SNs}---and hand them to the \.{\\ch} macro,
 whose wording a localization file can translate.
 @<List the sections a change file touched@>=
 var b strings.Builder
@@ -3233,7 +3234,7 @@ for _, sec := range wv.w.Sections {
 		if b.Len() > 0 {
 			b.WriteString(", ")
 		}
-		fmt.Fprintf(&b, "\\s{%d}", sec.Number)
+		fmt.Fprintf(&b, "\\SN{%d}", sec.Number)
 	}
 }
 if b.Len() > 0 {
@@ -3664,7 +3665,7 @@ func TestWeaveSectionClosesConditional(t *testing.T) {
 @ A section a change file touched (|Changed|) opens with \.{\\Ms} (or \.{\\Ns} when
 starred) instead of \.{\\M}/\.{\\N}, so \.{gwebmac} prints \.{cweave}'s star beside
 its number; an untouched section keeps the plain opener. As \.{cweave} does, the
-mark also follows the number wherever it is cited (\.{\\ss}/\.{\\sDs} in the
+mark also follows the number wherever it is cited (\.{\\SNs}/\.{\\SNDs} in the
 index), the final section is starred once anything is, and a small-font roster
 (\.{\\ch}) lists the touched sections just before the index.
 @(gweave_test.go@>=
@@ -3686,10 +3687,10 @@ func TestWeaveChangedSectionStar(t *testing.T) {
 	if !strings.Contains(out, `\Ns{0}{3}{Index}`) {
 		t.Errorf("index section should be starred once anything changed:\n%s", out)
 	}
-	if !strings.Contains(out, `\ch{\s{2}, \s{3}}`) {
+	if !strings.Contains(out, `\ch{\SN{2}, \SN{3}}`) {
 		t.Errorf("roster should be linked and unstarred:\n%s", out)
 	}
-	if !strings.Contains(out, `\ss{2}`) {
+	if !strings.Contains(out, `\SNs{2}`) {
 		t.Errorf("a changed section's number should be starred in the index:\n%s", out)
 	}
 }
@@ -3852,9 +3853,9 @@ println(x)
 println(x + 1)
 `)
 	checks := []string{
-		`\II{\ID{main}}{\sD{1}}`, // main defined (underlined) in section 1
+		`\II{\ID{main}}{\SND{1}}`, // main defined (underlined) in section 1
 		`\II{\ID{x}}{`,            // x indexed
-		`\sD{1}`,                   // x defined via := in section 1
+		`\SND{1}`,                   // x defined via := in section 1
 		`\NS{use x}`,               // named section in the list
 		`\U{`,                      // "used in" note
 		`\A{`,                      // "also defined in" note (two def sites)
@@ -4170,16 +4171,16 @@ func TestWeaveTypeBoldInIndex(t *testing.T) {
 }
 
 @ A name declared inside a parenthesized |var|/|const|/|type| group is a
-definition, so the index underlines it (\.{\\sD}), just as it would the same
+definition, so the index underlines it (\.{\\SND}), just as it would the same
 declaration written on one line---even though the keyword is lines away.
 @(gweave_test.go@>=
 func TestWeaveGroupedDeclIsDefinition(t *testing.T) {
 	out := weaveString(t,
 		"@@ x\n@@c\ntype (\n\tMeter float64\n)\nvar (\n\ttotal int\n)\n")
-	if !strings.Contains(out, `\II{\KW{Meter}}{\sD{1}}`) {
+	if !strings.Contains(out, `\II{\KW{Meter}}{\SND{1}}`) {
 		t.Errorf("a grouped type should be an underlined definition:\n%s", out)
 	}
-	if !strings.Contains(out, `\II{\ID{total}}{\sD{1}}`) {
+	if !strings.Contains(out, `\II{\ID{total}}{\SND{1}}`) {
 		t.Errorf("a grouped var should be an underlined definition:\n%s", out)
 	}
 }
@@ -4288,17 +4289,17 @@ func TestWeaveNameListDefinitions(t *testing.T) {
 		"func f() {\n\tqa, qb := 1, 2\n\tfor ka, va := range m {\n\t}\n}\n"+
 		"@@ y\n@@c\nfunc g() {\n\tqa, qb = qb, qa\n}\n")
 	for _, name := range []string{"La", "Lb", "Ca", "Cb", "Pa", "Pb", "ka", "va"} {
-		if !strings.Contains(out, `\II{\ID{`+name+`}}{\sD{1}}`) {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\SND{1}}`) {
 			t.Errorf("%s should be a definition:\n%s", name, out)
 		}
 	}
 	for _, name := range []string{"qa", "qb"} {
-		if !strings.Contains(out, `\II{\ID{`+name+`}}{\sD{1}, \s{2}}`) {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\SND{1}, \SN{2}}`) {
 			t.Errorf("%s: defined by := in 1, only assigned in 2:\n%s", name, out)
 		}
 	}
 	for _, name := range []string{"Ra", "Rb"} {
-		if !strings.Contains(out, `\II{\ID{`+name+`}}{\s{1}}`) {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\SN{1}}`) {
 			t.Errorf("%s on the right of = should be a use:\n%s", name, out)
 		}
 	}
@@ -4315,11 +4316,11 @@ func TestWeaveProseUnderline(t *testing.T) {
 		t.Errorf("@@! should print nothing:\n%s", out)
 	}
 	for _, name := range []string{"L", "H"} {
-		if !strings.Contains(out, `\II{\ID{`+name+`}}{\sD{1}`) {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\SND{1}`) {
 			t.Errorf("@@!|%s| should index section 1 as a definition:\n%s", name, out)
 		}
 	}
-	if !strings.Contains(out, `\II{\ID{G}}{\s{1}`) {
+	if !strings.Contains(out, `\II{\ID{G}}{\SN{1}`) {
 		t.Errorf("an unmarked |G| stays a use:\n%s", out)
 	}
 }
@@ -4332,7 +4333,7 @@ func TestWeaveIotaConstSemicolons(t *testing.T) {
 	out := weaveString(t, "\\input gwebmac\n@@ x\n@@c\n"+
 		"const (\n\tTRAP = iota; FCMP; FUN\n\tFLOT; FLOTI\n)\n")
 	for _, name := range []string{"TRAP", "FCMP", "FUN", "FLOT", "FLOTI"} {
-		if !strings.Contains(out, `\II{\MAC{`+name+`}}{\sD{1}}`) {
+		if !strings.Contains(out, `\II{\MAC{`+name+`}}{\SND{1}}`) {
 			t.Errorf("%s should be a typewriter definition:\n%s", name, out)
 		}
 	}
@@ -4507,7 +4508,7 @@ indexed as a definition, so its section number is underlined in the index.
 @(gweave_test.go@>=
 func TestWeaveForceDefinition(t *testing.T) {
 	out := weaveString(t, "@@ x\n@@c\nfunc f() { use(@@!foo) }\n")
-	if !strings.Contains(out, `\II{\ID{foo}}{\sD{1}}`) {
+	if !strings.Contains(out, `\II{\ID{foo}}{\SND{1}}`) {
 		t.Errorf("@@! should index foo as a definition (underlined):\n%s", out)
 	}
 }
@@ -4536,10 +4537,10 @@ func g() { @@<chunk@@> }
 		t.Errorf("the blank identifier _ should not be indexed:\n%s", out)
 	}
 	// chunk is used in two different sections (2 and 3), so the plural notes apply.
-	if !strings.Contains(out, `\Us{\s{2}, \s{3}}`) {
+	if !strings.Contains(out, `\Us{\SN{2}, \SN{3}}`) {
 		t.Errorf("uses in two sections should emit \\Us:\n%s", out)
 	}
-	if !strings.Contains(out, `\NS{chunk}{1}{\Nuseds{\s{2}, \s{3}}}`) {
+	if !strings.Contains(out, `\NS{chunk}{1}{\Nuseds{\SN{2}, \SN{3}}}`) {
 		t.Errorf("section-names entry malformed:\n%s", out)
 	}
 }

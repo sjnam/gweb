@@ -238,8 +238,14 @@
        depth \the\dp\linkbox\space << /Subtype /Link /Border [ 0 0 0 ]
        /A << /S /GoTo /D (\romannumeral#1) >> >>}\box\linkbox\relax
   \else #2\fi\fi}
-\def\s#1{\link{#1}{#1}}                        % a linked section number
-\def\sD#1{\link{#1}{$\underline{\hbox{#1}}$}}  % linked + underlined (definition)
+% A linked section number, as gweave cites one in the index, a cross-reference
+% note, and the contents. The names are capitals, like the rest of what gweave
+% writes (\M, \X, \II, ...): a web's own limbo defines short lowercase macros
+% freely---Knuth's mmix-doc.w has \def\s{{\rm s}}---and one such definition
+% would otherwise turn every number in the index into a stray letter. (A lowercase
+% \ss would also have taken plain TeX's German sharp s.)
+\def\SN#1{\link{#1}{#1}}                        % a linked section number
+\def\SND#1{\link{#1}{$\underline{\hbox{#1}}$}} % linked + underlined (definition)
 % Starred forms, for a section a change file touched: only the number is linked;
 % \xrefstar sits past it, outside the link, so the star is plain black rather than
 % part of the blue hyperlink, as in cweave. \xrefstar is a normal-width star by
@@ -249,8 +255,8 @@
 % star may lap into, so the columns line up on the digits. This is cweave's
 % \let\*=* / \let\*=\lapstar split, kept inside the macro instead of a bare token.
 \def\xrefstar{*}
-\def\ss#1{\link{#1}{#1}\xrefstar}
-\def\sDs#1{\link{#1}{$\underline{\hbox{#1}}$}\xrefstar}
+\def\SNs#1{\link{#1}{#1}\xrefstar}
+\def\SNDs#1{\link{#1}{$\underline{\hbox{#1}}$}\xrefstar}
 % A PDF outline (bookmark) entry: #1 group depth, #2 section number, #3 number of
 % direct children (pdfTeX's open/close model), #4 the plain-text title. The
 % dvipdfmx route nests by depth and links to the named destination.
@@ -455,7 +461,7 @@
 \def\bin#1{\hbox{$^{\scriptscriptstyle b}$\tt #1}}
 
 % ---- named-section references and headlines ---------------------------------
-\def\xsec#1#2{$\langle\,$#1\hbox{\eightrm\kern.4em\s{#2}}$\,\rangle$}
+\def\xsec#1#2{$\langle\,$#1\hbox{\eightrm\kern.4em\SN{#2}}$\,\rangle$}
 \def\X#1#2{\hbox{\xsec{#2}{#1}}}        % inline reference in code
 \def\D#1#2{\par\vskip 3pt\noindent\hbox{\xsec{#2}{#1}${}\equiv{}$}\hskip 3pt}
 \def\Dp#1#2{\par\vskip 3pt\noindent
@@ -573,7 +579,7 @@
 % and \readcontents can gather several pieces' contents in one run.
 \def\Tline#1#2#3#4{\line{\consetup{#1}%
   #3\ %
-  \rm\leaders\hbox to .5em{\hss.\hss}\hfil\ \s{#2}\hbox to 3em{\hss#4}}}
+  \rm\leaders\hbox to .5em{\hss.\hss}\hfil\ \SN{#2}\hbox to 3em{\hss#4}}}
 % A contents entry's leading material by group depth: a top-level @** section
 % (depth -1) sets its title in bold, as cweave does; @* (0) is flush, and deeper
 % groups (@*1, @*2, ...) are indented. The \bf is reset to \rm before the page
