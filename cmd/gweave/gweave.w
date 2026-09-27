@@ -1659,6 +1659,7 @@ func (wv *Weaver) processTex(secNum int, s string) string {
 	var b strings.Builder
 	n := len(s)
 	i := 0
+	pendingDef := false // an \.{@@!} awaits the next |...| span
 	for i < n {
 		c := s[i]
 		if c == '\\' && i+1 < n && s[i+1] == '|' {
@@ -1675,11 +1676,17 @@ func (wv *Weaver) processTex(secNum int, s string) string {
 }
 
 @ A |...| span in prose is set as the inline \GO/ code it represents, via
-|renderInline|; a literal bar is written \.{\|} and handled above.
+|renderInline|; a literal bar is written \.{\|} and handled above. An \.{@@!}
+just before the span is passed into it, so its first identifier indexes as a
+definition.
 @<Set an inline code span in prose@>=
 if c == '|' {
 	j := i + 1
 	var code strings.Builder
+	if pendingDef { // hand the span the \.{@@!} that preceded it
+		code.WriteString("@@!")
+		pendingDef = false
+	}
 	for j < n {
 		if s[j] == '\\' && j+1 < n && s[j+1] == '|' {
 			code.WriteByte('|')
@@ -1699,8 +1706,9 @@ if c == '|' {
 
 @ In prose, \.{@@@@} is a literal at-sign, \.{@@<...@@>} is a section reference
 (set as a \.{\\X} link and recorded as a use), an index entry \.{@@\^},
-\.{@@.}, or \.{@@:} is recorded and removed, and a \.{@@q...@@>} source comment is
-dropped. Everything else---the user's \TEX/---falls through unchanged.
+\.{@@.}, or \.{@@:} is recorded and removed, a \.{@@q...@@>} source comment is
+dropped, and an \.{@@!} is removed while it marks the next \.{\|...\|} name as
+a definition in the index, as \.{cweave} does. Everything else---the user's \TEX/---falls through unchanged.
 @<Handle a control code in prose@>=
 if c == '@@' && i+1 < n {
 	switch d := s[i+1]; d {
@@ -1730,6 +1738,10 @@ if c == '@@' && i+1 < n {
 			i = closeUpBlankedLine(b.String(), s, end+2) // drop the source-only comment
 			continue
 		}
+	case '!':
+		pendingDef = true // underline the next |...| name's index entry; print nothing
+		i += 2
+		continue
 	}
 }
 
@@ -1803,6 +1815,7 @@ func (wv *Weaver) inlineCode(code string, secNum int, record bool) string {
 	prevSigKind := tkNewline
 	prevSigText := ""
 	prevPrevSigText := ""
+	forceDef := false // set by \.{@@!}: the next identifier indexes as a definition
 	emit := func(cat spaceCat, s string) {
 		if started && !manualGap {
 			switch g := gapBetween(prevCat, cat); g {
@@ -1855,11 +1868,14 @@ case common.ARef:
 case common.APaste:
 	manualGap = true
 	pendingGap = gTight
+case common.AIndexDef:
+	forceDef = true
 }
 
 @ Source whitespace is ignored, as in a code part: the spacing is the grammar's,
 not the source's. A significant token is classified, recorded in the index when
-the run records and the name is indexable, and set in its effective class---a
+the run records and the name is indexable---as a definition if an \.{@@!} stands
+before it, as in a code part---and set in its effective class---a
 field tag inside a |...| losing its backquotes just as one in a code part does.
 The |indenter| rides along so the classifier can tell a block brace from a
 composite one, a slice colon from a map's, exactly as it does in a code part.
@@ -1871,10 +1887,18 @@ blockBrace := t.kind == tkOp && t.text == "{" && in.opensBlock()
 curCat := classify(t, prevSigKind, prevSigText, toks, k,
 	blockBrace, in.top().isBlock, in.inSquareBracket())
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
-if record && (t.kind == tkIdent || t.kind == tkBuiltin) && indexable(t.text) {
-	wv.xr.addIdentUse(t.text, secNum)
-	if k, ok := wv.lookupFormat(t.text, qual); ok {
-		wv.xr.noteHead(t.text, k) // so a qualified type's head is bold too
+if t.kind == tkIdent || t.kind == tkBuiltin {
+	def := forceDef
+	forceDef = false
+	if record && indexable(t.text) {
+		if def {
+			wv.xr.addIdentDef(t.text, secNum)
+		} else {
+			wv.xr.addIdentUse(t.text, secNum)
+		}
+		if k, ok := wv.lookupFormat(t.text, qual); ok {
+			wv.xr.noteHead(t.text, k) // so a qualified type's head is bold too
+		}
 	}
 }
 emit(curCat, renderToken(structTagged(token{kind: wv.effKind(t, qual), text: t.text}, prevSigKind, prevSigText)))
@@ -4181,6 +4205,26 @@ func TestWeaveIotaConst(t *testing.T) {
 		if !strings.Contains(out, `\ID{`+name+`}`) {
 			t.Errorf("%s should stay italic:\n%s", name, out)
 		}
+	}
+}
+
+@ In prose, \.{@@!} before a \.{\|...\|} span prints nothing and underlines that
+name's index entry at this section, as \.{cweave} does; inside a span it does the
+same for the name it precedes.
+@(gweave_test.go@>=
+func TestWeaveProseUnderline(t *testing.T) {
+	out := weaveString(t, "@@ Registers @@!|L|, |G|, and |@@!H|.\n"+
+		"@@ Code.\n@@c\nvar L, G, H int\n")
+	if strings.Contains(out, "@@!") {
+		t.Errorf("@@! should print nothing:\n%s", out)
+	}
+	for _, name := range []string{"L", "H"} {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\sD{1}`) {
+			t.Errorf("@@!|%s| should index section 1 as a definition:\n%s", name, out)
+		}
+	}
+	if !strings.Contains(out, `\II{\ID{G}}{\s{1}`) {
+		t.Errorf("an unmarked |G| stays a use:\n%s", out)
 	}
 }
 
