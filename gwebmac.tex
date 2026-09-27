@@ -218,8 +218,17 @@
 \ifx\pdfoutput\undefined\else\ifnum\pdfoutput>0 \pdftrue\fi\fi
 \ifpdf\else\ifx\pdf\undefined\else\dvipdftrue\fi\fi
 \newbox\linkbox
+% A /FitH destination puts its height at the very top of the viewer's window.
+% Dropped where a headline starts, that height is the line's baseline, and the
+% headline itself sits above it, out of sight (GitHub issue #2). So in a line
+% we raise the destination a \baselineskip, as cwebmac does, and the viewer
+% shows the headline with a little room above. A destination met between
+% paragraphs---\secdest, at the top of the section-names page---is already
+% above the first line, and a box there would add interline glue, so it stays.
 \def\dest#1{%
-  \ifpdf \pdfdest num #1 fith\relax
+  \ifpdf
+    \ifhmode \smash{\raise\baselineskip\hbox to0pt{\pdfdest num #1 fith}}%
+    \else \pdfdest num #1 fith\relax \fi
   \else\ifdvipdf
     \smash{\raise\baselineskip\hbox to0pt{%
       \special{pdf: dest (\romannumeral#1) [ @thispage /FitH @ypos ]}\hss}}%
