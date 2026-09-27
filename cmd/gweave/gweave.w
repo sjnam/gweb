@@ -285,7 +285,7 @@ func scanDecls(toks []token, keyword string, add func(int)) {
 		if toks[j].kind == tkOp && toks[j].text == "(" {
 			i = scanDeclGroup(toks, j+1, add)
 		} else if toks[j].kind == tkIdent {
-			add(j)
+			i = declNameList(toks, j, add)
 		}
 	}
 }
@@ -350,12 +350,36 @@ func scanDeclGroup(toks []token, i int, add func(int)) int {
 			atStart = false
 		default:
 			if atStart && depth == 0 && t.kind == tkIdent {
-				add(i)
+				i = declNameList(toks, i, add)
 			}
 			atStart = false
 		}
 	}
 	return i
+}
+
+@ A spec may declare several names at once, |var a, b int| or |const x, y = 1, 2|,
+and \.{cweave} underlines every one of them (|int a, b;| files both |a| and |b|
+as definitions). |declNameList| reports the name at |j| and each |, name| that
+follows it, and returns the index of the last name, where the caller's scan
+resumes. The list ends at the first token that is not a comma---the type, an
+|=|, the line's end---so nothing on the right-hand side is ever reported. A comma
+may end a line, since \GO/ inserts no semicolon after one.
+@<Scan a declaration group@>=
+func declNameList(toks []token, j int, add func(int)) int {
+	add(j)
+	for {
+		c := nextSignificant(toks, j+1)
+		if c < 0 || toks[c].kind != tkOp || toks[c].text != "," {
+			return j
+		}
+		n := nextSignificant(toks, c+1)
+		if n < 0 || toks[n].kind != tkIdent {
+			return j
+		}
+		add(n)
+		j = n
+	}
 }
 
 @ A \GO/ program's manifest integer constants are written as an |iota|
@@ -2083,20 +2107,33 @@ var declKeywords = map[string]bool{
 }
 
 @ |isDefinition| heuristically decides whether an identifier is being declared:
-it follows a |func| / |var| / |const| / |type| keyword, or it is immediately followed
-by |:=|. This is best-effort -- there is no full \GO/ parse -- but it covers the
-cases \.{CWEB} underlines in its index.
+it follows a |func| / |var| / |const| / |type| keyword, or it heads a |:=|, alone
+or as one of a list---|a, b := f()| and |for k, v := range m| declare every name
+before the |:=|, not just the last. So the look-ahead passes over any |, name|
+pairs on the way; anything else, including the |=| of a plain assignment
+|a, b = b, a|, means no. The rest of a keyword's name list (|var a, b int|) is
+|declSites|'s job, below. This is best-effort -- there is no full \GO/ parse --
+but it covers the cases \.{CWEB} underlines in its index.
 @<Decide whether an identifier is a definition@>=
 func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
 	if prevKind == tkKeyword && declKeywords[prevText] {
 		return true
 	}
-	for j := k + 1; j < len(toks); j++ {
-		switch toks[j].kind {
-		case tkSpace:
-			continue
-		case tkOp:
-			return toks[j].text == ":="
+	skip := func(j int) int {
+		for j < len(toks) && toks[j].kind == tkSpace {
+			j++
+		}
+		return j
+	}
+	for j := skip(k + 1); j < len(toks) && toks[j].kind == tkOp; {
+		switch toks[j].text {
+		case ":=":
+			return true
+		case ",":
+			if j = skip(j + 1); j >= len(toks) || toks[j].kind != tkIdent {
+				return false
+			}
+			j = skip(j + 1)
 		default:
 			return false
 		}
@@ -2106,10 +2143,11 @@ func isDefinition(prevKind tokKind, prevText string, toks []token, k int) bool {
 
 @ A |var|, |const|, or |type| declaration written as a parenthesized group names
 its entries on their own lines, lines away from the keyword---out of reach of
-|isDefinition|'s single-token look-behind. |declSites| runs the same |scanDecls|
+|isDefinition|'s single-token look-behind, as is every name after the first in a
+list like |var a, b int|. |declSites| runs the same |scanDecls|
 the bold detector uses, over the three grouping keywords, and returns the token
 indices of the names, so the index underlines a grouped |type Meter float64| just
-as it does a plain |type Meter float64|. The non-grouped forms it also reports are
+as it does a plain |type Meter float64|, and |b| as it does |a|. The non-grouped forms it also reports are
 definitions by |isDefinition| already, so the overlap changes nothing.
 @<Decide whether an identifier is a definition@>=
 var groupDeclKeywords = []string{"type", "var", "const"}
@@ -4204,6 +4242,33 @@ func TestWeaveIotaConst(t *testing.T) {
 	for _, name := range []string{"Pi", "Limit", "Color"} {
 		if !strings.Contains(out, `\ID{`+name+`}`) {
 			t.Errorf("%s should stay italic:\n%s", name, out)
+		}
+	}
+}
+
+@ Every name in a declaration list is a definition, as \.{cweave} underlines
+every name in |int a, b;|: a keyword's list, a grouped spec's list, and the
+names before a |:=|. A plain assignment |x, y = y, x| declares nothing, and the
+names on the right of an |=| are uses.
+@(gweave_test.go@>=
+func TestWeaveNameListDefinitions(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\n"+
+		"var La, Lb int\nconst Ca, Cb = Ra, Rb\nvar (\n\tPa, Pb int\n)\n"+
+		"func f() {\n\tqa, qb := 1, 2\n\tfor ka, va := range m {\n\t}\n}\n"+
+		"@@ y\n@@c\nfunc g() {\n\tqa, qb = qb, qa\n}\n")
+	for _, name := range []string{"La", "Lb", "Ca", "Cb", "Pa", "Pb", "ka", "va"} {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\sD{1}}`) {
+			t.Errorf("%s should be a definition:\n%s", name, out)
+		}
+	}
+	for _, name := range []string{"qa", "qb"} {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\sD{1}, \s{2}}`) {
+			t.Errorf("%s: defined by := in 1, only assigned in 2:\n%s", name, out)
+		}
+	}
+	for _, name := range []string{"Ra", "Rb"} {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\s{1}}`) {
+			t.Errorf("%s on the right of = should be a use:\n%s", name, out)
 		}
 	}
 }
