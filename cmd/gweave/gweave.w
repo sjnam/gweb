@@ -944,7 +944,7 @@ qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if t.kind == tkIdent || t.kind == tkBuiltin {
 	def := forceDef || defSites[k] || isDefinition(prevSigKind, prevSigText, toks, k)
 	forceDef = false
-	if indexable(t.text) {
+	if indexable(t) {
 		if def {
 			wv.xr.addIdentDef(t.text, secNum)
 		} else {
@@ -1914,7 +1914,7 @@ qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if t.kind == tkIdent || t.kind == tkBuiltin {
 	def := forceDef
 	forceDef = false
-	if record && indexable(t.text) {
+	if record && indexable(t) {
 		if def {
 			wv.xr.addIdentDef(t.text, secNum)
 		} else {
@@ -2097,10 +2097,20 @@ if name[i] == '|' {
 	continue
 }
 
-@ |indexable| excludes the blank identifier from the index, and |declKeywords|
-lists the keywords that introduce a declaration.
+@ |indexable| keeps out of the index what \.{cweave} keeps out. The blank
+identifier |_| names nothing. The predeclared types---|int|, |string|, |error|,
+and the rest, which the lexer marks |tkBuiltin|---are \GO/'s counterpart of
+\CEE/'s |int| and |size_t|, words \.{cweave} predefines and so never indexes;
+listing every |int| in a program would bury the names that matter. (Keywords and
+the predeclared constants |nil|, |true|, |false|, |iota|---\.{cweave}'s \.{NULL}---%
+never get this far: they lex as |tkKeyword| and |tkMacro|.) The test is on the
+{\it lexed\/} kind, so a type the program declares, lexed |tkIdent| and only
+{\it displayed\/} bold, is indexed as before. The predeclared functions
+(|append|, |len|, \dots) lex as ordinary identifiers and are indexed, as
+\.{cweave} indexes |printf|. |declKeywords| lists the keywords that introduce a
+declaration.
 @<Index predicates and declaration keywords@>=
-func indexable(name string) bool { return name != "_" }
+func indexable(t token) bool { return t.text != "_" && t.kind != tkBuiltin }
 
 var declKeywords = map[string]bool{
 	"func": true, "var": true, "const": true, "type": true,
@@ -4242,6 +4252,27 @@ func TestWeaveIotaConst(t *testing.T) {
 	for _, name := range []string{"Pi", "Limit", "Color"} {
 		if !strings.Contains(out, `\ID{`+name+`}`) {
 			t.Errorf("%s should stay italic:\n%s", name, out)
+		}
+	}
+}
+
+@ The predeclared types stay out of the index, as \.{cweave} leaves out |int|,
+whether met in code or in a \.{\|...\|} span; a declared type and a predeclared
+function are indexed.
+@(gweave_test.go@>=
+func TestWeavePredeclaredTypesUnindexed(t *testing.T) {
+	out := weaveString(t, "@@ Uses |string|.\n@@c\n"+
+		"type Point struct{ x int }\n"+
+		"func f(e error) bool { return len(\"\") > 0 }\n")
+	for _, name := range []string{"int", "string", "error", "bool"} {
+		if strings.Contains(out, `\II{\ID{`+name+`}}`) ||
+			strings.Contains(out, `\II{\KW{`+name+`}}`) {
+			t.Errorf("predeclared type %s should not be indexed:\n%s", name, out)
+		}
+	}
+	for _, entry := range []string{`\II{\KW{Point}}`, `\II{\ID{len}}`} {
+		if !strings.Contains(out, entry) {
+			t.Errorf("%s should still be indexed:\n%s", entry, out)
 		}
 	}
 }

@@ -187,10 +187,12 @@ bootstrap`, `make selfdoc`) works, see the manual as well.
   `a*b + c`) — without any parsing. Long code lines wrap at the inter-token
   spaces, with continuation lines indented one step deeper. Write the code in
   your sections in gofmt style for the best-looking output.
-* **Definition detection** in the index is heuristic (an identifier following
-  `func`/`var`/`const`/`type` — whether written singly or as an entry of a
-  parenthesized group — or just left of `:=`), not a full type check. A defined
-  type's index entry, like its uses, is set bold, as **CWEB** sets a `typedef`.
+* **Definition detection** in the index is heuristic (the names a
+  `func`/`var`/`const`/`type` declares — singly, as a list like `var a, b int`,
+  or as entries of a parenthesized group — and every name left of a `:=`), not a
+  full type check. A defined type's index entry, like its uses, is set bold, as
+  **CWEB** sets a `typedef`. Predeclared types such as `int` and `string` are
+  left out of the index, as **CWEB** leaves out `int`.
 * **Diagnostics.** Both tools report, with `file:line` locations, unterminated
   control codes, references to undefined sections, ambiguous `...` abbreviations,
   and named sections defined but never used. These are warnings; `gtangle` still
