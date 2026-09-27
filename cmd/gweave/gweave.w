@@ -4862,3 +4862,10 @@ func TestWeaveStructTag(t *testing.T) {
 		t.Errorf("a field's type-to-tag gap should be the tunable \\tagkern:\n%s", out)
 	}
 }
+
+@** Index.
+This index covers \.{GWEAVE} alone, as it stands when \.{gweave.w} is woven by
+itself: every identifier it uses (a section number is underlined where the
+identifier is defined), together with the manual index entries. In the combined
+\.{GWEB} document \.{gweb.ch} removes this section, and the index at the end of
+\.{gweb.w} covers all three webs. The list of section names follows.

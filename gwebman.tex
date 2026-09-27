@@ -209,7 +209,12 @@ whole system as one document:
 make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program
 |endcode
 \noindent The result is \.{GWEB} documenting itself---the same pretty-printed
-code, index, and cross-references it produces for any other program.
+code, index, and cross-references it produces for any other program. Each
+component web also weaves on its own---\cw{gweave cmd/gweave/gweave.w} gives
+\cw{gweave}'s document, with its own title page and index---as \.{CWEB}'s
+\cw{common.w}, \cw{ctangle.w}, and \cw{cweave.w} do. The combined document
+applies \cw{gweb.ch}, which strips each web's title and \cw{@** Index.} section
+so that only \cw{gweb.w}'s remain.
 
 \chapter{The woven document}
 \noindent
