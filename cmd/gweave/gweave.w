@@ -3426,13 +3426,13 @@ head := func(name string) string {
 	return "\\ID{" + escIdent(name) + "}"
 }
 for name, secs := range wv.xr.identUse {
-	it := get(head(name), strings.ToLower(name))
+	it := get(head(name), collateKey(name))
 	for s := range secs {
 		it.secs[s] = true
 	}
 }
 for name, secs := range wv.xr.identDef {
-	it := get(head(name), strings.ToLower(name))
+	it := get(head(name), collateKey(name))
 	for s := range secs {
 		it.secs[s] = true
 		it.defs[s] = true
@@ -3467,11 +3467,11 @@ for _, e := range wv.xr.manualIndex {
 	default: // '\.{\^}'
 		render = "\\IR{" + e.text + "}"
 	}
-	it := get(render, strings.ToLower(key))
+	it := get(render, collateKey(key))
 	it.secs[e.sec] = true
 }
 
-@ The entries are sorted by their case-folded key (ties broken by the rendered
+@ The entries are sorted by their collation key (ties broken by the rendered
 form) and emitted as \.{\\II} lines, each pairing the head with its section list.
 @<Sort and emit the index@>=
 list := make([]*indexItem, 0, len(items))
@@ -3488,9 +3488,60 @@ for _, it := range list {
 	fmt.Fprintf(bw, "\\II{%s}{%s}\n", it.render, wv.secList(it.secs, it.defs))
 }
 
+@ The index follows \.{cweave}'s own alphabet, not \.{ASCII}'s. \.{cweave} orders
+its entries by the |collate| array: the null that ends a name, then the space and
+the other control characters, then every punctuation mark, then the underscore,
+then the letters with upper and lower case alike, then the digits, then the bytes
+above \.{ASCII}---so an entry that starts with a digit, \.{16ADDU} say, files
+after \.{zeta}, and |x_1| comes before |xa|, which comes before |x1|. Plain
+\.{ASCII} order would put the digits ahead of the letters and \.{\{ \| \} \~}
+after them. |collateKey| maps every byte of a key to its rank in that alphabet,
+folding only \.{ASCII} upper case as \.{cweave} does, so an ordinary string
+comparison of two keys is \.{cweave}'s comparison; a key that is a prefix of
+another sorts first, as the null would put it. The one byte \.{cweave}'s table
+leaves out, \.{DEL}, is ranked among the punctuation.
+@<Write the index@>=
+var collateRank = func() (r [256]byte) {
+	order := []byte{0, ' '}
+	for c := byte(1); c < ' '; c++ {
+		order = append(order, c)
+	}
+	order = append(order, "!\"#$%&'()*+,-./:;<=>?@@[\\]^`{|}~\x7f_"...)
+	order = append(order, "abcdefghijklmnopqrstuvwxyz0123456789"...)
+	for i, c := range order {
+		r[c] = byte(i)
+	}
+	for c := 128; c < 256; c++ {
+		r[c] = byte(len(order) + c - 128)
+	}
+	for c := 'A'; c <= 'Z'; c++ {
+		r[c] = r[c-'A'+'a']
+	}
+	return r
+}()
+
+func collateKey(s string) string {
+	k := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		k[i] = collateRank[s[i]]
+	}
+	return string(k)
+}
+
 @ |writeSectionNames| emits the list of named sections with their defining and
 using section numbers. |sortedSectionNames| gives the shared ordering used both
 here and for the {\sc PDF} outline children beneath ``Names of the sections''.
+That ordering is \.{cweave}'s for this list, which is not its index order: it
+lists the names in the order of its section-name tree, whose |web_strcmp| compares
+plain bytes, upper case apart from lower---so \.{Beta} and \.{Zeta} come before
+\.{alpha}---and so do we. We part company in one respect. |web_strcmp| compares
+\CEE/ |char|s, whose sign is left to the platform: where |char| is signed, as on
+macOS and x86-64, a byte above \.{ASCII}---any Hangul, any accented letter---is
+negative, and a name that has one where another has an \.{ASCII} character sorts
+first; where |char| is unsigned it sorts last. We compare the bytes unsigned, so
+the order is the same everywhere and runs the same way as the index, which puts
+those bytes after the digits. Names that differ only in such bytes, Hangul
+against Hangul, come out alike either way.
 @<Write the list of section names@>=
 func (wv *Weaver) writeSectionNames(bw *bufio.Writer) {
 	for _, n := range wv.sortedSectionNames() {
@@ -3512,7 +3563,7 @@ func (wv *Weaver) sortedSectionNames() []string {
 		sorted = append(sorted, n)
 	}
 	sort.Slice(sorted, func(i, j int) bool {
-		return strings.ToLower(sorted[i]) < strings.ToLower(sorted[j])
+		return sorted[i] < sorted[j]
 	})
 	return sorted
 }
@@ -4255,6 +4306,34 @@ func TestWeaveIotaConst(t *testing.T) {
 			t.Errorf("%s should stay italic:\n%s", name, out)
 		}
 	}
+}
+
+@ The index follows \.{cweave}'s alphabet: punctuation, then |_|, then the letters
+with case folded, then the digits---so an entry opening with a digit files after
+the letters, and |x_1| < |xa| < |x1|. The section-name list is ordered by plain
+bytes instead, upper case apart from lower, as \.{cweave} orders it.
+@(gweave_test.go@>=
+func TestWeaveIndexCollation(t *testing.T) {
+	out := weaveString(t, "@@ x\n"+
+		"@@^zeta@@>@@^16ADDU@@>@@^alpha@@>@@^Beta@@>@@^_under@@>@@^~tilde@@>"+
+		"@@^x1@@>@@^xa@@>@@^x_1@@>@@^(paren)@@>\n"+
+		"@@c\n@@<Zeta@@>@@;\n@@<alpha@@>@@;\n@@<2nd@@>@@;\n"+
+		"@@ @@<Zeta@@>=\n_ = 0\n@@ @@<alpha@@>=\n_ = 0\n@@ @@<2nd@@>=\n_ = 0\n")
+	order := func(prefix string, names []string) {
+		t.Helper()
+		last := -1
+		for _, n := range names {
+			i := strings.Index(out, prefix+n)
+			if i < 0 || i < last {
+				t.Errorf("%s out of order (want %v):\n%s", n, names, out)
+				return
+			}
+			last = i
+		}
+	}
+	order(`\II{\IR{`, []string{"(paren)", "~tilde", "_under", "alpha", "Beta",
+		"x_1", "xa", "x1", "zeta", "16ADDU"})
+	order(`\NS{`, []string{"2nd", "Zeta", "alpha"})
 }
 
 @ The predeclared types stay out of the index, as \.{cweave} leaves out |int|,
