@@ -163,15 +163,16 @@ keeps the unformatted output and prints a warning instead of failing.
 \section{Types and constants are classified automatically}
 \cw{gweave} scans for \cw{type} declarations---both the single form (\cw{type
 Name ...}) and the parenthesized block---and sets each declared name {\bf bold}
-wherever it appears, like a predeclared type. It also recognizes an \cw{iota}
-{\it enumeration}: a \cw{const (...)} block whose first entry seeds the counter
-with \cw{iota}. Because these are \GO/'s manifest constants, the closest analogue of
-a name defined by \cw{@d}, each is set in typewriter everywhere it appears, the
-way \cw{cweave} sets a \cw{@d} macro. A plain \cw{const}---a one-line \cw{const
-Name = ...}, or a block with no \cw{iota}---is left an ordinary italic
-identifier; mark it \cw{@d} yourself if you want it in typewriter. The same goes
-for names you do {\it not\/} declare in this web: \cw{@d http.StatusOK} sets
-\cw{StatusOK} in typewriter everywhere it appears. You can override any automatic
+wherever it appears, like a predeclared type. A constant whose name has no
+lowercase letter, such as \cw{TRAP} or \cw{MAX\_N}, is set in typewriter
+wherever it appears, as \cw{cweave} sets a name in capitals; a one-letter name
+such as \cw{N} stays italic, as it does in \cw{cweave}. Any other constant is an
+ordinary italic identifier, whether it is a one-line \cw{const Name = ...}, a
+block, or an \cw{iota} enumeration. The rule is for constants alone: a variable
+or a type in capitals keeps its class. List a name in \cw{@d} to set it in
+typewriter, the way \cw{cweave} sets a \cw{@d} macro; the same goes for names you
+do {\it not\/} declare in this web: \cw{@d http.StatusOK} sets \cw{StatusOK} in
+typewriter everywhere it appears. You can override any automatic
 class with \cw{@f}/\cw{@s}---e.g.\ \cw{@f Name int} forces \cw{Name} bold, or
 \cw{@f Name x} (any ordinary identifier) restores plain italic.
 

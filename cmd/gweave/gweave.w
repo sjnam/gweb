@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/sjnam/gweb/common"
 )
@@ -126,7 +127,6 @@ tangled together with the front end into the single file \.{gweave.go}.
 @<Create a weaver@>
 @<Detect type declarations@>
 @<Scan a declaration group@>
-@<Detect |iota| constant declarations@>
 @<The effective token class@>
 @<Weave the document in two passes@>
 @<Drop a stray gwebmac input@>
@@ -196,9 +196,11 @@ magic: \.{@@f a TeX} does not borrow a class but asks that |a| be set as a custo
 control sequence |\a| of your own devising, exactly as \.{cweave} does---so
 after \.{\\def\\x\#1\{x\_\{\#1\}\}} the directive \.{@@f x1 TeX} makes the code
 identifier |x1| come out as $x_1$. Finally, as in cweave, a name declared with
-\.{\|type\|} is set bold like the predeclared types, and a constant declared in
-an |iota| enumeration is set in typewriter like a \.{@@d} macro; an explicit
-\.{@@f}/\.{@@s} above still wins for either.
+\.{\|type\|} is set bold like the predeclared types; an explicit \.{@@f}/\.{@@s}
+above still wins. A constant whose name has no lowercase letter, like |TRAP|, is
+set in typewriter, as \.{cweave} sets such a name; any other constant is an
+ordinary italic identifier, whether or not it is declared with |iota|, and
+\.{@@d} is the way to ask for typewriter.
 @<Install the format directives@>=
 apply := func(fs []common.Format) {
 	for _, f := range fs {
@@ -217,7 +219,7 @@ for _, s := range w.Sections {
 	apply(s.Formats)
 }
 wv.detectDecls("type", tkBuiltin)
-wv.detectIotaConsts()
+wv.detectUpperConsts()
 
 @ \.{cweave} sets names declared with \.{\|type\|} in bold, like the predeclared
 types, and \.{GWEB} does the same. |detectDecls| scans the code for declarations
@@ -244,6 +246,48 @@ func (wv *Weaver) noteFormat(name string, kind tokKind) {
 	if _, ok := wv.format[name]; !ok {
 		wv.format[name] = kind
 	}
+}
+
+@ \.{cweave} sets an identifier with no lowercase letter---\.{TRAP}, \.{MAX\_N}---in
+typewriter, the style of a macro; one of a single character it leaves in italic
+all the same. That is a \CEE/ naming convention: such names are the |#define|d and
+|enum| constants. \.{GWEB} applies the rule to constants alone, since a \GO/ name
+in capitals is as likely an exported variable or type, which should keep its class.
+|detectUpperConsts| looks at every name a |const| declaration introduces---one-line,
+listed, grouped, |;|-separated, |iota| or not, anywhere in the program---and
+registers each one |isUpperName| accepts as a typewriter macro, everywhere it is
+used. An explicit \.{@@f}/\.{@@s}/\.{@@d} still wins, as |noteFormat| guarantees.
+@<Detect type declarations@>=
+func (wv *Weaver) detectUpperConsts() {
+	wv.scanAllCode(func(toks []token) {
+		scanDecls(toks, "const", func(i int) {
+			if name := toks[i].text; isUpperName(name) {
+				wv.noteFormat(name, tkMacro)
+			}
+		})
+	})
+}
+
+@ A name qualifies when it is longer than one character, has at least one
+uppercase letter, and no lowercase one: |TRAP|, |X1|, |MAX_N|, but not |N|,
+|Red|, or |maxN|. Asking for an uppercase letter departs from \.{cweave} only for
+names that have no cased letter at all---a Hangul name, or one of underscores and
+digits---which \.{cweave} would set in typewriter merely because it finds no
+lowercase \.{ASCII} byte in them; such a name follows no capitals convention, so
+it stays italic here.
+@<Detect type declarations@>=
+func isUpperName(name string) bool {
+	n, upper := 0, false
+	for _, r := range name {
+		n++
+		if unicode.IsLower(r) {
+			return false
+		}
+		if unicode.IsUpper(r) {
+			upper = true
+		}
+	}
+	return n > 1 && upper
 }
 
 @ |scanAllCode| is the traversal the detectors share: it re-lexes every code part
@@ -380,97 +424,6 @@ func declNameList(toks []token, j int, add func(int)) int {
 		add(n)
 		j = n
 	}
-}
-
-@ A \GO/ program's manifest integer constants are written as an |iota|
-enumeration: a parenthesized |const| group whose first entry seeds the counter
-with |iota|, the following ones inheriting the expression as it advances.
-$$\vbox{\halign{#\hfil\cr
-{\bf const}\ (\cr
-\qquad \.{tkIdent} \.{tokKind} $=$ \.{iota}\cr
-\qquad \.{tkKeyword}\cr
-\qquad \dots\cr
-)\cr}}$$
-These read like \CEE/'s |enum| members, or \.{CWEB}'s \.{@@d} macros, so \.{GWEB}
-sets them in typewriter---the same class as |nil|, |true|, and |false|.
-|detectIotaConsts| registers each such name as a typewriter macro, everywhere it
-is used, just as |detectDecls| registers |type| names as bold.
-@<Detect |iota| constant declarations@>=
-func (wv *Weaver) detectIotaConsts() {
-	wv.scanAllCode(func(toks []token) {
-		scanIotaConsts(toks, func(i int) { wv.noteFormat(toks[i].text, tkMacro) })
-	})
-}
-
-@ |scanIotaConsts| finds each |const (...)| group and, when it is an |iota|
-enumeration, collects its declared names with the shared |scanDeclGroup|. A plain
-|const| block with no |iota|, and a one-line |const|, match neither arm and are
-left exactly as before; only the enumerations change.
-@<Detect |iota| constant declarations@>=
-func scanIotaConsts(toks []token, add func(int)) {
-	for i := 0; i < len(toks); i++ {
-		if toks[i].kind != tkKeyword || toks[i].text != "const" {
-			continue
-		}
-		j := nextSignificant(toks, i+1)
-		if j < 0 || toks[j].kind != tkOp || toks[j].text != "(" {
-			continue
-		}
-		names := add
-		if !constGroupUsesIota(toks, j+1) {
-			names = func(int) {}
-		}
-		i = scanDeclGroup(toks, j+1, names)
-	}
-}
-
-@ |constGroupUsesIota| judges a group by its first spec alone: if |iota|
-appears there, before the spec ends (at a newline or a |;|) at the group's own
-nesting level, the group is an enumeration. Blank and comment lines ahead of the first spec are skipped,
-and brace and bracket nesting is tracked so a composite value cannot end the line
-early.
-@<Detect |iota| constant declarations@>=
-func constGroupUsesIota(toks []token, i int) bool {
-	depth := 0
-	seen := false // a significant token seen on the current spec line
-	for ; i < len(toks); i++ {
-		switch t := toks[i]; t.kind {
-		case tkNewline:
-			if depth == 0 && seen {
-				return false
-			}
-		case tkSpace, tkComment:
-			// not part of the spec proper
-		case tkOp:
-			switch t.text {
-			case ";":
-				if depth == 0 { // ends the spec, just as a newline does
-					if seen {
-						return false
-					}
-					continue
-				}
-			case "(", "{", "[":
-				depth++
-			case ")":
-				if depth == 0 {
-					return false
-				}
-				depth--
-			case "}", "]":
-				if depth > 0 {
-					depth--
-				}
-			}
-			seen = true
-		default:
-			if t.text == "iota" {
-				return true
-			}
-			seen = true
-		}
-	}
-	return false
 }
 
 @ |effKind| returns the token class to typeset a token in, honoring \.{@@f}/\.{@@s}
@@ -4286,25 +4239,32 @@ func TestWeaveQualifiedFormat(t *testing.T) {
 	}
 }
 
-@ Constants declared in an |iota| enumeration are set in typewriter (\.{\\MAC}),
-everywhere they are used, while a plain \.{const} block and a one-line \.{const}
-stay italic (\.{\\ID}), and the |iota| line's type stays whatever it was.
+@ A constant whose name has no lowercase letter is set in typewriter (\.{\\MAC})
+everywhere it is used, as \.{cweave} sets such a name, whatever its declaration:
+|iota| enumeration, plain block, list, or one-line \.{const}. A constant with a
+lowercase letter stays italic (\.{\\ID}), |iota| or not, unless \.{@@d} names it;
+so does a one-letter constant, and so do a variable and a type in capitals. The
+predeclared |iota| itself stays typewriter, like |nil|.
 @(gweave_test.go@>=
 func TestWeaveIotaConst(t *testing.T) {
-	out := weaveString(t, "\\input gwebmac\n@@ x\n@@c\n"+
-		"const (\n\tRed Color = iota\n\tGreen\n)\n"+
-		"const (\n\tPi = 3.14\n)\n"+
-		"const Limit = 1\n"+
-		"var _ = Red + Green\n")
-	for _, name := range []string{"Red", "Green"} {
-		if !strings.Contains(out, `\MAC{`+name+`}`) {
-			t.Errorf("iota constant %s should be typewriter:\n%s", name, out)
+	out := weaveString(t, "\\input gwebmac\n@@d Blue\n@@ x\n@@c\n"+
+		"const (\n\tRed Color = iota\n\tGreen\n\tBlue\n\tBLACK\n)\n"+
+		"const (\n\tPi = 3.14\n\tMAX_N = 9\n)\n"+
+		"const Limit, LIMIT = 1, 2\nconst N = 3\n"+
+		"var VAR = 0\ntype ID int\n"+
+		"var _ = Red + Green + BLACK + MAX_N + LIMIT\n")
+	for _, name := range []string{"Red", "Green", "Pi", "Limit", "Color", "VAR"} {
+		if !strings.Contains(out, `\ID{`+name+`}`) || strings.Contains(out, `\MAC{`+name+`}`) {
+			t.Errorf("%s should be italic, not typewriter:\n%s", name, out)
 		}
 	}
-	for _, name := range []string{"Pi", "Limit", "Color"} {
-		if !strings.Contains(out, `\ID{`+name+`}`) {
-			t.Errorf("%s should stay italic:\n%s", name, out)
+	for _, name := range []string{"Blue", "iota", "BLACK", "MAX\\char95 N", "LIMIT"} {
+		if !strings.Contains(out, `\MAC{`+name+`}`) {
+			t.Errorf("%s should be typewriter:\n%s", name, out)
 		}
+	}
+	if strings.Contains(out, `\MAC{N}`) || strings.Contains(out, `\MAC{ID}`) {
+		t.Errorf("a one-letter constant and a capitalized type keep their class:\n%s", out)
 	}
 }
 
@@ -4405,10 +4365,11 @@ func TestWeaveProseUnderline(t *testing.T) {
 }
 
 @ A dense opcode table puts several specs on one line, split by |;|, as in
-\.{TRAP = iota; FCMP; FUN}. Every name there is an |iota| constant and a
-definition, not only the one that starts the line.
+\.{TRAP = iota; FCMP; FUN}. Every name there is a definition, not only the one
+that starts the line---and, having no lowercase letter, each is a typewriter
+constant.
 @(gweave_test.go@>=
-func TestWeaveIotaConstSemicolons(t *testing.T) {
+func TestWeaveConstSemicolons(t *testing.T) {
 	out := weaveString(t, "\\input gwebmac\n@@ x\n@@c\n"+
 		"const (\n\tTRAP = iota; FCMP; FUN\n\tFLOT; FLOTI\n)\n")
 	for _, name := range []string{"TRAP", "FCMP", "FUN", "FLOT", "FLOTI"} {

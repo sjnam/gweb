@@ -113,11 +113,12 @@ index, exactly as `cweave` does. A change confined to limbo marks nothing.
   constants you do not declare in this web, e.g. `@d http.StatusOK` (the final
   component, `StatusOK`, is the name registered). Any value after the name is
   ignored.
-* `gweave` also classifies declared names automatically: a `type` name is set
-  **bold** (like a predeclared type) and a `const` name is set in typewriter —
-  the treatment `cweave` gives names defined by `@d`, since a Go `const` is the
-  closest analogue. Both the single and parenthesized-block declaration forms are
-  recognized.
+* `gweave` also classifies declared names automatically. A `type` name is set
+  **bold** (like a predeclared type), in both the single and parenthesized-block
+  forms. A `const` name with no lowercase letter and more than one character —
+  `TRAP`, `MAX_N`, but not `N` — is set in typewriter, as `cweave` sets a name in
+  capitals; any other `const` name, whether or not it is declared with `iota`, is
+  an ordinary italic identifier. List a name in `@d` to set it in typewriter.
 * `@f a b` makes `gweave` typeset identifier `a` in the class of `b` — most
   usefully `@f MyType int` to set a user type in bold like a predeclared type, or
   `@f Name x` (any ordinary identifier) to override the automatic classification
