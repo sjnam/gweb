@@ -40,15 +40,19 @@ plain TeX, not LaTeX. Beyond that:
   [noto-cjk releases](https://github.com/notofonts/noto-cjk/releases) — these
   three archives together hold every face `hangulfont.tex` names, under the SIL
   Open Font License:
-  * [`08_NotoSerifCJKkr.zip`](https://github.com/notofonts/noto-cjk/releases/download/Serif2.003/08_NotoSerifCJKkr.zip) — Noto Serif CJK KR
-  * [`07_NotoSansCJKkr.zip`](https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/07_NotoSansCJKkr.zip) — Noto Sans CJK KR
-  * [`12_NotoSansMonoCJKkr.zip`](https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/12_NotoSansMonoCJKkr.zip) — Noto Sans Mono CJK KR
+  * [`08_NotoSerifCJKkr.zip`][noto-serif] — Noto Serif CJK KR
+  * [`07_NotoSansCJKkr.zip`][noto-sans] — Noto Sans CJK KR
+  * [`12_NotoSansMonoCJKkr.zip`][noto-mono] — Noto Sans Mono CJK KR
 
   Take these region-specific `…CJKkr` packages, not the smaller `NotoSerifKR` /
   `NotoSansKR` ones, whose fonts are named "Noto Serif KR" and are not found.
   Unzip them and install the `.otf` files the usual way for your system — e.g.
   copy them into `~/Library/Fonts` on macOS, or into `~/.local/share/fonts` on
   Linux and run `fc-cache -f` — so that `luatex` can find them by name.
+
+[noto-serif]: https://github.com/notofonts/noto-cjk/releases/download/Serif2.003/08_NotoSerifCJKkr.zip
+[noto-sans]: https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/07_NotoSansCJKkr.zip
+[noto-mono]: https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/12_NotoSansMonoCJKkr.zip
 
 ## Build
 
