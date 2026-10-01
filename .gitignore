@@ -60,3 +60,7 @@ texput.log
 
 .markdownlint.jsonc
 
+
+# a local copy of the Korean fonts; README says where to download them, and the
+# archives are far too large to commit (GitHub refuses files over 100 MB)
+/koreanFonts/
