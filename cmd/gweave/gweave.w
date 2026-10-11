@@ -291,8 +291,16 @@ func isUpperName(name string) bool {
 }
 
 @ |scanAllCode| is the traversal the detectors share: it re-lexes every code part
-of every section---a scan independent of the rendering pass---and hands each
-token list to |visit|.
+of every section---a scan independent of the rendering pass---and hands |visit|
+one token list per section. A control code splits a code part into several
+atoms, and a declaration must be seen whole across them: in
+\.{type @@!eight\_bits = int32} the |@@!| leaves |type| in one atom and the name
+in the next, so a scan atom by atom would never pair them, and the type would
+stay italic. So the \GO/ text of all the atoms is lexed into one list. An atom
+that sets nothing in the code---\.{@@!}, an index entry, a layout hint, a
+paste---is passed over; one that stands for material of its own---a section
+reference, a \.{@@t} box, verbatim output---leaves a |tkString| in its place,
+a token no declaration takes for a name, so |type @@<Name@@>| declares nothing.
 @<Detect type declarations@>=
 func (wv *Weaver) scanAllCode(visit func([]token)) {
 	for _, s := range wv.w.Sections {
@@ -300,11 +308,16 @@ func (wv *Weaver) scanAllCode(visit func([]token)) {
 			continue
 		}
 		var st lexState
+		var toks []token
 		for _, a := range common.ScanCode(s.Code) {
-			if a.Kind == common.AText {
-				visit(lexGo(a.Text, &st))
+			switch a.Kind {
+			case common.AText:
+				toks = append(toks, lexGo(a.Text, &st)...)
+			case common.ARef, common.ATeX, common.AVerbatim:
+				toks = append(toks, token{kind: tkString}) // a stand-in operand
 			}
 		}
+		visit(toks)
 	}
 }
 
@@ -4361,6 +4374,25 @@ func TestWeaveProseUnderline(t *testing.T) {
 	}
 	if !strings.Contains(out, `\II{\ID{G}}{\SN{1}`) {
 		t.Errorf("an unmarked |G| stays a use:\n%s", out)
+	}
+}
+
+@ An \.{@@!} between |type| and the name it declares does not hide the
+declaration: the name is still set bold, everywhere. A section reference in that
+place declares nothing.
+@(gweave_test.go@>=
+func TestWeaveTypeAfterIndexDef(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\ntype @@!eight_bits = int32\n"+
+		"type @@<T@@> = int\nvar a eight_bits\nvar b after\n"+
+		"@@ @@<T@@>=\nafter\n")
+	if strings.Contains(out, `\ID{eight\_bits}`) || !strings.Contains(out, `\KW{eight\_bits}`) {
+		t.Errorf("eight_bits should be bold after @@!:\n%s", out)
+	}
+	if !strings.Contains(out, `\II{\KW{eight\_bits}}{\SND{1}}`) {
+		t.Errorf("eight_bits should be a bold definition in the index:\n%s", out)
+	}
+	if strings.Contains(out, `\KW{after}`) {
+		t.Errorf("a name after a section reference is not a declared type:\n%s", out)
 	}
 }
 
