@@ -312,7 +312,7 @@ position would be the \.{.w} line instead. If the text cannot be scanned cleanly
 (a \.{gofmt} failure leaves broken \GO/), nothing is touched.
 @<Render and gofmt one output@>=
 func thinLineMarks(src []byte) []byte {
-	marks, ok := lineMarkLines(src)
+	marks, inline, ok := lineMarkLines(src)
 	if !ok || len(marks) == 0 {
 		return src
 	}
@@ -320,34 +320,42 @@ func thinLineMarks(src []byte) []byte {
 }
 
 @ |lineMarkLines| returns the physical line numbers that begin a \.{//line}
-directive, and whether the scan was clean enough to trust.
+directive, those that hold an inline \.{/*line*/} directive (an expansion inside a
+line, which resets the count partway along it), and whether the scan was clean
+enough to trust.
 @d gotoken.Position gotoken.EOF gotoken.COMMENT
 @<Render and gofmt one output@>=
-func lineMarkLines(src []byte) (map[int]bool, bool) {
+func lineMarkLines(src []byte) (map[int]bool, map[int]bool, bool) {
 	fset := gotoken.NewFileSet()
 	f := fset.AddFile("", fset.Base(), len(src))
 	var s scanner.Scanner
 	bad := false
 	s.Init(f, src, func(gotoken.Position, string) { bad = true }, scanner.ScanComments)
-	marks := map[int]bool{}
+	marks, inline := map[int]bool{}, map[int]bool{}
 	for {
 		pos, tok, lit := s.Scan()
 		if tok == gotoken.EOF {
 			break
 		}
-		if tok != gotoken.COMMENT || !strings.HasPrefix(lit, "//line ") {
+		if tok != gotoken.COMMENT {
 			continue
 		}
-		if p := f.PositionFor(pos, false); p.Column == 1 {
+		p := f.PositionFor(pos, false)
+		switch {
+		case strings.HasPrefix(lit, "//line ") && p.Column == 1:
 			marks[p.Line] = true
+		case strings.HasPrefix(lit, "/*line "):
+			inline[p.Line] = true
 		}
 	}
-	return marks, !bad
+	return marks, inline, !bad
 }
 
 @ The walk itself. |expLine| is the origin the next line would take on its own; a
 mark that agrees with it is dropped, any other mark is kept and resets the count.
-An ordinary line consumes one origin, exactly as \GO/ will count it.
+An ordinary line consumes one origin, exactly as \GO/ will count it. A line that
+holds an inline \.{/*line*/} directive has moved the count somewhere the walk does
+not follow, so after it the count is not trusted, and the next mark stays.
 
 The one mark we keep although it is redundant is a mark with a blank line on each
 side---as where a \.{@@<...@@>} on its own line follows a blank one, the reference
@@ -367,6 +375,9 @@ for i, ln := range lines {
 		out = append(out, ln...)
 		if have {
 			expLine++
+		}
+		if inline[i+1] {
+			have = false
 		}
 		prevBlank = blankLine(ln)
 		continue
@@ -423,10 +434,12 @@ func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) er
 @ |expand| expands one code piece, threading the combined-source line through
 the text so `\.{//line}' directives stay accurate. Verbatim text tangles like
 ordinary text; a paste deletes the preceding whitespace; a reference is followed
-recursively; and the woven-output-only atoms are ignored.
+recursively; and the woven-output-only atoms are ignored. The atoms are walked by
+index, because how a reference is expanded depends on what follows it on its line.
 @<Expand code pieces and references@>=
 func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error {
-	for _, a := range common.ScanCode(code) {
+	atoms := common.ScanCode(code)
+	for i, a := range atoms {
 		switch a.Kind {
 		case common.AText, common.AVerbatim:
 			line = o.writeText(a.Text, line)
@@ -444,8 +457,23 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 }
 
 @ A reference is resolved to its canonical name, checked against the recursion
-stack for a cycle, and expanded in place. The surrounding newlines keep adjacent
-statements on separate lines; \.{gofmt} collapses the rest.
+stack for a cycle, and expanded in place.
+
+How it is expanded depends on where it stands. A reference alone on its line is a
+statement, or a run of declarations, and is set off by newlines: they keep it apart
+from its neighbours, and \.{gofmt} collapses the rest. But a reference may also
+stand {\it inside\/} a line, as part of an expression, as \.{CWEB} programs and
+Knuth's own \.{WEB}s often have it:
+$$\vbox{\halign{#\hfil\cr
+  \.{if @@<the character is unprintable@@> \{}\cr
+  \.{x := 1 + @@<the offset@@>*3}\cr
+  \.{newSpec(@@<the glue@@>)}\cr}}$$
+Newlines there would be fatal in \GO/, though harmless in \CEE/. \GO/ ends a
+statement at a newline that follows an identifier, a literal, or a closing
+bracket, so the condition above, put on a line of its own, becomes the statement
+\.{if k < 10;} and the brace after it is an error. Such a reference is therefore
+expanded {\it inline\/} (|o.lineHasCode| and |codeFollows| tell which case we
+are in). A comment that merely follows a reference does not make it inline.
 @<Expand a section reference@>=
 name := t.w.Resolve(a.Text)
 def, ok := t.defs[name]
@@ -455,11 +483,117 @@ if !ok {
 if slices.Contains(stack, name) {
 	return fmt.Errorf("circular reference through <%s>", name)
 }
-o.newline()
-if err := t.expandPieces(def, o, append(stack, name)); err != nil {
+if o.lineHasCode() || codeFollows(atoms[i+1:]) {
+	@<Expand the reference inside its line@>
+} else {
+	o.newline()
+	if err := t.expandPieces(def, o, append(stack, name)); err != nil {
+		return err
+	}
+	o.newline()
+}
+
+@ An inline expansion goes through a buffer of its own; its leading and trailing
+blanks are cut off, so no newline is left on either side. A \.{//line} directive
+must stand at the start of a line, so the two ends of the expansion are marked by
+\GO/'s other form of the directive, \.{/*line file:N*/}, which may stand anywhere
+and applies to the character that follows it. The first marks where the
+refinement's text begins in the web; the second, after it, puts the rest of the
+host line back on the line it came from. Lines {\it inside\/} a refinement that
+spans several lines keep their ordinary \.{//line} marks: in the middle of an
+expression a newline does no harm as long as the line before it ends in an
+operator, which is where a multi-line expression breaks anyway.
+@<Expand the reference inside its line@>=
+sub := &buffer{t: t}
+if err := t.expandPieces(def, sub, append(stack, name)); err != nil {
 	return err
 }
-o.newline()
+file, ln := t.w.Origin(def[0].line)
+text, file, ln := inlineText(sub.bytes(), file, ln)
+o.writeRaw(fmt.Sprintf("/*line %s:%d*/", file, ln))
+o.writeRaw(text)
+file, ln = t.w.Origin(line)
+o.writeRaw(fmt.Sprintf("/*line %s:%d*/", file, ln))
+
+@ |codeFollows| reports whether the atoms after a reference put more code on its
+line: text that is not blank and is not just a trailing comment, or another
+reference. The woven-output-only atoms are transparent.
+@<Expand code pieces and references@>=
+func codeFollows(rest []common.Atom) bool {
+	for _, a := range rest {
+		switch a.Kind {
+		case common.AText, common.AVerbatim:
+			s, _, nl := strings.Cut(a.Text, "\n")
+			s = strings.TrimLeft(s, " \t\r")
+			if s != "" {
+				return !strings.HasPrefix(s, "//")
+			}
+			if nl {
+				return false
+			}
+		case common.ARef, common.APaste:
+			return true
+		}
+	}
+	return false
+}
+
+@ |inlineText| trims an inline expansion. The blanks and the \.{//line} marks in
+front of its first character are dropped, and the position of that character is
+worked out from them (|file| and |ln| start as the origin of the refinement's
+first line); the blanks behind its last character are dropped too. If the text
+then ends in a line comment, the directive written after it would be swallowed by
+that comment, and the rest of the host line with it; such a comment becomes a
+block comment, or is dropped if it holds a \.{*/} of its own.
+@<Expand code pieces and references@>=
+func inlineText(b []byte, file string, ln int) (string, string, int) {
+	s := string(b)
+	for {
+		t := strings.TrimLeft(s, " \t\r")
+		if strings.HasPrefix(t, "\n") {
+			s, ln = t[1:], ln+1
+			continue
+		}
+		if mark, rest, ok := strings.Cut(t, "\n"); ok && strings.HasPrefix(mark, "//line ") {
+			if f, n, ok := parseLineMark(mark); ok {
+				s, file, ln = rest, f, n
+				continue
+			}
+		}
+		s = t
+		break
+	}
+	s = strings.TrimRight(s, " \t\r\n")
+	if i := trailingLineComment(s); i >= 0 {
+		body := s[i+2:]
+		if strings.Contains(body, "*/") {
+			s = strings.TrimRight(s[:i], " \t")
+		} else {
+			s = s[:i] + "/*" + body + " */"
+		}
+	}
+	return s, file, ln
+}
+
+@ |trailingLineComment| gives the offset of the \.{//} that opens a line comment
+running to the end of |s|, or $-1$ if |s| does not end inside one. It reuses the
+buffer's lexical tracking, so a \.{//} in a string is not mistaken for a comment.
+@<Expand code pieces and references@>=
+func trailingLineComment(s string) int {
+	var l buffer
+	start := -1
+	for i := 0; i < len(s); i++ {
+		before := l.lex
+		l.track(s[i])
+		if before != lexLineComment && l.lex == lexLineComment {
+			start = i - 1
+		}
+	}
+	if l.lex == lexLineComment {
+		return start
+	}
+	return -1
+}
 
 @ The output |buffer| accumulates bytes. It tracks whether it is at the start of
 a line so it can prefix each line with a \.{//line} directive, enough of \GO/'s
@@ -592,8 +726,10 @@ case o.lex == lexQuote && c == '"', o.lex == lexRune && c == '\'':
 
 @ The small mutators: |lineMark| writes a \.{//line} directive for the given
 combined-source line (mapped back to its origin), |newline| starts a fresh
-line, |trimRight| removes trailing whitespace (for a paste), and |bytes| returns
-the accumulated output.
+line, |writeRaw| copies text that is already marked (an inline expansion) without
+adding marks of its own, |trimRight| removes trailing whitespace (for a paste),
+|lineHasCode| reports whether the current line already holds code, and |bytes|
+returns the accumulated output.
 @<The output buffer@>=
 func (o *buffer) lineMark(line int) {
 	file, ln := o.t.w.Origin(line)
@@ -604,6 +740,23 @@ func (o *buffer) newline() {
 	o.b = append(o.b, '\n')
 	o.track('\n')
 	o.atLineStart = true
+}
+
+func (o *buffer) writeRaw(s string) {
+	if o.pasteNext {
+		s = strings.TrimLeft(s, " \t\n\r")
+		o.pasteNext = false
+	}
+	for i := 0; i < len(s); i++ {
+		o.b = append(o.b, s[i])
+		o.track(s[i])
+	}
+	o.atLineStart = false
+}
+
+func (o *buffer) lineHasCode() bool {
+	i := strings.LastIndexByte(string(o.b), '\n')
+	return strings.TrimSpace(string(o.b[i+1:])) != ""
 }
 
 func (o *buffer) trimRight() {
@@ -631,8 +784,10 @@ import (
 	"go/parser"
 	gotoken "go/token"
 	"os"
+	"go/scanner"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -731,10 +886,9 @@ var _ = @@<a@@>
 	}
 }
 
-@ A name containing a |...| code span still resolves for tangling. Because the
-\.{//line} directives \.{gtangle} always emits put the expanded refinement on its
-own line, the test checks that both the host line and the value appear rather
-than that they sit on one line.
+@ A name containing a |...| code span still resolves for tangling. The reference
+stands inside its line, so the value is expanded there, between two inline
+\.{/*line*/} marks.
 @(gtangle_test.go@>=
 func TestTangleCodeInName(t *testing.T) {
 	const src = `@@ root
@@ -752,7 +906,7 @@ var area = @@<the |x| value@@>
 		t.Fatal(err)
 	}
 	got := string(outs[0].Content)
-	if !strings.Contains(got, "var area =") || !strings.Contains(got, "42") {
+	if !strings.Contains(got, "var area = /*line :9*/ 42") {
 		t.Errorf("name containing |x| should still match for tangling:\n%s", got)
 	}
 }
@@ -938,9 +1092,7 @@ func TestTangleDropsUnknownCode(t *testing.T) {
 }
 
 @ An abbreviated definition (\.{@@<the val...@@>=}) resolves against a reference
-that carries the full name. As above, the always-on \.{//line} directives break
-the expansion onto its own line, so the test checks that both halves are present
-rather than adjacent.
+that carries the full name.
 @(gtangle_test.go@>=
 func TestTangleAbbrevAtDefinition(t *testing.T) {
 	const src = "@@ x\n@@c\npackage main\n\nvar v = @@<the value@@>\n\n@@ d\n@@<the val...@@>=\n42\n"
@@ -948,8 +1100,98 @@ func TestTangleAbbrevAtDefinition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := string(outs[0].Content); !strings.Contains(got, "var v =") || !strings.Contains(got, "42") {
+	if got := string(outs[0].Content); !strings.Contains(got, "var v = /*line :9*/ 42") {
 		t.Errorf("abbreviated definition should resolve:\n%s", got)
+	}
+}
+
+@ A reference inside a line is part of an expression and must stay there: as the
+condition of an |if|, in the middle of an arithmetic expression, as an argument,
+and spanning lines. Put on lines of their own, each of these would be cut short by
+\GO/'s automatic semicolons, and the program would not even parse. A refinement
+whose text ends in a line comment is the trap the directive after it must not fall
+into, so it is here too; and a reference followed only by a comment still expands
+on its own line.
+@(gtangle_test.go@>=
+func TestTangleRefInsideLine(t *testing.T) {
+	const src = "@@ x\n@@c\npackage main\n\nfunc f(n int) int { return n }\n\n" +
+		"func main() {\n\tk := 3\n" +
+		"\tif @@<k is small@@> {\n\t\tk++\n\t}\n" +
+		"\tx := 1 + @@<two@@>*3\n" +
+		"\ty := f(@@<two@@>)\n" +
+		"\tif @@<a long test@@> {\n\t\tk--\n\t}\n" +
+		"\tz := @@<the answer@@>\n" +
+		"\t@@<two statements@@> // a comment\n" +
+		"\t_, _, _ = x, y, z\n}\n\n" +
+		"@@ a\n@@<k is small@@>=\nk < 10\n\n" +
+		"@@ b\n@@<two@@>=\n2\n\n" +
+		"@@ c\n@@<a long test@@>=\nk > 0 &&\n\tk < 100\n\n" +
+		"@@ d\n@@<the answer@@>=\n40 + 2 // a line comment\n\n" +
+		"@@ e\n@@<two statements@@>=\nk = 1\nk = 2\n"
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(outs[0].Content)
+	if outs[0].Warning != "" {
+		t.Fatalf("the output should format cleanly: %s\n%s", outs[0].Warning, got)
+	}
+	if _, err := parser.ParseFile(gotoken.NewFileSet(), "p.go", got, 0); err != nil {
+		t.Fatalf("the output does not parse: %v\n%s", err, got)
+	}
+	for _, want := range []string{"if /*line ", "x := 1 + /*line ", "f( /*line ", "/* a line comment */"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q:\n%s", want, got)
+		}
+	}
+	if !strings.Contains(got, "\n\tk = 1\n") {
+		t.Errorf("a reference followed only by a comment should stay on its own line:\n%s", got)
+	}
+}
+
+@ The inline marks must keep positions true on both sides of an expansion: a token
+of the refinement is reported at the refinement's line, and the code after the
+reference---on the same line or below it---at its own. The scanner's adjusted
+positions are what the compiler, \.{go vet} and panic traces will report.
+@(gtangle_test.go@>=
+func TestTangleInlineRefPositions(t *testing.T) {
+	const src = "@@ x\n@@c\npackage main\n\nfunc main() {\n\tsmall := 3\n" +
+		"\tif @@<the test@@> {\n\t\tprintln(\"yes\")\n\t}\n}\n\n" +
+		"@@ a\n@@<the test@@>=\nsmall > 0 &&\n\tlimit(small)\n"
+	outs, err := New(common.ParseString(src)).Tangle("p.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := outs[0].Content
+	fset := gotoken.NewFileSet()
+	f := fset.AddFile("p.go", fset.Base(), len(got))
+	var s scanner.Scanner
+	s.Init(f, got, nil, 0)
+	lines := map[string][]int{}
+	for {
+		pos, tok, lit := s.Scan()
+		if tok == gotoken.EOF {
+			break
+		}
+		if tok == gotoken.IDENT || tok == gotoken.STRING || tok == gotoken.LBRACE {
+			if lit == "" {
+				lit = tok.String()
+			}
+			lines[lit] = append(lines[lit], f.Position(pos).Line)
+		}
+	}
+	for _, c := range []struct {
+		tok  string
+		want []int
+	}{
+		{"small", []int{6, 14, 15}}, // the declaration, then the refinement's two lines
+		{"limit", []int{15}},
+		{`"yes"`, []int{8}},
+		{"{", []int{5, 7}}, // the body of main, and the brace after the expansion
+	} {
+		if g := lines[c.tok]; !slices.Equal(g, c.want) {
+			t.Errorf("%s reported at lines %v, want %v:\n%s", c.tok, g, c.want, got)
+		}
 	}
 }
 

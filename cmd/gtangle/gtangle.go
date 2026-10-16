@@ -207,12 +207,12 @@ func (t *Tangler) renderOutput(file string, pieces []codePiece) (Output, error) 
 
 //line cmd/gtangle/gtangle.w:314
 func thinLineMarks(src []byte) []byte {
-	marks, ok := lineMarkLines(src)
+	marks, inline, ok := lineMarkLines(src)
 	if !ok || len(marks) == 0 {
 		return src
 	}
 
-//line cmd/gtangle/gtangle.w:361
+//line cmd/gtangle/gtangle.w:369
 	lines := strings.SplitAfter(string(src), "\n")
 	out := make([]byte, 0, len(src))
 	expFile, expLine, have := "", 0, false
@@ -222,6 +222,9 @@ func thinLineMarks(src []byte) []byte {
 			out = append(out, ln...)
 			if have {
 				expLine++
+			}
+			if inline[i+1] {
+				have = false
 			}
 			prevBlank = blankLine(ln)
 			continue
@@ -241,37 +244,41 @@ func thinLineMarks(src []byte) []byte {
 //line cmd/gtangle/gtangle.w:320
 }
 
-//line cmd/gtangle/gtangle.w:326
-func lineMarkLines(src []byte) (map[int]bool, bool) {
+//line cmd/gtangle/gtangle.w:328
+func lineMarkLines(src []byte) (map[int]bool, map[int]bool, bool) {
 	fset := gotoken.NewFileSet()
 	f := fset.AddFile("", fset.Base(), len(src))
 	var s scanner.Scanner
 	bad := false
 	s.Init(f, src, func(gotoken.Position, string) { bad = true }, scanner.ScanComments)
-	marks := map[int]bool{}
+	marks, inline := map[int]bool{}, map[int]bool{}
 	for {
 		pos, tok, lit := s.Scan()
 		if tok == gotoken.EOF {
 			break
 		}
-		if tok != gotoken.COMMENT || !strings.HasPrefix(lit, "//line ") {
+		if tok != gotoken.COMMENT {
 			continue
 		}
-		if p := f.PositionFor(pos, false); p.Column == 1 {
+		p := f.PositionFor(pos, false)
+		switch {
+		case strings.HasPrefix(lit, "//line ") && p.Column == 1:
 			marks[p.Line] = true
+		case strings.HasPrefix(lit, "/*line "):
+			inline[p.Line] = true
 		}
 	}
-	return marks, !bad
+	return marks, inline, !bad
 }
 
-//line cmd/gtangle/gtangle.w:389
+//line cmd/gtangle/gtangle.w:400
 func blankLine(s string) bool { return strings.TrimSpace(s) == "" }
 
 func betweenBlanks(prevBlank bool, lines []string, i int) bool {
 	return prevBlank && i+1 < len(lines) && blankLine(lines[i+1])
 }
 
-//line cmd/gtangle/gtangle.w:398
+//line cmd/gtangle/gtangle.w:409
 func parseLineMark(s string) (string, int, bool) {
 	rest := strings.TrimSuffix(strings.TrimSuffix(s, "\n"), "\r")
 	rest = strings.TrimPrefix(rest, "//line ")
@@ -286,7 +293,7 @@ func parseLineMark(s string) (string, int, bool) {
 	return rest[:i], n, true
 }
 
-//line cmd/gtangle/gtangle.w:414
+//line cmd/gtangle/gtangle.w:425
 func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) error {
 	for _, p := range pieces {
 		if err := t.expand(p.code, p.line, o, stack); err != nil {
@@ -296,9 +303,10 @@ func (t *Tangler) expandPieces(pieces []codePiece, o *buffer, stack []string) er
 	return nil
 }
 
-//line cmd/gtangle/gtangle.w:428
+//line cmd/gtangle/gtangle.w:440
 func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error {
-	for _, a := range common.ScanCode(code) {
+	atoms := common.ScanCode(code)
+	for i, a := range atoms {
 		switch a.Kind {
 		case common.AText, common.AVerbatim:
 			line = o.writeText(a.Text, line)
@@ -308,7 +316,7 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 			o.atLineStart = false
 		case common.ARef:
 
-//line cmd/gtangle/gtangle.w:450
+//line cmd/gtangle/gtangle.w:478
 			name := t.w.Resolve(a.Text)
 			def, ok := t.defs[name]
 			if !ok {
@@ -317,13 +325,30 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 			if slices.Contains(stack, name) {
 				return fmt.Errorf("circular reference through <%s>", name)
 			}
-			o.newline()
-			if err := t.expandPieces(def, o, append(stack, name)); err != nil {
-				return err
-			}
-			o.newline()
+			if o.lineHasCode() || codeFollows(atoms[i+1:]) {
 
-//line cmd/gtangle/gtangle.w:439
+//line cmd/gtangle/gtangle.w:507
+				sub := &buffer{t: t}
+				if err := t.expandPieces(def, sub, append(stack, name)); err != nil {
+					return err
+				}
+				file, ln := t.w.Origin(def[0].line)
+				text, file, ln := inlineText(sub.bytes(), file, ln)
+				o.writeRaw(fmt.Sprintf("/*line %s:%d*/", file, ln))
+				o.writeRaw(text)
+				file, ln = t.w.Origin(line)
+				o.writeRaw(fmt.Sprintf("/*line %s:%d*/", file, ln))
+
+//line cmd/gtangle/gtangle.w:488
+			} else {
+				o.newline()
+				if err := t.expandPieces(def, o, append(stack, name)); err != nil {
+					return err
+				}
+				o.newline()
+			}
+
+//line cmd/gtangle/gtangle.w:452
 		case common.ATeX, common.AIndex, common.ALayout, common.AIndexDef:
 			// woven-output only; ignored by tangle
 		}
@@ -331,7 +356,74 @@ func (t *Tangler) expand(code string, line int, o *buffer, stack []string) error
 	return nil
 }
 
-//line cmd/gtangle/gtangle.w:471
+//line cmd/gtangle/gtangle.w:522
+func codeFollows(rest []common.Atom) bool {
+	for _, a := range rest {
+		switch a.Kind {
+		case common.AText, common.AVerbatim:
+			s, _, nl := strings.Cut(a.Text, "\n")
+			s = strings.TrimLeft(s, " \t\r")
+			if s != "" {
+				return !strings.HasPrefix(s, "//")
+			}
+			if nl {
+				return false
+			}
+		case common.ARef, common.APaste:
+			return true
+		}
+	}
+	return false
+}
+
+//line cmd/gtangle/gtangle.w:549
+func inlineText(b []byte, file string, ln int) (string, string, int) {
+	s := string(b)
+	for {
+		t := strings.TrimLeft(s, " \t\r")
+		if strings.HasPrefix(t, "\n") {
+			s, ln = t[1:], ln+1
+			continue
+		}
+		if mark, rest, ok := strings.Cut(t, "\n"); ok && strings.HasPrefix(mark, "//line ") {
+			if f, n, ok := parseLineMark(mark); ok {
+				s, file, ln = rest, f, n
+				continue
+			}
+		}
+		s = t
+		break
+	}
+	s = strings.TrimRight(s, " \t\r\n")
+	if i := trailingLineComment(s); i >= 0 {
+		body := s[i+2:]
+		if strings.Contains(body, "*/") {
+			s = strings.TrimRight(s[:i], " \t")
+		} else {
+			s = s[:i] + "/*" + body + " */"
+		}
+	}
+	return s, file, ln
+}
+
+//line cmd/gtangle/gtangle.w:582
+func trailingLineComment(s string) int {
+	var l buffer
+	start := -1
+	for i := 0; i < len(s); i++ {
+		before := l.lex
+		l.track(s[i])
+		if before != lexLineComment && l.lex == lexLineComment {
+			start = i - 1
+		}
+	}
+	if l.lex == lexLineComment {
+		return start
+	}
+	return -1
+}
+
+//line cmd/gtangle/gtangle.w:605
 type buffer struct {
 	t           *Tangler
 	b           []byte
@@ -343,7 +435,7 @@ type buffer struct {
 	esc         bool // a backslash is pending inside a quoted string or rune
 }
 
-//line cmd/gtangle/gtangle.w:488
+//line cmd/gtangle/gtangle.w:622
 type goLex int
 
 const (
@@ -354,12 +446,12 @@ const (
 	lexRune
 	lexRaw
 
-//line cmd/gtangle/gtangle.w:497
+//line cmd/gtangle/gtangle.w:631
 )
 
 func (l goLex) spansLines() bool { return l == lexRaw || l == lexBlockComment }
 
-//line cmd/gtangle/gtangle.w:506
+//line cmd/gtangle/gtangle.w:640
 func (o *buffer) writeText(s string, line int) int {
 	if o.pasteNext {
 		s = strings.TrimLeft(s, " \t\n\r")
@@ -383,12 +475,12 @@ func (o *buffer) writeText(s string, line int) int {
 	return line
 }
 
-//line cmd/gtangle/gtangle.w:533
+//line cmd/gtangle/gtangle.w:667
 func (o *buffer) track(c byte) {
 	switch o.lex {
 	case lexCode:
 
-//line cmd/gtangle/gtangle.w:558
+//line cmd/gtangle/gtangle.w:692
 		if o.slash {
 			o.slash = false
 			switch c {
@@ -412,7 +504,7 @@ func (o *buffer) track(c byte) {
 			o.lex = lexRaw
 		}
 
-//line cmd/gtangle/gtangle.w:537
+//line cmd/gtangle/gtangle.w:671
 	case lexLineComment:
 		if c == '\n' {
 			o.lex = lexCode
@@ -424,7 +516,7 @@ func (o *buffer) track(c byte) {
 		o.star = c == '*'
 	case lexQuote, lexRune:
 
-//line cmd/gtangle/gtangle.w:582
+//line cmd/gtangle/gtangle.w:716
 		switch {
 		case o.esc:
 			o.esc = false
@@ -436,7 +528,7 @@ func (o *buffer) track(c byte) {
 			o.lex = lexCode
 		}
 
-//line cmd/gtangle/gtangle.w:548
+//line cmd/gtangle/gtangle.w:682
 	case lexRaw:
 		if c == '`' {
 			o.lex = lexCode
@@ -444,7 +536,7 @@ func (o *buffer) track(c byte) {
 	}
 }
 
-//line cmd/gtangle/gtangle.w:598
+//line cmd/gtangle/gtangle.w:734
 func (o *buffer) lineMark(line int) {
 	file, ln := o.t.w.Origin(line)
 	o.b = append(o.b, fmt.Sprintf("//line %s:%d\n", file, ln)...)
@@ -454,6 +546,23 @@ func (o *buffer) newline() {
 	o.b = append(o.b, '\n')
 	o.track('\n')
 	o.atLineStart = true
+}
+
+func (o *buffer) writeRaw(s string) {
+	if o.pasteNext {
+		s = strings.TrimLeft(s, " \t\n\r")
+		o.pasteNext = false
+	}
+	for i := 0; i < len(s); i++ {
+		o.b = append(o.b, s[i])
+		o.track(s[i])
+	}
+	o.atLineStart = false
+}
+
+func (o *buffer) lineHasCode() bool {
+	i := strings.LastIndexByte(string(o.b), '\n')
+	return strings.TrimSpace(string(o.b[i+1:])) != ""
 }
 
 func (o *buffer) trimRight() {
