@@ -207,8 +207,10 @@ bootstrap`, `make selfdoc`) works, see the manual as well.
   your sections in gofmt style for the best-looking output.
 * **Definition detection** in the index is heuristic (the names a
   `func`/`var`/`const`/`type` declares — singly, as a list like `var a, b int`,
-  or as entries of a parenthesized group — and every name left of a `:=`), not a
-  full type check. A defined type's index entry, like its uses, is set bold, as
+  or as entries of a parenthesized group — every name left of a `:=`, the fields
+  of a `struct` other than embedded ones, and method names), not a full type
+  check. It looks at one code part at a time, so fields spliced into a `struct`
+  from another section need an `@!`. A defined type's index entry, like its uses, is set bold, as
   **CWEB** sets a `typedef`. Predeclared types such as `int` and `string` are
   left out of the index, as **CWEB** leaves out `int`.
 * **Diagnostics.** Both tools report, with `file:line` locations, unterminated

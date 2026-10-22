@@ -788,7 +788,7 @@ indentation nor lets a stale grammar gap glue in front of that first token.
 switch a.Kind {
 case common.AText:
 	toks := lexGo(a.Text, &st)
-	defSites := declSites(toks) // names a grouped var/const/type declaration defines
+	defSites := declSites(toks) // names declared out of |isDefinition|'s sight
 	@<Render the tokens of a text atom@>
 case common.ARef:
 	@<Set a section reference, spaced as an operand@>
@@ -901,8 +901,9 @@ if atLineStart {
 }
 
 @ An identifier or builtin earns an index entry under the current section---a
-definition when a preceding declaration keyword, a following |:=|, or membership in
-a grouped declaration (|defSites|) marks it as one, a use otherwise. The
+definition when a preceding declaration keyword, a following |:=|, or a place among
+|defSites|---a grouped declaration, a struct field, a method name---marks it as
+one, a use otherwise. The
 |qualifierOf| result is computed here because it settles both what to index and, in
 a moment, the token's effective display class.
 @<Record the token's index entry@>=
@@ -2125,15 +2126,165 @@ the bold detector uses, over the three grouping keywords, and returns the token
 indices of the names, so the index underlines a grouped |type Meter float64| just
 as it does a plain |type Meter float64|, and |b| as it does |a|. The non-grouped forms it also reports are
 definitions by |isDefinition| already, so the overlap changes nothing.
+
+Two more kinds of name are declared out of |isDefinition|'s sight: the fields of a
+|struct|, each at the head of its own line, and the name of a method, which
+follows the receiver's closing parenthesis rather than the |func|. \.{cweave}
+underlines a C structure's members, so |declSites| looks for these too.
 @<Decide whether an identifier is a definition@>=
 var groupDeclKeywords = []string{"type", "var", "const"}
 
 func declSites(toks []token) map[int]bool {
 	sites := map[int]bool{}
+	add := func(i int) { sites[i] = true }
 	for _, kw := range groupDeclKeywords {
-		scanDecls(toks, kw, func(i int) { sites[i] = true })
+		scanDecls(toks, kw, add)
 	}
+	scanStructFields(toks, add)
+	scanMethodNames(toks, add)
 	return sites
+}
+
+@ |scanStructFields| finds each |struct| keyword followed by an opening brace and
+reports the field names in its body. A field spec starts a line or follows a |;|
+at the body's own nesting level, just as a spec in a declaration group does, so a
+nested |struct|, a |func| type's parameters, and the like are skipped here; each
+nested |struct| is reached in turn by the outer loop. The empty |struct{}| is a
+single token and declares nothing.
+@<Decide whether an identifier is a definition@>=
+func scanStructFields(toks []token, add func(int)) {
+	for i := 0; i < len(toks); i++ {
+		if toks[i].kind != tkKeyword || toks[i].text != "struct" {
+			continue
+		}
+		j := nextSignificant(toks, i+1)
+		if j >= 0 && toks[j].kind == tkOp && toks[j].text == "{" {
+			scanFieldList(toks, j+1, add)
+		}
+	}
+}
+
+@ |scanFieldList| reads the body of one |struct|, from just after its opening brace
+to the brace that closes it. A spec that begins with an identifier is reported
+unless |isEmbeddedField| says it is an embedded field.
+@<Decide whether an identifier is a definition@>=
+func scanFieldList(toks []token, i int, add func(int)) {
+	depth, atStart := 0, true
+	for ; i < len(toks); i++ {
+		switch t := toks[i]; t.kind {
+		case tkNewline:
+			if depth == 0 {
+				atStart = true
+			}
+		case tkSpace, tkComment:
+			// keep |atStart|
+		case tkOp:
+			@<Follow the nesting at the punctuation |t| of a field list@>
+			atStart = false
+		default:
+			if atStart && depth == 0 && t.kind == tkIdent && !isEmbeddedField(toks, i) {
+				i = declNameList(toks, i, add)
+			}
+			atStart = false
+		}
+	}
+}
+
+@ A |;| at the body's own level starts a new spec, as a newline does, and the brace
+that closes the body ends the scan.
+@<Follow the nesting at the punctuation |t| of a field list@>=
+switch t.text {
+case ";":
+	if depth == 0 {
+		atStart = true
+		continue
+	}
+case "(", "{", "[":
+	depth++
+case "}":
+	if depth == 0 {
+		return
+	}
+	depth--
+case ")", "]":
+	if depth > 0 {
+		depth--
+	}
+}
+
+@ An embedded field---|sync.Mutex|, |Node|, or |*Node|---names a type, not a new
+field, so it is left alone; |*Node| never reaches the test, since it begins with
+an operator. A spec that begins with an identifier is a list of field names only
+if a type follows on the same line: |isEmbeddedField| says the identifier stands
+alone when the next token on its line is a |.|, a tag, a comment, a |;|, the
+closing brace, or nothing at all.
+@<Decide whether an identifier is a definition@>=
+func isEmbeddedField(toks []token, i int) bool {
+	j := i + 1
+	for j < len(toks) && toks[j].kind == tkSpace {
+		j++
+	}
+	if j == len(toks) {
+		return true
+	}
+	switch t := toks[j]; t.kind {
+	case tkNewline, tkComment, tkString, tkStructTag:
+		return true
+	case tkOp:
+		return t.text == "." || t.text == ";" || t.text == "}"
+	}
+	return false
+}
+
+@ A method declaration is |func (r T) Name(|\dots, or |Name[|\dots\ for a generic
+receiver type. A function literal or a |func| type also has |func (|, as in
+|f := func(x int) T {| or a field |cb func(x int) T|, and there the identifier
+after the parenthesis is a result type. So |scanMethodNames| insists that the
+|func| begin its line, as a declaration does in a code part, and that the name be
+followed at once by an opening parenthesis or bracket.
+@<Decide whether an identifier is a definition@>=
+func scanMethodNames(toks []token, add func(int)) {
+	for i := 0; i < len(toks); i++ {
+		if toks[i].kind != tkKeyword || toks[i].text != "func" || !beginsLine(toks, i) {
+			continue
+		}
+		j := nextSignificant(toks, i+1)
+		if j < 0 || toks[j].kind != tkOp || toks[j].text != "(" {
+			continue
+		}
+		@<Report the name after the receiver list that starts at |j|@>
+	}
+}
+
+@ The receiver list ends at the parenthesis that balances the one at |j|.
+@<Report the name after the receiver list that starts at |j|@>=
+for depth := 0; j < len(toks); j++ {
+	if t := toks[j]; t.kind == tkOp && t.text == "(" {
+		depth++
+	} else if t.kind == tkOp && t.text == ")" {
+		if depth--; depth == 0 {
+			break
+		}
+	}
+}
+n := nextSignificant(toks, j+1)
+if n < 0 || toks[n].kind != tkIdent {
+	continue
+}
+if m := nextSignificant(toks, n+1); m >= 0 && toks[m].kind == tkOp {
+	switch toks[m].text {
+	case "(", "()", "[":
+		add(n)
+	}
+}
+
+@ |beginsLine| tells whether the token at |i| is the first on its line, with only
+indentation before it.
+@<Decide whether an identifier is a definition@>=
+func beginsLine(toks []token, i int) bool {
+	for i--; i >= 0 && toks[i].kind == tkSpace; i-- {
+	}
+	return i < 0 || toks[i].kind == tkNewline
 }
 
 @* Structural indentation.
@@ -3880,6 +4031,47 @@ println(x + 1)
 	for _, c := range checks {
 		if !strings.Contains(out, c) {
 			t.Errorf("woven output missing %q\n---\n%s", c, out)
+		}
+	}
+}
+
+@ Struct fields and method names are definitions too, as a C structure's members
+are to \.{cweave}; embedded fields, result types, and receivers are not.
+@(gweave_test.go@>=
+func TestWeaveIndexFieldsAndMethods(t *testing.T) {
+	out := weaveString(t, `@@ Types.
+@@c
+package main
+
+type node struct {
+	left, right *node
+	key         int
+	sync.Mutex
+	*other
+	Embedded
+	tag string `+"`json:\"tag\"`"+`
+	cb  func(x int) result
+	in  struct {
+		depth int
+	}
+}
+
+func (p *node) size() int { return 0 }
+
+func (p *node) walk(f func(n *node) visit) {}
+
+var g = func(x int) answer { return nil }
+`)
+	defs := []string{"left", "right", "key", "tag", "cb", "in", "depth", "size", "walk"}
+	for _, name := range defs {
+		if want := `\II{\ID{` + name + `}}{\SND{1}}`; !strings.Contains(out, want) {
+			t.Errorf("woven output missing %q", want)
+		}
+	}
+	uses := []string{"Mutex", "other", "Embedded", "result", "visit", "answer", "p"}
+	for _, name := range uses {
+		if want := `\II{\ID{` + name + `}}{\SN{1}}`; !strings.Contains(out, want) {
+			t.Errorf("woven output missing %q", want)
 		}
 	}
 }

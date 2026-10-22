@@ -260,8 +260,11 @@ force a definition entry and \cw{@f}/\cw{@s} (synonyms, as in \.{CWEB}) to
 reclassify a name. An identifier is marked as ``defined'' (its index number
 underlined) when it follows \cw{func}, \cw{var}, \cw{const}, or \cw{type}---%
 whether written singly or as an entry of a parenthesized group---or sits just
-left of \cw{:=}; this is a heuristic, not a type analysis, and \cw{@!} overrides
-it. A type's index entry, like its every appearance, is set bold, the way
+left of \cw{:=}. The fields of a \cw{struct} and the name of a method count too,
+as a structure's members do in \.{CWEB}; an embedded field does not, since it
+names a type. This is a heuristic, not a type analysis: it looks at one code
+part at a time, so fields spliced into a \cw{struct} from another section go
+unnoticed, and \cw{@!} marks them, or overrides the rest. A type's index entry, like its every appearance, is set bold, the way
 \.{CWEB} sets a \cw{typedef}.
 
 \section{Change marks} When you weave with a change file, \cw{gweave} marks every
