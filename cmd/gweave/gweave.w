@@ -2142,6 +2142,8 @@ func declSites(toks []token) map[int]bool {
 	}
 	scanStructFields(toks, add)
 	scanMethodNames(toks, add)
+	scanSignatures(toks, add)
+	scanLabels(toks, add)
 	return sites
 }
 
@@ -2275,6 +2277,172 @@ if m := nextSignificant(toks, n+1); m >= 0 && toks[m].kind == tkOp {
 	switch toks[m].text {
 	case "(", "()", "[":
 		add(n)
+	}
+}
+
+@ The names a |func| itself introduces are definitions too, and \.{cweave}
+underlines their \CEE/ counterparts---the parameters of |int sum(int lo, int hi)|.
+\GO/ gives a |func| up to four parenthesized or bracketed lists: a method's
+receiver, a generic function's type parameters, the parameters, and named
+results, as in |func (s *Stack) Push[T any](x T) (n int)|. |scanSignatures| walks
+them in that order at each |func|, whether it begins a declaration, a function
+literal, or a |func| type, and hands each list but the receiver to |listNames|.
+The receiver is passed over: it names the same value in every method of a type,
+so underlining it would file a definition in nearly every method's section and
+say nothing. Telling a receiver from the parameters of a literal takes one look
+past the first list: a method has its name there, followed at once by its
+parameters or type parameters.
+@<Decide whether an identifier is a definition@>=
+func scanSignatures(toks []token, add func(int)) {
+	for i := 0; i < len(toks); i++ {
+		if toks[i].kind != tkKeyword || toks[i].text != "func" {
+			continue
+		}
+		j := nextSignificant(toks, i+1)
+		if j < 0 {
+			return
+		}
+		@<Report the receiver and step to the method's name, if |j| opens a method@>
+		if toks[j].kind == tkIdent { // a named function or method: on to its lists
+			j = nextSignificant(toks, j+1)
+		}
+		if j >= 0 && toks[j].kind == tkOp && toks[j].text == "[" { // type parameters
+			j = nextSignificant(toks, listNames(toks, j, add)+1)
+		}
+		if j < 0 || toks[j].kind != tkOp || (toks[j].text != "(" && toks[j].text != "()") {
+			continue
+		}
+		if toks[j].text == "(" { // the parameters; |()| has none
+			j = listNames(toks, j, add)
+		}
+		if r := nextSignificant(toks, j+1); r >= 0 && toks[r].kind == tkOp && toks[r].text == "(" {
+			listNames(toks, r, add) // named results
+		}
+	}
+}
+
+@ At a |func (| the list may be a receiver or a literal's parameters. It is a
+receiver when an identifier follows its closing parenthesis and that identifier is
+followed by |(|, |()|, or |[|---the method's name and its own lists. Then |j|
+moves past the receiver to the method's name, reporting nothing.
+@<Report the receiver and step to the method's name, if |j| opens a method@>=
+if toks[j].kind == tkOp && toks[j].text == "(" {
+	if c := closerOf(toks, j); c >= 0 {
+		if n := nextSignificant(toks, c+1); n >= 0 && toks[n].kind == tkIdent {
+			if m := nextSignificant(toks, n+1); m >= 0 && toks[m].kind == tkOp &&
+				(toks[m].text == "(" || toks[m].text == "()" || toks[m].text == "[") {
+				j = n
+			}
+		}
+	}
+}
+
+@ |listNames| reports the names in the list opened at |open| and returns the index
+of its closer (or the end of the tokens, if the list is unclosed). The list's
+entries are split at its own top-level commas. \GO/ names either every entry or
+none: |(a, b int, s ...string)| names |a|, |b|, and |s|, while |(int, error)| or
+|(*Node, io.Reader)| names nothing. The list is named, then, when some entry is an
+identifier followed by more than a qualifying |.|---an entry with a name and a
+type---and in a named list each entry begins with its name. An entry that opens
+with a bracket, |(x [4]int)|, counts as named: an array parameter is far more
+common than an unnamed generic type such as |(List[int])|.
+@<Decide whether an identifier is a definition@>=
+func listNames(toks []token, open int, add func(int)) int {
+	close := closerOf(toks, open)
+	if close < 0 {
+		return len(toks)
+	}
+	var entries [][]int
+	cur := []int{}
+	depth := 0
+	for k := open + 1; k < close; k++ {
+		t := toks[k]
+		if t.kind == tkSpace || t.kind == tkNewline || t.kind == tkComment {
+			continue
+		}
+		@<Track the nesting at |t|, closing an entry at a top-level comma@>
+		cur = append(cur, k)
+	}
+	entries = append(entries, cur)
+	named := false
+	for _, e := range entries {
+		if len(e) >= 2 && toks[e[0]].kind == tkIdent && toks[e[1]].text != "." {
+			named = true
+		}
+	}
+	if named {
+		for _, e := range entries {
+			if len(e) > 0 && toks[e[0]].kind == tkIdent {
+				add(e[0])
+			}
+		}
+	}
+	return close
+}
+
+@ @<Track the nesting at |t|, closing an entry at a top-level comma@>=
+if t.kind == tkOp {
+	switch t.text {
+	case "(", "[", "{":
+		depth++
+	case ")", "]", "}":
+		depth--
+	case ",":
+		if depth == 0 {
+			entries = append(entries, cur)
+			cur = []int{}
+			continue
+		}
+	}
+}
+
+@ |closerOf| finds the bracket that closes the one at |open|, counting only the
+kind it opened with; the fused tokens |()|, |[]|, and |{}| are self-contained and
+change nothing. It returns $-1$ if the list does not close in these tokens.
+@<Decide whether an identifier is a definition@>=
+func closerOf(toks []token, open int) int {
+	opener := toks[open].text
+	closer := map[string]string{"(": ")", "[": "]", "{": "}"}[opener]
+	depth := 0
+	for k := open; k < len(toks); k++ {
+		if toks[k].kind != tkOp {
+			continue
+		}
+		switch toks[k].text {
+		case opener:
+			depth++
+		case closer:
+			if depth--; depth == 0 {
+				return k
+			}
+		}
+	}
+	return -1
+}
+
+@ A label is declared where it heads a statement, |done:| on a line of its own, and
+\.{cweave} underlines it there. |scanLabels| reports an identifier that begins its
+line and is followed by a |:| and nothing more on the line but a comment. A |case|
+or |default| clause begins with its keyword, so it is never taken; nor is a keyed
+element of a composite literal, |Name: value|, which has its value on the same
+line.
+@<Decide whether an identifier is a definition@>=
+func scanLabels(toks []token, add func(int)) {
+	for i, t := range toks {
+		if t.kind != tkIdent || !beginsLine(toks, i) {
+			continue
+		}
+		c := nextSignificant(toks, i+1)
+		if c < 0 || toks[c].kind != tkOp || toks[c].text != ":" {
+			continue
+		}
+		k := c + 1
+		for k < len(toks) && (toks[k].kind == tkSpace || toks[k].kind == tkComment) {
+			k++
+		}
+		if k == len(toks) || toks[k].kind == tkNewline {
+			add(i)
+		}
 	}
 }
 
@@ -4585,6 +4753,30 @@ func TestWeaveTypeAfterIndexDef(t *testing.T) {
 	}
 	if strings.Contains(out, `\KW{after}`) {
 		t.Errorf("a name after a section reference is not a declared type:\n%s", out)
+	}
+}
+
+@ The names a |func| introduces---type parameters, parameters, named results---and
+a label are definitions, as \.{cweave} underlines a \CEE/ function's parameters
+and labels. The receiver is not, nor are the types in an unnamed list, a keyed
+field of a composite literal, and a |case|.
+@(gweave_test.go@>=
+func TestWeaveSignatureAndLabelDefinitions(t *testing.T) {
+	out := weaveString(t, "@@ x\n@@c\n"+
+		"func (rv *T) M[TP any](lo, hi int, rest ...string) (total int) {\n"+
+		"\tf := func(la int) (Ru, error) { return Ru{}, nil }\n"+
+		"\tp := Pt{Kx: 1}\n\tswitch v {\n\tcase One:\n\t}\n"+
+		"done:\n\treturn\n}\n"+
+		"type H func(Req, io.Reader) error\n")
+	for _, name := range []string{"M", "TP", "lo", "hi", "rest", "total", "la", "f", "p", "done"} {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\SND{1}}`) {
+			t.Errorf("%s should be a definition:\n%s", name, out)
+		}
+	}
+	for _, name := range []string{"rv", "Ru", "Kx", "One", "Req", "Reader", "Pt"} {
+		if !strings.Contains(out, `\II{\ID{`+name+`}}{\SN{1}}`) {
+			t.Errorf("%s should be a use, not a definition:\n%s", name, out)
+		}
 	}
 }
 
