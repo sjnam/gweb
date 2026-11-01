@@ -13,7 +13,7 @@
   \centerline{(Version 0.10.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
-  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
+  Soojin Nam, 2026. Released into the public domain.}}
 
 @** Introduction.
 This is \.{GWEB}, a literate-programming system for the \GO/ language, modeled

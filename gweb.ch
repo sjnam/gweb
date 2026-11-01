@@ -29,7 +29,7 @@
   \centerline{(Version 0.10.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
-  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
+  Soojin Nam, 2026. Released into the public domain.}}
 @y
 @z
 
@@ -52,7 +52,7 @@ the end of \.{gweb.w} covers all three webs. The list of section names follows.
   \centerline{(Version 0.10.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
-  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
+  Soojin Nam, 2026. Released into the public domain.}}
 @y
 @z
 
@@ -75,7 +75,7 @@ identifier is defined), together with the manual index entries. In the combined
   \centerline{(Version 0.10.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
-  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
+  Soojin Nam, 2026. Released into the public domain.}}
 @y
 @z
 

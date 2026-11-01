@@ -1,7 +1,7 @@
 # GWEB — Literate programming for Go
 
 [![CI](https://github.com/sjnam/gweb/actions/workflows/ci.yml/badge.svg)](https://github.com/sjnam/gweb/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](LICENSE)
 
 **GWEB** is a [literate programming](https://www-cs-faculty.stanford.edu/~knuth/lp.html)
 system for the Go programming language, modeled closely on Donald Knuth and Silvio Levy's
@@ -244,4 +244,6 @@ bootstrap`, `make selfdoc`) works, see the manual as well.
 
 ## License
 
-**GWEB** is released under the [MIT License](LICENSE).
+**GWEB** is released into the public domain under [the Unlicense](LICENSE):
+anyone may copy, modify, publish, use, compile, sell, or distribute it, for any
+purpose, without asking.

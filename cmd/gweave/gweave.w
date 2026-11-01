@@ -6,7 +6,7 @@
   \centerline{(Version 0.10.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
-  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
+  Soojin Nam, 2026. Released into the public domain.}}
 
 @** Processor gweave.
 This is the command-line front end of \.{gweave}; the weave engine it drives is

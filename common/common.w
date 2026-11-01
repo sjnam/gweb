@@ -7,7 +7,7 @@
   \centerline{(Version 0.10.5)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
-  Copyright \copyright\ 2026 Soojin Nam. MIT License.}}
+  Soojin Nam, 2026. Released into the public domain.}}
 
 @** Package common.
 This package is the shared front end of \.{GWEB}. It reads a \.{.w} source file,

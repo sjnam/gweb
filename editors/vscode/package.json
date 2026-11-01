@@ -4,7 +4,7 @@
   "description": "GWEB literate-programming support (.w, .ch): syntax highlighting, Go to Definition and Hover forwarded to your Go extension through gtangle's //line source map, section-name navigation and completion, and tangle on save.",
   "version": "0.3.1",
   "publisher": "sjnam",
-  "license": "MIT",
+  "license": "Unlicense",
   "repository": { "type": "git", "url": "https://github.com/sjnam/gweb" },
   "engines": { "vscode": "^1.60.0" },
   "categories": ["Programming Languages"],
