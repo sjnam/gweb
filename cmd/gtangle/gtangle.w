@@ -1,9 +1,9 @@
 @i ../../common/types.w
-\def\title{GTANGLE (Version 0.10.6)}
+\def\title{GTANGLE (Version 0.10.7)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
   \vskip 15pt
-  \centerline{(Version 0.10.6)}
+  \centerline{(Version 0.10.7)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
   Soojin Nam, 2026. Released into the public domain.}}
