@@ -6,11 +6,11 @@
 @s testing.T int
 @s strings.Builder int
 
-\def\title{GWEB (Version 0.10.5)}
+\def\title{GWEB (Version 0.10.6)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Literate programming system for the Go}
   \vskip 15pt
-  \centerline{(Version 0.10.5)}
+  \centerline{(Version 0.10.6)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
   Soojin Nam, 2026. Released into the public domain.}}

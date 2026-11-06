@@ -1,10 +1,10 @@
 @i types.w
-\def\title{Common code for GTANGLE and GWEAVE (Version 0.10.5)}
+\def\title{Common code for GTANGLE and GWEAVE (Version 0.10.6)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Common code for {\ttitlefont GTANGLE} and
     {\ttitlefont GWEAVE}}
   \vskip 15pt
-  \centerline{(Version 0.10.5)}
+  \centerline{(Version 0.10.6)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
   Soojin Nam, 2026. Released into the public domain.}}
@@ -30,7 +30,7 @@ import (
 	"strings"
 )
 
-const Version = "0.10.5"
+const Version = "0.10.6"
 
 @<Records shared across the web@>
 @<Parse a web from a file@>
