@@ -154,6 +154,8 @@ type Weaver struct {
 	format map[string]tokKind // \.{@@f}/\.{@@s}: identifier $\rightarrow$ the token class to use
 	isFile map[string]bool    // \.{@@(file@@>=} outputs: names are literal file paths
 
+	fieldLists map[string]bool // named sections spliced into a |struct|'s field list
+
 	xr *xref // identifier and section cross-references (built lazily)
 }
 
@@ -169,7 +171,46 @@ func New(w *common.Web) *Weaver {
 	}
 	@<Number the refinements and file outputs@>
 	@<Install the format directives@>
+	@<Find the sections that are spliced into a field list@>
 	return wv
+}
+
+@ A section whose name stands at the head of a field spec in a |struct|'s body
+supplies fields, and its code is a field list, though no |struct| shows it there.
+A field list may splice in another, so the search goes on until it finds no new
+one; there is a finite number of section names, so it ends.
+@<Find the sections that are spliced into a field list@>=
+wv.fieldLists = map[string]bool{}
+for grew := true; grew; {
+	grew = false
+	for _, s := range w.Sections {
+		if !s.HasCode {
+			continue
+		}
+		atoms, toks, offs := lexWhole(s.Code)
+		@<Note each section that the code |toks| splices into a field list@>
+	}
+}
+
+@ The references among the atoms are found by the positions of their stand-ins.
+The fields of each |struct| are scanned, and the whole code part too, if it is a
+field list itself.
+@<Note each section that the code |toks| splices into a field list@>=
+refAt := map[int]string{}
+for i, a := range atoms {
+	if a.Kind == common.ARef {
+		refAt[offs[i]] = w.Resolve(a.Text)
+	}
+}
+note := func(i int) {
+	if name, ok := refAt[i]; ok && !wv.fieldLists[name] {
+		wv.fieldLists[name] = true
+		grew = true
+	}
+}
+scanStructFields(toks, note)
+if s.Name != "" && wv.fieldLists[w.Resolve(s.Name)] {
+	scanFieldList(toks, 0, note)
 }
 
 @ Both refinements and \.{@@(file@@>=} outputs get a defining section number, so
@@ -304,21 +345,33 @@ a token no declaration takes for a name, so |type @@<Name@@>| declares nothing.
 @<Detect type declarations@>=
 func (wv *Weaver) scanAllCode(visit func([]token)) {
 	for _, s := range wv.w.Sections {
-		if !s.HasCode {
-			continue
+		if s.HasCode {
+			_, toks, _ := lexWhole(s.Code)
+			visit(toks)
 		}
-		var st lexState
-		var toks []token
-		for _, a := range common.ScanCode(s.Code) {
-			switch a.Kind {
-			case common.AText:
-				toks = append(toks, lexGo(a.Text, &st)...)
-			case common.ARef, common.ATeX, common.AVerbatim:
-				toks = append(toks, token{kind: tkString}) // a stand-in operand
-			}
-		}
-		visit(toks)
 	}
+}
+
+@ |lexWhole| does the lexing for |scanAllCode|, and for |renderCode|, which looks
+for definitions across the atoms of a code part in the same way. It returns the
+atoms, their tokens in one list, and where each atom's tokens begin in the list.
+The tokens of a \GO/ text atom are those that |renderCode| gets when it lexes the
+atoms one by one, since the lexer's state is carried from atom to atom in both.
+@<Detect type declarations@>=
+func lexWhole(code string) (atoms []common.Atom, toks []token, offs []int) {
+	atoms = common.ScanCode(code)
+	offs = make([]int, len(atoms))
+	var st lexState
+	for i, a := range atoms {
+		offs[i] = len(toks)
+		switch a.Kind {
+		case common.AText:
+			toks = append(toks, lexGo(a.Text, &st)...)
+		case common.ARef, common.ATeX, common.AVerbatim:
+			toks = append(toks, token{kind: tkString}) // a stand-in operand
+		}
+	}
+	return atoms, toks, offs
 }
 
 @ |scanDecls| walks a token list and, at each |keyword| (|type| for the bold
@@ -677,11 +730,36 @@ func (wv *Weaver) renderCode(secNum int, code string, runin bool) string {
 	@<Emit the current line@>
 	@<End or force-break a line@>
 
-	for _, a := range common.ScanCode(code) {
+	atoms, whole, offs := lexWhole(code)
+	@<Find the definition sites of the whole code part@>
+	for ai, a := range atoms {
+		base := offs[ai] // where the atom's tokens begin in |whole|
 		@<Render one code atom@>
 	}
 	flushLine()
 	return out.String()
+}
+
+@ A control code splits a code part into atoms, and the atoms are set one by one;
+but a declaration must be seen whole, across them. A |struct| whose field list
+holds a section reference goes on after it in another atom, and a field there,
+like |b| in
+$$\vbox{\halign{\quad#\hfil\cr
+|type t struct {|\cr
+\qquad|a int|\cr
+\qquad$\langle\,$More fields$\,\rangle$\cr
+\qquad|b int|\cr
+|}|\cr}}$$
+would never be found if each atom were searched for definitions alone. So the
+sites are looked for in the tokens of the whole code part, lexed by |lexWhole| as
+the detectors lex it. A code part that is itself a field list---the definition of
+a section that some |struct| splices in among its fields, as $\langle\,$More fields$\,\rangle$
+above---has no |struct| of its own to show it; |wv.fieldLists| knows such
+sections, and their code is read as the body of one.
+@<Find the definition sites of the whole code part@>=
+defSites := declSites(whole) // names declared out of |isDefinition|'s sight
+if s := wv.w.Sections[secNum-1]; s.Name != "" && wv.fieldLists[wv.w.Resolve(s.Name)] {
+	scanFieldList(whole, 0, func(i int) { defSites[i] = true })
 }
 
 @ The rendered code is built up chunk by chunk. |flushRun| closes the current
@@ -788,7 +866,6 @@ indentation nor lets a stale grammar gap glue in front of that first token.
 switch a.Kind {
 case common.AText:
 	toks := lexGo(a.Text, &st)
-	defSites := declSites(toks) // names declared out of |isDefinition|'s sight
 	@<Render the tokens of a text atom@>
 case common.ARef:
 	@<Set a section reference, spaced as an operand@>
@@ -903,13 +980,14 @@ if atLineStart {
 @ An identifier or builtin earns an index entry under the current section---a
 definition when a preceding declaration keyword, a following |:=|, or a place among
 |defSites|---a grouped declaration, a struct field, a method name---marks it as
-one, a use otherwise. The
+one, a use otherwise. The sites were found in the whole code part, where this
+atom's tokens begin at |base|. The
 |qualifierOf| result is computed here because it settles both what to index and, in
 a moment, the token's effective display class.
 @<Record the token's index entry@>=
 qual := qualifierOf(prevSigKind, prevSigText, prevPrevSigText)
 if t.kind == tkIdent || t.kind == tkBuiltin {
-	def := forceDef || defSites[k] || isDefinition(prevSigKind, prevSigText, toks, k)
+	def := forceDef || defSites[base+k] || isDefinition(prevSigKind, prevSigText, toks, k)
 	forceDef = false
 	if indexable(t) {
 		if def {
@@ -2168,7 +2246,9 @@ func scanStructFields(toks []token, add func(int)) {
 
 @ |scanFieldList| reads the body of one |struct|, from just after its opening brace
 to the brace that closes it. A spec that begins with an identifier is reported
-unless |isEmbeddedField| says it is an embedded field.
+unless |isEmbeddedField| says it is an embedded field. A spec that begins with
+the stand-in of a section reference is reported too: the section is spliced in
+among the fields, and |add| tells it from a name by its kind.
 @<Decide whether an identifier is a definition@>=
 func scanFieldList(toks []token, i int, add func(int)) {
 	depth, atStart := 0, true
@@ -2186,6 +2266,8 @@ func scanFieldList(toks []token, i int, add func(int)) {
 		default:
 			if atStart && depth == 0 && t.kind == tkIdent && !isEmbeddedField(toks, i) {
 				i = declNameList(toks, i, add)
+			} else if atStart && depth == 0 && t.kind == tkString && t.text == "" {
+				add(i) // a stand-in: no string literal is empty, quotes and all
 			}
 			atStart = false
 		}
@@ -4239,6 +4321,42 @@ var g = func(x int) answer { return nil }
 	uses := []string{"Mutex", "other", "Embedded", "result", "visit", "answer", "p"}
 	for _, name := range uses {
 		if want := `\II{\ID{` + name + `}}{\SN{1}}`; !strings.Contains(out, want) {
+			t.Errorf("woven output missing %q", want)
+		}
+	}
+}
+
+@ A field after a section reference in a |struct|'s body is a definition, and so
+is a field of a section spliced in among the fields, or into such a section; the
+code of a section spliced in elsewhere is not a field list.
+@(gweave_test.go@>=
+func TestWeaveIndexSplicedFields(t *testing.T) {
+	out := weaveString(t, `@@ Types.
+@@c
+type node struct {
+	key int
+	@@<More fields@@>
+	tag string
+}
+
+func f() {
+	@@<Steps@@>
+}
+
+@@ @@<More fields@@>=
+left, right *node
+@@<Still more@@>
+
+@@ @@<Still more@@>=
+depth int
+
+@@ @@<Steps@@>=
+count int
+`)
+	for _, want := range []string{`\II{\ID{key}}{\SND{1}}`, `\II{\ID{tag}}{\SND{1}}`,
+		`\II{\ID{left}}{\SND{2}}`, `\II{\ID{right}}{\SND{2}}`, `\II{\ID{depth}}{\SND{3}}`,
+		`\II{\ID{count}}{\SN{4}}`} {
+		if !strings.Contains(out, want) {
 			t.Errorf("woven output missing %q", want)
 		}
 	}
