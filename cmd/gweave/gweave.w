@@ -154,7 +154,8 @@ type Weaver struct {
 	format map[string]tokKind // \.{@@f}/\.{@@s}: identifier $\rightarrow$ the token class to use
 	isFile map[string]bool    // \.{@@(file@@>=} outputs: names are literal file paths
 
-	fieldLists map[string]bool // named sections spliced into a |struct|'s field list
+	fieldLists map[string]bool   // named sections spliced into a |struct|'s field list
+	declLists  map[string]string // named sections spliced into a declaration group: its keyword
 
 	xr *xref // identifier and section cross-references (built lazily)
 }
@@ -170,17 +171,31 @@ func New(w *common.Web) *Weaver {
 		isFile: map[string]bool{},
 	}
 	@<Number the refinements and file outputs@>
+	@<Find the sections that are spliced into a field list or a declaration group@>
 	@<Install the format directives@>
-	@<Find the sections that are spliced into a field list@>
 	return wv
 }
 
 @ A section whose name stands at the head of a field spec in a |struct|'s body
 supplies fields, and its code is a field list, though no |struct| shows it there.
-A field list may splice in another, so the search goes on until it finds no new
-one; there is a finite number of section names, so it ends.
-@<Find the sections that are spliced into a field list@>=
+In the same way a section whose name stands at the head of a spec in a
+parenthesized |var|, |const|, or |type| group supplies specs of that group, and
+its code is a declaration group without the keyword and the parentheses: a table
+of constants is often written
+$$\vbox{\halign{\quad#\hfil\cr
+|const (|\cr
+\qquad$\langle\,$Arithmetic opcodes$\,\rangle$\cr
+\qquad$\langle\,$Memory opcodes$\,\rangle$\cr
+|)|\cr}}$$
+with each kind of name explained in a section of its own, and |main|'s local
+variables are often gathered from all over the program into one |var| group. A
+field list or a group may splice in another, so the search goes on until it
+finds no new one; there is a finite number of section names, so it ends. These
+are found before the format directives are installed, since the detectors of
+type and constant declarations look into such sections too.
+@<Find the sections that are spliced into a field list or a declaration group@>=
 wv.fieldLists = map[string]bool{}
+wv.declLists = map[string]string{}
 for grew := true; grew; {
 	grew = false
 	for _, s := range w.Sections {
@@ -189,6 +204,7 @@ for grew := true; grew; {
 		}
 		atoms, toks, offs := lexWhole(s.Code)
 		@<Note each section that the code |toks| splices into a field list@>
+		@<Note each section that the code |toks| splices into a declaration group@>
 	}
 }
 
@@ -211,6 +227,24 @@ note := func(i int) {
 scanStructFields(toks, note)
 if s.Name != "" && wv.fieldLists[w.Resolve(s.Name)] {
 	scanFieldList(toks, 0, note)
+}
+
+@ The specs of each group are scanned for the three keywords in turn, and the
+whole code part too, if it is a group of the keyword itself. A section is taken
+for the first group that splices it in; \GO/ would not accept one spliced into
+groups of two keywords anyway.
+@<Note each section that the code |toks| splices into a declaration group@>=
+group := ""
+if s.Name != "" {
+	group = wv.declLists[w.Resolve(s.Name)]
+}
+for _, kw := range groupDeclKeywords {
+	scanDeclsOf(toks, group, kw, func(i int) {
+		if name, ok := refAt[i]; ok && wv.declLists[name] == "" {
+			wv.declLists[name] = kw
+			grew = true
+		}
+	})
 }
 
 @ Both refinements and \.{@@(file@@>=} outputs get a defining section number, so
@@ -271,8 +305,8 @@ practice; a type name you want left in italic can be reset with \.{@@f NAME int}
 and any name can be set in typewriter with \.{@@d}.
 @<Detect type declarations@>=
 func (wv *Weaver) detectDecls(keyword string, kind tokKind) {
-	wv.scanAllCode(func(toks []token) {
-		scanDecls(toks, keyword, func(i int) { wv.noteFormat(toks[i].text, kind) })
+	wv.scanAllCode(func(toks []token, group string) {
+		scanDeclsOf(toks, group, keyword, func(i int) { wv.noteFormat(toks[i].text, kind) })
 	})
 }
 
@@ -300,8 +334,8 @@ registers each one |isUpperName| accepts as a typewriter macro, everywhere it is
 used. An explicit \.{@@f}/\.{@@s}/\.{@@d} still wins, as |noteFormat| guarantees.
 @<Detect type declarations@>=
 func (wv *Weaver) detectUpperConsts() {
-	wv.scanAllCode(func(toks []token) {
-		scanDecls(toks, "const", func(i int) {
+	wv.scanAllCode(func(toks []token, group string) {
+		scanDeclsOf(toks, group, "const", func(i int) {
 			if name := toks[i].text; isUpperName(name) {
 				wv.noteFormat(name, tkMacro)
 			}
@@ -342,12 +376,18 @@ that sets nothing in the code---\.{@@!}, an index entry, a layout hint, a
 paste---is passed over; one that stands for material of its own---a section
 reference, a \.{@@t} box, verbatim output---leaves a |tkString| in its place,
 a token no declaration takes for a name, so |type @@<Name@@>| declares nothing.
+With the tokens goes the keyword of the declaration group the section is
+spliced into, if it is one, or |""|.
 @<Detect type declarations@>=
-func (wv *Weaver) scanAllCode(visit func([]token)) {
+func (wv *Weaver) scanAllCode(visit func(toks []token, group string)) {
 	for _, s := range wv.w.Sections {
 		if s.HasCode {
 			_, toks, _ := lexWhole(s.Code)
-			visit(toks)
+			group := ""
+			if s.Name != "" {
+				group = wv.declLists[wv.w.Resolve(s.Name)]
+			}
+			visit(toks, group)
 		}
 	}
 }
@@ -425,7 +465,10 @@ func prevSignificant(toks []token, i int) int {
 group---each entry that starts a spec at the group's own nesting level---tracking
 brace and bracket depth so that struct fields and the like are not mistaken for
 names. A spec starts a line or follows a |;|: \GO/ ends a spec at either, so a
-dense table like \.{TRAP = iota; FCMP; FUN} declares three names, not one.
+dense table like \.{TRAP = iota; FCMP; FUN} declares three names, not one. A
+spec that begins with the stand-in of a section reference is reported too, as in
+|scanFieldList|: the section is spliced in among the specs, and |add| tells it
+from a name by its kind.
 @<Scan a declaration group@>=
 func scanDeclGroup(toks []token, i int, add func(int)) int {
 	depth := 0
@@ -461,11 +504,26 @@ func scanDeclGroup(toks []token, i int, add func(int)) int {
 		default:
 			if atStart && depth == 0 && t.kind == tkIdent {
 				i = declNameList(toks, i, add)
+			} else if atStart && depth == 0 && t.kind == tkString && t.text == "" {
+				add(i) // a stand-in: no string literal is empty, quotes and all
 			}
 			atStart = false
 		}
 	}
 	return i
+}
+
+@ The code of a section spliced into a group of |keyword| is a group body itself,
+without the keyword and the parentheses (|wv.declLists| knows such sections), so
+|scanDeclsOf| reads it from the start as |scanDeclGroup| reads a group, besides
+finding the declarations it holds in the ordinary way. A |group| of |""| means a
+section spliced into no group.
+@<Scan a declaration group@>=
+func scanDeclsOf(toks []token, group, keyword string, add func(int)) {
+	scanDecls(toks, keyword, add)
+	if group == keyword {
+		scanDeclGroup(toks, 0, add)
+	}
 }
 
 @ A spec may declare several names at once, |var a, b int| or |const x, y = 1, 2|,
@@ -755,11 +813,19 @@ sites are looked for in the tokens of the whole code part, lexed by |lexWhole| a
 the detectors lex it. A code part that is itself a field list---the definition of
 a section that some |struct| splices in among its fields, as $\langle\,$More fields$\,\rangle$
 above---has no |struct| of its own to show it; |wv.fieldLists| knows such
-sections, and their code is read as the body of one.
+sections, and their code is read as the body of one. Likewise a code part
+spliced into a |var|, |const|, or |type| group, which |wv.declLists| knows, is
+read as the body of a group.
 @<Find the definition sites of the whole code part@>=
 defSites := declSites(whole) // names declared out of |isDefinition|'s sight
-if s := wv.w.Sections[secNum-1]; s.Name != "" && wv.fieldLists[wv.w.Resolve(s.Name)] {
-	scanFieldList(whole, 0, func(i int) { defSites[i] = true })
+if s := wv.w.Sections[secNum-1]; s.Name != "" {
+	name := wv.w.Resolve(s.Name)
+	if wv.fieldLists[name] {
+		scanFieldList(whole, 0, func(i int) { defSites[i] = true })
+	}
+	if wv.declLists[name] != "" {
+		scanDeclGroup(whole, 0, func(i int) { defSites[i] = true })
+	}
 }
 
 @ The rendered code is built up chunk by chunk. |flushRun| closes the current
@@ -4356,6 +4422,61 @@ count int
 	for _, want := range []string{`\II{\ID{key}}{\SND{1}}`, `\II{\ID{tag}}{\SND{1}}`,
 		`\II{\ID{left}}{\SND{2}}`, `\II{\ID{right}}{\SND{2}}`, `\II{\ID{depth}}{\SND{3}}`,
 		`\II{\ID{count}}{\SN{4}}`} {
+		if !strings.Contains(out, want) {
+			t.Errorf("woven output missing %q", want)
+		}
+	}
+}
+
+@ A name at the head of a spec in a section spliced into a |const| or |var| group
+is a definition, and so is one in a section spliced into such a section; the
+type it declares is set bold, and a constant in capitals in typewriter. A name in
+a section spliced into a function body stays a use, like |z| in the last section.
+@(gweave_test.go@>=
+func TestWeaveIndexSplicedGroups(t *testing.T) {
+	out := weaveString(t, `@@ Constants.
+@@c
+const (
+	@@<Opcodes@@>
+)
+
+type (
+	@@<Types@@>
+)
+
+func f() {
+	var (
+		@@<Locals@@>
+	)
+	@@<Steps@@>
+}
+
+@@ @@<Opcodes@@>=
+add = iota // addition
+sub
+@@<More opcodes@@>
+
+@@ @@<More opcodes@@>=
+mul
+LDB
+
+@@ @@<Types@@>=
+cell int
+
+@@ @@<Locals@@>=
+x, y cell
+@@<More locals@@>
+
+@@ @@<More locals@@>=
+z = add
+
+@@ @@<Steps@@>=
+count := z
+`)
+	for _, want := range []string{`\II{\ID{add}}{\SND{2}, \SN{6}}`, `\II{\ID{sub}}{\SND{2}}`,
+		`\II{\ID{mul}}{\SND{3}}`, `\II{\MAC{LDB}}{\SND{3}}`, `\II{\KW{cell}}{\SND{4}`,
+		`\II{\ID{x}}{\SND{5}}`, `\II{\ID{y}}{\SND{5}}`, `\II{\ID{z}}{\SND{6}, \SN{7}}`,
+		`\II{\ID{f}}{\SND{1}}`} {
 		if !strings.Contains(out, want) {
 			t.Errorf("woven output missing %q", want)
 		}
