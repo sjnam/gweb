@@ -142,7 +142,9 @@ honest about its literate origin.
 
 For a tour of the bundled examples, the full `.w` file-format reference, and
 non-English (e.g. Korean) documentation, see the manual — `gwebman.tex`
-(`make manual`).
+(`make manual`). A Korean translation, `gwebman-ko.tex`, is built with
+`make manual-ko` (it needs `luatex` and the Korean fonts listed under
+[Prerequisites](#prerequisites)).
 
 ## More examples
 
@@ -182,6 +184,7 @@ hangulfont.tex     the Hangul typeface choices (\input by kotexgweb.tex)
 gweb.1             the man page for both commands (CWEB's cweb.1)
 format.md          the .w file-format reference
 gwebman.tex        the GWEB manual
+gwebman-ko.tex     the manual in Korean (make manual-ko; luatex)
 examples/          worked examples
 editors/
 └── vscode/        VS Code language support for .w files

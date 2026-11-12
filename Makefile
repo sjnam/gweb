@@ -3,7 +3,7 @@
 GO  ?= go
 BIN ?= bin
 
-.PHONY: all build generate test install install-tools uninstall clean example tangle bootstrap selfdoc manual bump
+.PHONY: all build generate test install install-tools uninstall clean example tangle bootstrap selfdoc manual manual-ko bump
 
 # GWEB is self-hosted: its Go is tangled from the literate .w sources, each kept
 # next to its output. Following cweb's tradition, the repository commits only the
@@ -75,6 +75,13 @@ manual:
 	@mkdir -p build
 	cd build && TEXINPUTS="$(CURDIR):" pdftex -interaction=nonstopmode "$(CURDIR)/gwebman.tex"
 	@echo "manual: wrote build/gwebman.pdf"
+
+# The manual in Korean, a translation of gwebman.tex. Hangul needs luatex (with
+# luatexko) and the Noto CJK KR fonts that hangulfont.tex names.
+manual-ko:
+	@mkdir -p build
+	cd build && TEXINPUTS="$(CURDIR):" luatex -interaction=nonstopmode "$(CURDIR)/gwebman-ko.tex"
+	@echo "manual-ko: wrote build/gwebman-ko.pdf"
 
 test: generate
 	$(GO) test ./...

@@ -1,0 +1,497 @@
+% gwebman-ko.tex -- the GWEB manual in Korean, a translation of gwebman.tex.
+% Process with luatex (Hangul needs luatexko), for example
+%       TEXINPUTS=..: luatex gwebman-ko.tex
+% or simply `make manual-ko' from the top of the repository.
+%
+% It keeps gwebman.tex's own macros and layout, and loads kotexgweb.tex for the
+% Hangul fonts. When gwebman.tex changes, change this translation with it.
+
+\input gwebmac
+\input kotexgweb
+\pdffalse \dvipdffalse        % a plain manual: no hyperlinks or bookmarks
+\parskip=0pt plus 1pt
+\parindent=18pt
+\abovedisplayskip=.5\abovedisplayskip  \belowdisplayskip=.5\belowdisplayskip
+\abovedisplayshortskip=.5\abovedisplayshortskip
+\belowdisplayshortskip=.5\belowdisplayshortskip
+
+\font\eighttt=cmtt8
+\font\ninett=cmtt9
+\font\twelvett=cmtt12
+% The 12-point Latin faces of gwebman.tex, each paired with a Hangul face of the
+% same weight, the way kotexgweb pairs \tenbf with \tenbd. The Hangul face is
+% set at 0.962 of the size, the ratio hangulfont.tex uses for the serif.
+\font\latinauthorfont=cmr12
+\font\latinchapterfont=cmbx12
+\sethangulfont\twelvebd="Noto Serif CJK KR Bold:%
+  language=KOR;script=hang;interhangul=-0.04em;interlatincjk=.125em;%
+  charraise=-0.06em;+compresspunctuations;expansion=default;" at 11.54pt
+\def\authorfont{\latinauthorfont\twelvemj}
+\def\chapterfont{\latinchapterfont\twelvebd}
+
+%---inline code; @ < > = etc. are safe in \tt, so avoid braces inside \cw ---
+\def\cw#1{{\tt #1}}
+\def\bs{\char92 }                              % a literal backslash, in \tt
+\def\rn#1{$\langle\,${\it #1\/}$\,\rangle$}    % a refinement name, as in print
+
+%---a centred chapter heading, in the manner of cwebman's \section ---
+\def\chapter#1{\penalty-500\bigskip
+  \centerline{\chapterfont\def\.##1{{\twelvett##1}}#1}\nobreak\vskip 6pt}
+%---a run-in bold subsection heading ---
+\def\section#1{\medskip\noindent{\bf #1.}\enspace\ignorespaces}
+
+%---a bulleted list item ---
+\def\bull{\smallskip\item{$\bullet$}}
+
+%---a verbatim code display (TeXbook recipe): | is the escape inside it ---
+\def\begincode{\par\medskip\begingroup
+  \def\do##1{\catcode`##1=12 }\dospecials
+  \catcode`\|=0
+  \obeylines \obeyspaces \tt \parindent=0pt \leftskip=\parindent\relax}
+\def\endcode{\endgroup\medskip\noindent}
+
+%---running heads, in the manner of cwebman ---
+\def\runninghead{{\ninett GWEB} 사용자 설명서 (버전 0.10.7)}
+\def\lheader{\mainfont\folio\hfil{\eightrm\eightgt\runninghead}\hfil}
+\def\rheader{\hfil{\eightrm\eightgt\runninghead}\hfil\mainfont\folio}
+
+% =============================================================================
+% Title page (no running head), in the manner of cwebman.
+\headline={\hfil}\footline={\hfil}
+\null\vfill
+\centerline{\titlefont {\ttitlefont GWEB} 시스템}
+\vskip 6pt
+\centerline{\chapterfont Go를 위한 문학적 프로그래밍 시스템}
+\vskip 18pt
+\centerline{(버전 0.10.7)}
+\vskip 24pt
+\centerline{\authorfont 크누스와 레비의 {\ttitlefont CWEB}을 본떠 만들다}
+\vfill
+\noindent
+이 글은 \.{CWEB}이나 문학적 프로그래밍을 이미 아는 독자를 위한 \.{GWEB}
+안내서다. 문학적 프로그래밍이 무엇인지는 다시 설명하지 않는다. 그 대신
+\.{GWEB}이 \.{CWEB}과 어떻게 다른지, 그리고 실제로 쓰게 될 기능과 명령에
+집중한다. 대강 말해 \.{GWEB}은 ``\CEE/를 \GO/로 바꾼 \.{CWEB}''이므로,
+\.{CWEB}에 관해 아는 것은 대부분 그대로 통한다. 흥미로운 대목은 \GO/와
+\cw{gofmt}가 그림을 바꾸는 곳이다.
+\pageno=0
+\vfil\eject
+
+% Running heads from the second page on.
+\headline={\ifodd\pageno\rheader\else\lheader\fi}
+
+\chapter{한눈에 보는 \.{GWEB}}
+\noindent\.{GWEB}은 \.{CWEB}의 도구를 하나하나 그대로 본뜬다.
+
+\bull \cw{gtangle} $\approx$ \cw{ctangle}---컴파일할 수 있는 \GO/ 소스를 뽑아낸다.
+
+\bull \cw{gweave} $\approx$ \cw{cweave}---문서를 조판한다.
+
+\bull \cw{gwebmac.tex} $\approx$ \cw{cwebmac.tex}---짜낸 출력이 쓰는 \TeX\ 매크로다.
+
+\noindent 웹은 파일 하나이고, 관례상 이름을 \cw{foo.w}로 짓는다. 명령
+\cw{gtangle foo}는 \cw{foo.go}를(덧붙인 출력 파일이 있으면 그것도) 쓰고, 명령
+\cw{gweave foo}는 \cw{foo.tex}를 쓴다. 이 파일을 \cw{pdftex}로 돌리면
+\cw{foo.pdf}가 나온다. \.{CWEB}처럼 명령줄에서는 \cw{.w}를 빼도 된다.
+
+\chapter{\.{CWEB}에서 그대로 가져온 것}
+\noindent
+\.{CWEB}을 안다면 \.{GWEB}도 거의 다 아는 셈이다. 웹은 번호가 붙은
+{\it 절\/}이 이어진 것이고, 각 절에는 차례대로 세 부분까지 올 수 있다. 바로
+\TeX\ 설명 파트, 정의 파트(\cw{@d}/\cw{@f}/\cw{@s}), 코드 파트다. 그리고 이
+절들 앞에는 {\it 림보\/}가 온다. 제어 코드는 익숙한 뜻을 그대로 지닌다.
+
+\bull 제어 코드 \cw{@*}, \cw{@*1}, \cw{@*2}, $\ldots$는 별표 절(장)을 시작하고, \cw{@\ }는
+보통 절을 시작한다.
+
+\bull 제어 코드 \cw{@c}는 이름 없는 코드를 시작한다. 제어 코드 \cw{@<Name@>=}는 이름 있는 절을
+정의하고, \cw{@<Name@>}는 그것을 참조한다. 이름 끝에 \cw{...}를 붙이면 그
+이름을 유일하게 가리키는 앞부분만으로 줄여 쓸 수 있다.
+
+\bull 제어 코드 \cw{@(file@>=}는 뒤따르는 코드를 다른 출력 파일로 보내고, \cw{@i}는
+다른 웹을 끼워 넣는다.
+
+\bull 지시자 \cw{@f}/\cw{@s}는 식별자의 조판 방식을 정한다. 색인 코드 \cw{@\char94 text@>},
+\cw{@.text@>}, \cw{@:text@>}는 색인 항목을 더하고, \cw{@!}는 그 자리를
+색인에서 정의로 표시하게 한다.
+
+\bull 제어 코드 \cw{@=...@>}는 원문 그대로 내보내고, \cw{@t...@>}는 \TeX\ 글이다.
+제어 코드 \cw{@\char38}는 토큰을 이어 붙이고, \cw{@@}는 글자 \cw{@} 그 자체이며,
+\cw{@\char37}와 \cw{@q...@>}는 주석이다.
+
+\bull 배치 코드 \cw{@,} \cw{@/} \cw{@|} \cw{@\#}는 짜낸 문서의 배치를 손본다.
+
+\bull 변경 파일(\cw{@x}/\cw{@y}/\cw{@z})과 설명 속의 인라인 코드 \cw{|...|}는
+\.{CWEB}과 똑같이 동작한다.
+
+\noindent 작은 편의가 둘 있다. 제어 코드 \cw{@p}는 \.{CWEB}처럼 \cw{@c}와 같은
+뜻으로 받아들인다. 그리고 \cw{\bs input gwebmac}는 직접 쓸 필요가 없다.
+명령 \cw{gweave}가 대신 써 넣고, 직접 넣어 둔 것이 있으면 지운다.
+
+\chapter{\.{GWEB}이 다른 점}
+\noindent 차이는 모두 \CEE/ 대신 \GO/를 조판한다는 데서 나온다.
+
+\section{전처리기가 없다}
+\GO/에는 전처리기가 없으므로 \cw{@d}는 결코 코드를 만들지 않는다. 명령
+\cw{gtangle}은 이것을 무시한다(진짜 정의에는 \GO/의 \cw{const}와 \cw{func}를
+쓴다). 그렇다고 쓸모가 없지는 않다. 명령 \cw{gweave}는 \cw{@d}를 \.{CWEB}의
+매크로처럼 타자체로 찍을 식별자의 목록으로 읽는다(아래 참고). 매크로 하나만
+받는 \.{CWEB}의 \cw{@d}와 달리 이름을 얼마든지 받는다. 본문은 다음 \cw{@}까지
+이어지고 여러 줄에 걸쳐도 되므로, \cw{@d Push Pop Peek} 한 줄이면 세 이름이
+한꺼번에 정해진다. 조판 지시자 \cw{@f}와 \cw{@s}도 남아 있다. 이를테면
+지시자 \cw{@f Stack int}는 사용자 형 \cw{Stack}을 미리 선언된 형처럼 굵게 찍는다.
+
+\section{파서 없이 보기 좋게 조판하기}
+명령 \cw{cweave}는 \CEE/를 파싱해 모든 공백과 줄바꿈과 들여쓰기를 문법에서
+새로 끌어낸다. 명령 \cw{gweave}도 수식 같은 결과에 이른다. 곱셈
+\cw{a * b}는 띄우고, 포인터 \cw{*T}는 붙이고, 관계 연산자는 떼어 놓고,
+키워드 뒤에는 한 칸을 둔다. 다만 {\it 국소적\/} 규칙만으로 그렇게 한다. 각
+토큰과 그 이웃만 볼 뿐, 구문 트리는 만들지 않는다. 그래서 간격은
+\cw{gofmt}가 아니라 \cw{cweave}를 따른다. 명령 \cw{gofmt}는 우선순위가 높은
+항을 붙여 쓰지만(\cw{a*b + c}), 명령 \cw{gweave}는 수식을 조판하듯 모든
+연산자를 똑같이 띄운다. 들여쓰기도 마찬가지로 구조를 따른다({\it 짜낸
+문서\/} 참고). 그래서 들쭉날쭉하거나 빽빽한 소스도 깔끔하게 놓인다. 절을
+손으로 다듬을 필요가 없다.
+
+국소적으로는 답이 없는 모호함이 두 가지 있다. 이때 \cw{gweave}는 저자가
+믿을 만하게 주는 단 하나의 신호, 곧 저자 자신의 띄어쓰기에 기댄다.
+명령 \cw{cweave}가 \cw{@[}\thinspace$\ldots$\thinspace\cw{@]}에 기대는 것과 똑같다.
+피연산자 사이의 \cw{*}는 소스에서 뒤에 붙여 쓰면(\cw{p *T}) 포인터 형이고,
+그렇지 않으면(\cw{a * b}, \cw{a*b}) 곱셈이다. 중괄호는 그 앞의 키워드나 형에
+따라 띄어 쓰는 블록을 열거나, 붙여 쓰는 합성 리터럴을 연다. \.{CWEB}의
+조판 힌트 \cw{@+}, \cw{@[}\thinspace$\ldots$\thinspace\cw{@]}, \cw{@;}는 여기서
+할 일이 없어 무시한다. 명시적 배치 코드 \cw{@,} \cw{@/} \cw{@|} \cw{@\#}는
+여전히 자동 간격보다 앞서므로, 손으로 마무리할 때 쓰면 된다.
+
+\section{tangle한 코드는 gofmt를 거친다}
+명령 \cw{gtangle}이 내놓는 출력은 \cw{gofmt}를 거치므로, 올바른 웹은 늘 표준 형식의 \GO/를
+낳는다. 모아 붙인 글이 올바른 \GO/가 아니면, 명령 \cw{gtangle}은 실패하는
+대신 형식을 다듬지 않은 출력을 남기고 경고를 찍는다.
+
+\section{형과 상수는 저절로 분류된다}
+명령 \cw{gweave}는 \cw{type} 선언을 찾아낸다. 한 줄짜리 꼴(\cw{type Name
+...})과 괄호로 묶은 꼴을 모두 찾고, 선언된 이름은 어디에 나오든 미리 선언된
+형처럼 {\bf 굵게} 찍는다. 이름에 소문자가 없는 상수, 이를테면 \cw{TRAP}이나
+\cw{MAX\_N}은 어디에 나오든 타자체로 찍는다. 명령 \cw{cweave}가 대문자 이름을
+찍는 방식과 같다. 다만 \cw{N}처럼 한 글자인 이름은 \cw{cweave}에서처럼
+이탤릭으로 남는다. 그 밖의 상수는 한 줄짜리 \cw{const Name = ...}이든,
+묶음이든, \cw{iota} 열거든 보통의 이탤릭 식별자다. 이 규칙은 상수에만
+적용된다. 대문자로 쓴 변수나 형은 제 분류를 지킨다. 이름을 \cw{@d}에 적으면
+\cw{cweave}가 \cw{@d} 매크로를 찍듯 타자체로 찍는다. 이 웹에서 선언하지
+{\it 않은\/} 이름도 마찬가지다. 이를테면 \cw{@d http.StatusOK}는
+\cw{StatusOK}를 어디서나 타자체로 찍는다. 자동 분류는 무엇이든
+\cw{@f}/\cw{@s}로 바꿀 수 있다. 이를테면 \cw{@f Name int}는 \cw{Name}을 억지로
+굵게 찍고, \cw{@f Name x}(아무 보통 식별자)는 평범한 이탤릭으로 되돌린다.
+
+이런 지시자는 꾸러미나 리시버로 {\it 한정\/}할 수 있다. 지시자
+\cw{@s foo.Bar int}는 \cw{foo.Bar}로 쓴 \cw{Bar}만 정한다. 그래서 우연히 이름이
+같은 \cw{abc.Bar}(어떤 \cw{abc}의 필드 \cw{Bar})나 그냥 \cw{Bar}는 건드리지
+않는다. 한정하지 않은 \cw{@s Bar int}는 모든 \cw{Bar}를 정한다. 한정자는
+\cw{.} 앞에 쓴 식별자일 뿐이므로, 실제 꾸러미 이름이 아니어도 된다.
+
+\section{\.{GWEB}은 \.{GWEB}으로 쓰였다}
+\.{CWEB}처럼 \.{GWEB}도 문학적 프로그램이다. 각 도구는 제 \GO/ 옆에 둔
+\cw{.w} 웹에서 tangle된다. 원본은 \cw{common/common.w}(함께 쓰는 파서),
+\cw{cmd/gtangle/gtangle.w}(명령과 tangle 엔진),
+\cw{cmd/gweave/gweave.w}(명령과 weave 엔진)이다. 그 옆의 \GO/는 이들에서
+tangle한 것이고 바이트 단위까지 똑같이 재현된다. 이 고정점은 바꿀 때마다
+\cw{make bootstrap}이 확인하므로, 읽는 프로그램과 돌아가는 프로그램이 서로
+어긋날 수 없다. \.{GWEB}은 라이브러리가 아니라 명령들의 묶음이다. 그래서 각
+엔진은 따로 가져다 쓸 수 있는 꾸러미가 아니라 제 명령의 \cw{main} 꾸러미 안에
+산다.
+\begincode
+make tangle       # re-tangle the .w sources back into the Go tree
+make bootstrap    # tangle into a scratch tree and verify it is byte-for-byte
+                  # identical to the committed sources (the fixpoint)
+|endcode
+\noindent 작업 순서는 이렇다. 파일 \cw{.w}를 고치고, \cw{make tangle}을 돌린 뒤,
+둘을 함께 커밋한다. 테스트도 \cw{.w} 소스 안에 있다(웹마다 {\it Tests\/}
+장이 있다). 그래서 테스트는 나머지 생성된 \GO/와 함께 tangle되고 git에서
+무시된다. 커밋되는 \cw{\_test.go}는 하나도 없다.
+
+저장소 맨 위의 \cw{gweb.w}는 위의 세 웹을 읽는 차례대로 \cw{@i}로 끼워 넣는
+주 웹이다. 그래서 명령 \cw{gweave}는 시스템 전체를 한 문서로 조판할 수 있다.
+\begincode
+make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program
+|endcode
+\noindent 그 결과는 \.{GWEB}이 스스로를 기록한 문서다. 다른 프로그램에 만들어
+주는 것과 똑같이 보기 좋게 조판한 코드와 색인과 상호 참조가 들어 있다. 각 웹을
+따로 짤 수도 있다. 이를테면 \cw{gweave cmd/gweave/gweave.w}는 제 제목 쪽과
+색인을 갖춘 \cw{gweave}의 문서를 만든다. \.{CWEB}의 \cw{common.w},
+\cw{ctangle.w}, \cw{cweave.w}가 그렇듯이 말이다. 합본 문서는 \cw{gweb.ch}를
+적용한다. 이 변경 파일은 각 웹의 제목과 \cw{@** Index.} 절을 걷어내어,
+\cw{gweb.w}의 것만 남긴다.
+
+\chapter{짜낸 문서}
+\noindent
+명령 \cw{gweave}는 \cw{cweave}와 같은 문서 구성을 만든다. 절 머리는 굵은
+글씨로 본문 앞에 붙고(큰 별표 절 앞에서는 쪽이 바뀐다), 두 단으로 짠 색인,
+{\it 절 이름 목록\/}, 목차 쪽, 절 번호를 단 머리글이 있다. 한 절은 설명과
+코드를 통틀어 한 쪽에 들어가면 한 쪽에 함께 놓인다. 코드 파트는 그 자체가 한
+쪽보다 길지 않은 한 쪽 경계에서 나뉘지 않는다.
+
+\section{코드를 찍는 방식}
+예약어와 사용자 정의 형은 굵게, 그 밖의 식별자는 이탤릭으로, 문자열과 룬
+리터럴은 타자체(\.{CWEB}처럼 \cw{cmtex10})로, 수와 주석은 로만체로 찍는다.
+\GO/에 맞춘 손질도 몇 가지 있다. 시프트 연산자 \cw{<<}와 \cw{>>}는 붙은 기호
+$\ll$과 $\gg$로 찍는다. 함수 이름이나 키워드 뒤에 \cw{(}가 오면 사이에 가는
+공백을 두어 \cw{f (x)}가 엉겨 붙지 않게 한다. 그리고 주석의 \cw{//}는 조금 더
+촘촘하게 붙인다.
+
+코드 주석의 글은 \.{CWEB}과 똑같이 \TeX\ 그대로 옮긴다. 달러 기호 사이의
+\TeX\ 수식은 수식으로 조판되고, 인라인 코드 \cw{|...|}는 그것이 가리키는
+\GO/로 찍히며, \cw{\bs.\char123...\char125}는 타자체가 되고, 보통의 제어
+시퀀스도 동작한다. 대가도 \.{CWEB}과 같다. \TeX\ 특수 문자가 살아 있으므로,
+주석에 쓰는 글자 \cw{\char123}, \cw{\$}, \cw{\%}, \cw{\char38}, 역빗금은
+막거나 짝을 맞춰야 한다(\cw{\bs\char123}, \cw{\bs\$}로 쓰고, 막대 자체는
+\cw{\bs\char124}로 쓴다). 또 홀로 남은 \cw{\%}는 그 줄의 나머지를 주석으로
+만들어 버린다. 이런 것이 많이 필요한 글은 코드가 아니라 \TeX\ 파트에 둔다.
+
+들여쓰기도 간격도 소스에서 베끼지 않는다. 들여쓰기는 {\it 구조적\/}이다.
+명령 \cw{gweave}는 각 코드 파트의 블록 중첩을 따라간다. 중괄호와 괄호와
+대괄호를 세고, \cw{switch}의 \cw{case} 몸체와 레이블에 대해서는 \cw{gofmt}가
+두는 특례를 따르며, 그에 맞춰 각 줄을 놓는다. 가로 간격도 마찬가지로 문법에서
+끌어내며 수식과 같다({\it 파서 없이 보기 좋게 조판하기\/} 참고). 그래서
+들여쓰기를 아무렇게나 했거나 공백 없이 빽빽하게 친 절도 깔끔하게 읽힌다.
+명령 \cw{cweave}가 \CEE/ 문법에 따라 들여쓰기와 간격을 새로 정하는 것과 거의
+같다.
+
+\section{색인과 조판 코드}
+손으로 다는 색인 코드 \cw{@\char94 text@>}(로만체), \cw{@.text@>}(타자체),
+\cw{@:text@>}(\cw{\bs9}로 형식을 정함)는 \.{CWEB}처럼 동작한다. 정의 항목을
+강제하는 \cw{@!}와, 이름의 분류를 바꾸는 \cw{@f}/\cw{@s}(\.{CWEB}처럼 같은 뜻)도
+마찬가지다. 식별자가 \cw{func}, \cw{var}, \cw{const}, \cw{type} 뒤에 오면, 홀로
+쓰였든 괄호 묶음의 한 항목으로 쓰였든 ``정의''로 표시한다(색인의 절 번호에
+밑줄을 긋는다). 바로 오른쪽에 \cw{:=}가 오는 식별자도 그렇다. 구조체 \cw{struct}의
+필드와 메서드의 이름도 \.{CWEB}에서 구조체 멤버가 그렇듯 정의로 친다. 다만
+임베디드 필드는 형의 이름이므로 정의가 아니다. 이것은 형 분석이 아니라
+어림셈이다. 한 번에 코드 파트 하나만 보므로, 다른 절에서 \cw{struct}에
+끼워 넣은 필드는 알아채지 못한다. 그런 필드는 \cw{@!}로 표시하고, 나머지도
+\cw{@!}로 바로잡는다. 형의 색인 항목은 그 형이 나오는 모든 곳과 마찬가지로
+굵게 찍는다. \.{CWEB}이 \cw{typedef}를 찍는 방식과 같다.
+
+\section{변경 표시} 변경 파일을 써서 짜면, 명령 \cw{gweave}는 그 변경이 손댄
+모든 절의 번호 바로 뒤에 \cw{*}를 붙인다. 변경이 절의 줄을 고쳐 썼든 절을 새로
+보탰든 마찬가지이고, \cw{cweave}와 똑같다. 이 표시는 그 번호가 나오는 곳마다
+따라붙는다. 절 머리에도, 색인에도, 상호 참조 메모에도 붙는다. 색인 바로 앞의
+작은 글씨 한 줄은 바뀐 절을 모두 나열한다. 색인 절 자체에도 표시가 붙는데,
+어디가 바뀌든 색인에 찍히는 번호가 달라질 수 있기 때문이다. 림보에만 그친
+변경은 제 절이 없으므로 아무것도 표시하지 않는다.
+
+\section{하이퍼링크와 북마크}
+참조로 찍힌 절 번호는 색인에서든, 상호 참조 메모에서든, 목차 쪽에서든 링크가
+되고, 별표 절은 PDF 개요를 이룬다. \.{CWEB}과 똑같이 두 가지 백엔드가 이것을
+만든다.
+
+\bull PDF 모드에서 쓰는 엔진의 PDF 원시 명령. 엔진 \cw{pdftex}에는 이것이 바로 있다.
+엔진 \cw{luatex}에는 \cw{\bs pdf} 원시 명령이 하나도 없다. 그것들이 모두
+\cw{\bs pdfextension}의 다른 철자가 되었기 때문이다. 그래서 파일 \cw{gwebmac.tex}는
+자신이 \cw{luatex}의 PDF 실행 위에 있음을 알아채면 그 이름들을
+\cw{\bs pdfextension}에 이어 주고, 같은 코드 경로가 두 엔진을 다 섬긴다.
+엔진 \cw{luatex}으로 짜야 하는 웹, 이를테면 \cw{luamplib}으로 MetaPost 그림을 그리는
+웹이나 한글 웹도 그래서 따로 부탁하지 않아도 \cw{pdftex} 실행과 똑같은 링크와
+개요를 얻는다.
+
+\bull DVI를 거치는 길. \cw{\bs let\bs pdf+}로 \cw{\bs special} 백엔드를 요청하고,
+그 결과를 \cw{dvipdfmx}로 바꾼다.
+
+\noindent 매크로 \cw{\bs pdf}를 정의하지 않고 그냥 DVI로 짜면 링크와 개요는 빠진다.
+
+\section{설명에 쓰는 도우미 매크로}
+파일 \cw{gwebmac.tex}에는 서술에 쓰는 cwebmac의 편의 매크로가 들어 있다.
+매크로 \cw{\bs.\char123...\char125}는 타자체 글을 찍고(특수 문자 자체는
+\cw{\bs\bs}, \cw{\bs\char123}, $\ldots$로 쓴다), \cw{\bs\bs\char123 id\char125}는
+이탤릭 식별자를 찍는다. 언어 이름표 \cw{\bs CEE/}, \cw{\bs GO/},
+\cw{\bs UNIX/}, \cw{\bs TEX/}도 쓸 수 있다. 매크로 \cw{\bs,}는 수식에서든
+글에서든 가는 공백이다. 그래도 \.{GWEB}에서 인라인 코드를 쓰는 관용구는 여전히
+그냥 \cw{|...|}다.
+
+\section{쪽 꾸미기}
+다음을 림보에서 다시 정의한다(자동으로 들어가는 \cw{\bs input gwebmac} 뒤에서).
+
+\bull \cw{\bs def\bs title\char123...\char125}---머리글과 목차의 제목이다.
+기본값은 대문자로 바꾼 파일 이름이고, 머리글에는 모두 대문자로 나온다.
+
+\bull \cw{\bs pagewidth}, \cw{\bs pageheight}---쪽 크기다.
+
+\bull \cw{\bs def\bs contentspagenumber\char123 n\char125}와
+\cw{\bs pageno}---더 큰 문서에 묶어 넣을 때 쪽 번호를 다시 매긴다.
+
+\bull 레지스터 \cw{\bs codepenalty}(코드 파트가 쪽 나눔에 얼마나 세게 버티는지)와
+\cw{\bs commentkern}(\cw{//}를 좁히는 정도)은 조정할 수 있는 레지스터다.
+
+\bull \cw{\bs K}---\GO/의 짧은 선언 \cw{:=}의 기호다. 기본값은 두 글자를 붙여
+찍는 것이다. \.{WEB}은 Pascal의 \cw{:=}를 왼쪽 화살표로 찍었는데, 림보에
+\cw{\bs let\bs K=\bs Leftarrow}를 쓰면 여기서도 그렇게 된다.
+
+\bull \cw{\bs AN}---\GO/의 비트 지우기 \cw{\&\string^}의 기호이고, 기본값은
+동그라미 친 빗금이다. 기호 \cw{:=}처럼 본뜰 \.{CWEB}의 짝이 없으므로, 이것도
+원하는 대로 \cw{\bs let}해 쓰면 된다.
+
+\noindent 또 림보에 \cw{\bs datethis}를 쓰면 \.{CWEB}처럼 1절 아래에 실행한 날짜와
+시각을 찍는다.
+
+\.{CWEB}처럼 문서의 꼬리를 뺄 수도 있다. 림보에 다음 가운데 하나를 쓴다.
+매크로 \cw{\bs nocon}은 목차를 빼고, \cw{\bs nosecs}는 절 이름 목록을(그리고
+목차도) 빼고, \cw{\bs noinx}는 색인까지 뺀다(곧 프로그램 뒤의 모든 것을 뺀다).
+매크로 \cw{\bs noatl}은 \.{CWEB}과 맞추려고 받아들이지만 아무 일도 하지 않는다.
+\.{GWEB}에는 \cw{@l} 음역이 없기 때문이다.
+
+목차 자료는 \cw{\bs contentsfile}에 쓰이고 \cw{\bs readcontents}가 다시 읽는다.
+기본값은 각각 \cw{\bs jobname .toc}와 \cw{\bs input \bs contentsfile}이다.
+림보에서 이 둘 가운데 하나를 다시 정의하면, \.{CWEB}에서처럼 따로 조판한 여러
+조각의 목차를 하나로 모을 수 있다.
+
+그리고 \cw{\bs pdfURL\char123 text\char125\char123 url\char125}를 \TeX\ 파트
+어디에 쓰든, {\it text\/}를 파란 글씨로 찍고 {\it url\/}로 가는 링크로 만든다.
+\.{CWEB}과 같다. PDF 백엔드가 없으면 둘 다 찍고 URL은 괄호 안에 넣는다. URL에서
+at 기호는 \cw{@@}로 쓰고(\cw{.w}의 보통 탈출 방식이다), \cw{\char126}는
+\cw{\bs TILDE/}로, \cw{\char95}는 \cw{\bs UNDER/}로 쓴다.
+
+\chapter{다른 언어로 짜기}
+\noindent 명령 \cw{gweave}가 짜낸 문서에 써 넣는 고정된 문구는 모두 매크로를
+거친다. 코드 파트 아래의 상호 참조 메모, {\it 절 이름 목록\/}의 머리, 목차
+쪽의 \cw{Section}과 \cw{Page}라는 말이 그렇다(\cw{\bs U}, \cw{\bs A},
+\cw{\bs Nused}, \cw{\bs sectionword}, \cw{\bs pageword}, $\ldots$). 영어 글자를
+그대로 쓰는 일은 없다. 이 매크로들을 \cw{\bs input}할 파일에서 다시 정의하면
+문서를 어느 언어로든 옮길 수 있다. 그 파일을 유니코드를 다루는 엔진과 알맞은
+글꼴과 짝지으면, 코드와 서술 자체도 ASCII가 아니어도 된다.
+
+한글 지원은 이미 갖춰져 있다. 림보에 한 줄을 넣고
+\begincode
+\input kotexgweb
+|endcode
+평소처럼 짠 다음, 결과를 \cw{pdftex}가 아니라 \cw{luatex}으로 돌린다.
+\begincode
+gweave foo.w
+luatex foo.tex
+|endcode
+파일 \cw{kotexgweb.tex}는 \cw{luatexko}와 Noto Serif/Sans CJK\thinspace KR
+글꼴을 불러들이고, \cw{gweave}의 문구를 한국어로 옮긴다. 파란 상호 참조
+링크와 북마크 개요는 \cw{gwebmac} 자체 덕분에 \cw{luatex}에서도 이미
+동작한다(위의 {\it 하이퍼링크와 북마크\/} 참고). 파일 \cw{kotexgweb.tex}가
+더하는 것은 한글 개요 제목에 필요한 UTF-16BE 변환뿐이다. 명령 \cw{gweave}
+자체에는 특별한 플래그가 필요 없다. 글꼴은 파일에 심지 않고 이름으로 고르므로
+미리 설치해 두어야 한다. 글꼴을 고르는 \cw{\bs sethangulfont} 줄들은 따로 떨어진
+\cw{hangulfont.tex}(\cw{kotexgweb.tex}가 불러들인다)에 있으니, 다른 서체를
+쓰고 싶으면 그 파일 하나만 고치면 된다. 예제 \cw{rps}는 이렇게 만든 완전한
+웹이다. 그리고 다른 언어를 지원하려면 \cw{kotexgweb.tex}를 본보기로 삼아 베끼면
+된다.
+
+\chapter{프로그램 실행하기}
+\begincode
+gtangle [-o dir] file[.w] [change[.ch]]
+gweave  [-o dir] file[.w] [change[.ch]]
+|endcode
+확장자 \cw{.w}는, 그리고 변경 파일의 \cw{.ch}도 빼도 된다. 옵션
+\cw{-o}는 출력 디렉터리를 고르고, \cw{-version}은 버전을 찍고 끝낸다. 각
+도구는 실행하면서 한 줄짜리 머리말을 찍고, 이어서 별표 절마다
+\cw{*}{\it n\/} 진행 표시를 찍는다. \.{CWEB}의 도구와 같다.
+
+명령 \cw{gtangle}은 tangle한 \GO/에 언제나 \cw{//line} 지시문을 넣는다.
+\.{CWEB}의 \cw{ctangle}이 언제나 \cw{\#line}을 넣는 것과 같다. 그래서 컴파일러와
+\cw{go vet}과 패닉 추적은 오류를 \cw{.go}가 아니라 \cw{.w}의 위치로 알려 준다.
+\.{GWEB}은 제 소스도 이렇게 tangle하므로, \cw{.w}를 고치면 커밋된 \GO/의 그
+줄 번호들이 뒤섞인다.
+
+PDF를 만들려면 \cw{pdftex}로 곧장 가거나, 같은 하이퍼링크를 얻으려면 DVI와
+\cw{dvipdfmx}를 거친다.
+\begincode
+pdftex foo.tex                       # native PDF, with links
+tex "\let\pdf+ \input foo.tex"       # or via DVI...
+dvipdfmx foo.dvi                     # ...then to PDF, with links
+|endcode
+그리고 \TeX\ 엔진이 \cw{gwebmac.tex}를 찾을 수 있어야 한다(아래의 설치 스크립트가 검색
+경로에 넣어 준다. 그렇지 않으면 \cw{TEXINPUTS}를 정한다).
+
+두 도구는 끝나지 않은 제어 코드, 정의되지 않은 절의 참조, 모호한 \cw{...}
+줄임, 정의했지만 쓰이지 않은 절을 각각 \cw{file:line} 위치와 함께 알린다.
+이것들은 경고다. 명령 \cw{gtangle}은 정의된 적 없는 참조를 실제로 펼쳐야 할
+때에만 멈춘다.
+
+\chapter{\.{GWEB} 설치하기}
+\noindent \GO/로 커밋된 것은 \cw{gtangle}뿐이므로, 이것만 \GO/의 방식으로 설치할
+수 있다.
+\begincode
+go install github.com/sjnam/gweb/cmd/gtangle@latest
+|endcode
+명령 \cw{gweave}는 커밋되지 않고 \cw{.w} 소스에서 생성되므로, 두 명령은
+저장소 사본에서 함께 빌드한다. 명령 \cw{make install-tools}는 두 실행 파일을
+\cw{GOBIN}에 넣는다.
+
+완전히 설치하려면, 곧 명령들과, \cw{pdftex foo.tex}가 그냥 동작하도록 \TeX\
+트리에 넣은 \cw{gwebmac.tex}와, 맨 페이지까지 설치하려면, 저장소 사본에서
+\cw{./install.sh}를 돌린다(\cw{./install.sh --uninstall}은 이것을 지우고,
+\cw{make install}은 이 스크립트를 부른다). 이 설명서는 \cw{make manual-ko}로
+만들고, 영어 원본은 \cw{make manual}로 만든다.
+
+\chapter{편집기 지원}
+\noindent 디렉터리 \cw{editors/vscode} 아래의 VS\thinspace Code 확장이 \cw{.w} 파일을
+지원한다. 구문 강조(제어 코드, 코드 파트와 \cw{|}$\ldots$\cw{|} 스팬에 들어 있는
+\GO/, \TeX\ 설명)를 하고, {\bf 코드 파트 안에서 정의로 가기와 마우스 올리기}를
+제공한다. 이 둘은 \cw{gtangle}이 출력에 남기는 \cw{//line} 소스 맵을 거쳐
+\GO/ 확장으로 넘겨지므로, 한 웹에서 다른 웹에 정의된 코드로 건너뛰면 그 웹의
+\cw{.w}에 닿는다. 여기에 \cw{@<section name@>} 이동과 자동 완성, 저장할 때 다시
+tangle하기가 더해진다.
+
+쓰려면 \pdfURL{릴리즈 페이지}{https://github.com/sjnam/gweb/releases}에서
+\cw{.vsix}를 받아 설치하고(확장 보기 $\to$ {\it Install from VSIX\dots\/}),
+편집기를 완전히 다시 띄운다. 자세한 것은 \cw{editors/vscode/README.md}를 본다.
+
+\chapter{딸린 예제}
+디렉터리 \cw{examples/}에는 간단한 것부터 풍성한 것까지 완성된 웹이 여덟 개
+있다. 명령 \cw{make example}은 이것들을 모두 tangle하고 짜며, \cw{make -C
+examples NAME=wc}는 하나만 처리한다.
+
+\bull \cw{floyd.w}---플로이드의 분할 문제. 크누스가 {\it Are Toy Problems
+Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt{50}$을 거의
+같은 두 반으로 나눈다. 가운데서 만나기 탐색, 그레이 코드 열거, 보정 합산,
+\cw{math/big} 검증을 갖춘 문학적 풀이다.
+
+\bull \cw{pairsums.w}---HackerRank의 {\it Pair Sums\/}. 모든 부분 배열에 걸친
+쌍 곱의 합 가운데 가장 큰 것을 구한다. 항등식 ${\rm value} = (S^2-Q)/2$과
+누적 합을 비튼 기법이 문제를 직선 무리의 위 포락선으로 바꾸고, 이것을
+{\sl Li Chao 트리\/}로 $O(n\log n)$에 푼다.
+
+\bull \cw{rps.w}---커피 내기로 위장한 한국어 문학적 수필. $N$명이 가위바위보로
+누가 낼지 정하려면 몇 판이 걸리고, 가장 빨리 끝내려면 어떻게 무리를 나눠야
+할까? 정확한 유리수로 \cw{math/big}을 써서 풀어 나간다. 기댓값 점화식, 정수
+분할 전수 탐색, 100명을 위한 재귀 전략, 네 명씩 묶는 것이 최적이라는 증명,
+볼록성 확인이 들어 있고, 짝이 되는 \cw{rps\_test.go}도 있다. 엔진 \cw{luatex}과
+\cw{kotexgweb.tex}로 짠다({\it 다른 언어로 짜기\/} 참고).
+
+\bull \cw{seq.w}---아주 작은 지연 수열 라이브러리(무한한 피보나치 수 위의
+\cw{Map}, \cw{Filter}, \cw{Take}). \CEE/에는 짝이 없는 \GO/의 기능을 뽐낸다.
+일급 함수와 클로저, 익명 함수, 제네릭, \GO/ 1.23의 range-over-func
+반복자다.
+
+\bull \cw{sham.w}---크누스의 Stanford GraphBase 시연 프로그램 \cw{sham}을
+\.{GWEB}으로 옮긴 것. $8\times9$ 판에서 나이트 그래프의 대칭 해밀턴 회로를
+센다. 그래프를 반으로 접고 \cw{goto} 레이블로 되추적한다. SGB를 \GO/로 옮긴
+\pdfURL{go-sgb}{https://github.com/sjnam/go-sgb} 위에 지었으므로 돌리려면 그
+모듈이 있어야 한다(\cw{go get github.com/sjnam/go-sgb}). 설명은 새로 썼다.
+\.{GWEB}이 바깥 의존성과 진짜 크누스 프로그램을 다루는 모습을 보여 준다.
+
+\bull \cw{squint.w}---요구에 따라 움직이는 채널 연결망으로 만든 지연 멱급수(합,
+곱, 합성, 역수, 함수의 역, 그리고 \cw{exp} 같은 미분 방정식). 맥일로이의
+{\it Squinting at Power Series\/}를 따랐다.
+
+\bull \cw{torture.w}---일부러 엉망으로 만들었지만 컴파일은 되는, 1부터
+번호를 매긴 펜윅 트리. 들여쓰기는 제멋대로이고 모든 줄의 코드가 빽빽하다.
+그래서 이것을 짜 보면 문법을 따르는 조판기가 엉성한 소스를 얼마나 깔끔하게
+다듬는지 드러난다.
+
+\bull \cw{wc.w}---tangle한 출력이 시스템의 \cw{wc}와 똑같이 동작하는 낱말 세기
+프로그램. 지시자 \cw{@f}와, CSV 변형을 만드는 변경 파일(\cw{wc.ch})을 보여 준다.
+
+\noindent 명령 \cw{make test}(\cw{-short}가 아닌 실행)는 모든 예제를 tangle하고
+그 결과를 \cw{go build}하므로, 예제가 언제나 컴파일되는 상태로 남는다. 더 많은
+\.{GWEB} 예제는 \pdfURL{gweb-examples}{https://github.com/sjnam/gweb-examples}에
+있다.
+
+\noindent \.{GWEB}은 스스로를 기록하기도 한다. 명령 \cw{make selfdoc}은 시스템
+자신의 \cw{.w} 소스를 PDF 하나로 짜고, \cw{make manual-ko}는 이 문서를 만든다.
+
+\vfill
+\centerline{\eightrm\eightmj {\eighttt GWEB}---Go를 위한 문학적 프로그래밍 시스템.}
+\bye
