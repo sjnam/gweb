@@ -23,6 +23,11 @@
 \hyphenchar\tentt=-1 \hyphenchar\ninett=-1 \hyphenchar\eighttt=-1
 \font\authorfont=cmr12
 \font\sectionfont=cmbx12
+% The METAFONT logo in Knuth's logo font, as manmac.tex sets it (slanted in an
+% italic title); \- lets a line break between META and FONT.
+\font\tenlogo=logo10 \font\tensllogo=logosl10
+\def\MF{{\tenlogo META}\-{\tenlogo FONT}}
+\def\slMF{{\tensllogo META}\-{\tensllogo FONT}}
 
 %---inline code; @ < > = etc. are safe in \tt, so avoid braces inside \cw ---
 \def\cw#1{{\tt #1}}
@@ -507,17 +512,17 @@ It yields both a book of some 860 pages and a working \cw{tex} that passes
 Knuth's TRIP test;
 
 \bull \pdfURL{metafont-the-program}{https://github.com/sjnam/metafont-the-program}%
----its companion, {\it METAFONT: The Program\/} (\cw{mf.web}, version
+---its companion, {\slMF\it: The Program\/} (\cw{mf.web}, version
 2.71828182) as \cw{mf.w}: a book of some 900 pages with 26 MetaPost figures the
 original lacks, and a working \cw{mf} that writes the same TFM and GF files as
-METAFONT and passes the TRAP test;
+\MF\ and passes the TRAP test;
 
-\bull \pdfURL{go-mmix}{https://github.com/sjnam/go-mmix}---Knuth's MMIXware: the
-MMIX specification (\cw{mmixdoc.w}), the arithmetic and I/O libraries, the
-assembler \cw{mmixal}, the simulator, \cw{mmotype}, and the pipelined
-meta-simulator \cw{mmmix}, every section translated. Each program was checked
-against Knuth's \CEE/ original to give byte-for-byte the same output on the same
-input;
+\bull \pdfURL{go-mmix}{https://github.com/sjnam/go-mmix}---Knuth's MMIXware, every
+section translated: the specification of the MMIX machine (\cw{mmixdoc.w}), the
+arithmetic and I/O libraries, the assembler \cw{mmixal}, the simulator,
+\cw{mmotype}, and the pipelined meta-simulator \cw{mmmix}. Each program was
+checked against Knuth's \CEE/ original to give byte-for-byte the same output on
+the same input;
 
 \bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---the Stanford GraphBase,
 its kernel (\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort}) and graph

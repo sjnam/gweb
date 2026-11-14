@@ -28,6 +28,11 @@
   charraise=-0.06em;+compresspunctuations;expansion=default;" at 11.54pt
 \def\authorfont{\latinauthorfont\twelvemj}
 \def\chapterfont{\latinchapterfont\twelvebd}
+% The METAFONT logo in Knuth's logo font, as manmac.tex sets it (slanted in an
+% italic title); \- lets a line break between META and FONT.
+\font\tenlogo=logo10 \font\tensllogo=logosl10
+\def\MF{{\tenlogo META}\-{\tenlogo FONT}}
+\def\slMF{{\tensllogo META}\-{\tensllogo FONT}}
 
 %---inline code; @ < > = etc. are safe in \tt, so avoid braces inside \cw ---
 \def\cw#1{{\tt #1}}
@@ -498,9 +503,9 @@ Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt
 약 860쪽의 책과, 크누스의 TRIP 테스트를 통과하는 실제 \cw{tex}가 함께 나온다.
 
 \bull \pdfURL{metafont-the-program}{https://github.com/sjnam/metafont-the-program}%
----그 짝인 {\it METAFONT: The Program\/}(\cw{mf.web}, 판 2.71828182)을
+---그 짝인 {\slMF\it: The Program\/}(\cw{mf.web}, 판 2.71828182)을
 \cw{mf.w}에 옮겼다. 원본에 없는 MetaPost 그림 26장을 더한 약 900쪽의 책과,
-METAFONT와 같은 TFM과 GF 파일을 만들고 TRAP 테스트를 통과하는 실제 \cw{mf}가
+\MF 와 같은 TFM과 GF 파일을 만들고 TRAP 테스트를 통과하는 실제 \cw{mf}가
 나온다.
 
 \bull \pdfURL{go-mmix}{https://github.com/sjnam/go-mmix}---크누스의 MMIXware를
