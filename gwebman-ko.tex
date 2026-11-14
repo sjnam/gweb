@@ -70,7 +70,7 @@
 \vskip 18pt
 \centerline{(버전 0.10.7)}
 \vskip 24pt
-\centerline{\authorfont 크누스와 레비의 {\ttitlefont CWEB}을 본떠 만들다}
+\centerline{\authorfont 커누스와 레비의 {\ttitlefont CWEB}을 본떠 만들다}
 \vfill
 \noindent
 이 글은 \.{CWEB}이나 문학적 프로그래밍을 이미 아는 독자를 위한 \.{GWEB}
@@ -448,7 +448,7 @@ tangle하기가 더해진다.
 있다. 명령 \cw{make example}은 이것들을 모두 tangle하고 짜며, \cw{make -C
 examples NAME=wc}는 하나만 처리한다.
 
-\bull \cw{floyd.w}---플로이드의 분할 문제. 크누스가 {\it Are Toy Problems
+\bull \cw{floyd.w}---플로이드의 분할 문제. 커누스가 {\it Are Toy Problems
 Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt{50}$을 거의
 같은 두 반으로 나눈다. 가운데서 만나기 탐색, 그레이 코드 열거, 보정 합산,
 \cw{math/big} 검증을 갖춘 문학적 풀이다.
@@ -470,12 +470,12 @@ Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt
 일급 함수와 클로저, 익명 함수, 제네릭, \GO/ 1.23의 range-over-func
 반복자다.
 
-\bull \cw{sham.w}---크누스의 Stanford GraphBase 시연 프로그램 \cw{sham}을
+\bull \cw{sham.w}---커누스의 Stanford GraphBase 시연 프로그램 \cw{sham}을
 \.{GWEB}으로 옮긴 것. $8\times9$ 판에서 나이트 그래프의 대칭 해밀턴 회로를
 센다. 그래프를 반으로 접고 \cw{goto} 레이블로 되추적한다. SGB를 \GO/로 옮긴
 \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb} 위에 지었으므로 돌리려면 그
 모듈이 있어야 한다(\cw{go get github.com/sjnam/go-sgb}). 설명은 새로 썼다.
-\.{GWEB}이 바깥 의존성과 진짜 크누스 프로그램을 다루는 모습을 보여 준다.
+\.{GWEB}이 바깥 의존성과 진짜 커누스 프로그램을 다루는 모습을 보여 준다.
 
 \bull \cw{squint.w}---요구에 따라 움직이는 채널 연결망으로 만든 지연 멱급수(합,
 곱, 합성, 역수, 함수의 역, 그리고 \cw{exp} 같은 미분 방정식). 맥일로이의
@@ -494,13 +494,13 @@ Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt
 \.{GWEB} 예제는 \pdfURL{gweb-examples}{https://github.com/sjnam/gweb-examples}에
 있다.
 
-\noindent 크누스의 프로그램을 통째로 \.{GWEB}으로 옮긴 더 큰 작업도 넷 있다.
-모두 한국어 번역이고, 크누스의 Pascal(또는 \CEE/) 코드를 절마다 \GO/로 바꾸면서
+\noindent 커누스의 프로그램을 통째로 \.{GWEB}으로 옮긴 더 큰 작업도 넷 있다.
+모두 한국어 번역이고, 커누스의 Pascal(또는 \CEE/) 코드를 절마다 \GO/로 바꾸면서
 그의 절과 이름과 짜임새를 그대로 지켰으므로 원본과 나란히 놓고 읽을 수 있다.
 
 \bull \pdfURL{tex-the-program}{https://github.com/sjnam/tex-the-program}---{\it
 \TeX: The Program\/}(\cw{tex.web}, 판 3.141592653)을 \cw{tex.w} 한 파일에 옮겼다.
-약 860쪽의 책과, 크누스의 TRIP 테스트를 통과하는 실제 \cw{tex}가 함께 나온다.
+약 860쪽의 책과, 커누스의 TRIP 테스트를 통과하는 실제 \cw{tex}가 함께 나온다.
 
 \bull \pdfURL{metafont-the-program}{https://github.com/sjnam/metafont-the-program}%
 ---그 짝인 {\slMF\it: The Program\/}(\cw{mf.web}, 판 2.71828182)을
@@ -508,10 +508,10 @@ Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt
 \MF 와 같은 TFM과 GF 파일을 만들고 TRAP 테스트를 통과하는 실제 \cw{mf}가
 나온다.
 
-\bull \pdfURL{go-mmix}{https://github.com/sjnam/go-mmix}---크누스의 MMIXware를
+\bull \pdfURL{go-mmix}{https://github.com/sjnam/go-mmix}---커누스의 MMIXware를
 한 절도 빠짐없이 옮겼다. 명세 \cw{mmixdoc.w}, 산술·입출력 라이브러리, 어셈블러
 \cw{mmixal}, 시뮬레이터, \cw{mmotype}, 파이프라인 메타 시뮬레이터 \cw{mmmix}가
-있고, 프로그램마다 크누스의 \CEE/ 원본과 출력이 바이트 단위로 같은지 대조했다.
+있고, 프로그램마다 커누스의 \CEE/ 원본과 출력이 바이트 단위로 같은지 대조했다.
 
 \bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---Stanford GraphBase의
 커널(\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort})과 그래프 생성기들을
