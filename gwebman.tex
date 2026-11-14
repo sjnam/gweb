@@ -18,6 +18,9 @@
 \font\eighttt=cmtt8
 \font\ninett=cmtt9
 \font\twelvett=cmtt12
+% A name in typewriter is never broken with a hyphen (pdftex's format leaves
+% cmtt's hyphen char on), as kotexgweb.tex arranges for the Korean manual.
+\hyphenchar\tentt=-1 \hyphenchar\ninett=-1 \hyphenchar\eighttt=-1
 \font\authorfont=cmr12
 \font\sectionfont=cmbx12
 
@@ -490,8 +493,28 @@ variant.
 
 \noindent \cw{make test} (the non-\cw{-short} run) tangles every example and
 \cw{go build}s the result, so the examples are guaranteed to stay compilable.
-More \.{GWEB} examples live at
+More \.{GWEB} examples are collected in the companion repository
 \pdfURL{gweb-examples}{https://github.com/sjnam/gweb-examples}.
+
+\noindent Three larger projects carry whole Knuth programs into \.{GWEB}, each a
+Korean translation that turns his Pascal (or \CEE/) into \GO/ section by section,
+keeping his sections, names, and structure so it reads side by side with the
+original:
+
+\bull \pdfURL{tex-the-program}{https://github.com/sjnam/tex-the-program}---{\it
+\TeX: The Program\/} (\cw{tex.web}, version 3.141592653) as a single \cw{tex.w}.
+It yields both a book of some 860 pages and a working \cw{tex} that passes
+Knuth's TRIP test;
+
+\bull \pdfURL{metafont-the-program}{https://github.com/sjnam/metafont-the-program}%
+---its companion, {\it METAFONT: The Program\/} (\cw{mf.web}, version
+2.71828182) as \cw{mf.w}: a book of some 900 pages with 26 MetaPost figures the
+original lacks, and a working \cw{mf} that writes the same TFM and GF files as
+METAFONT and passes the TRAP test;
+
+\bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---the Stanford GraphBase,
+its kernel (\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort}) and graph
+generators, one web per package. The \cw{sham.w} example above builds on it.
 
 \noindent \.{GWEB} also documents itself: \cw{make selfdoc} weaves the system's own
 \cw{.w} sources into a single PDF, and \cw{make manual} builds this document.

@@ -166,6 +166,23 @@ most carry MetaPost figures drawn during typesetting by `luamplib`, so the
 repository doubles as a demonstration of what a finished **GWEB** document can
 look like — and of the Korean and LuaTeX support described above.
 
+Three larger projects carry whole Knuth programs into **GWEB**, each a Korean
+translation that turns his Pascal (or C) into Go section by section, keeping his
+sections, names, and structure so it reads side by side with the original:
+
+* **[sjnam/tex-the-program](https://github.com/sjnam/tex-the-program)** —
+  *TeX: The Program* (`tex.web`, version 3.141592653) as a single `tex.w`. It
+  yields both a book of some 860 pages and a working `tex` that passes Knuth's
+  TRIP test.
+* **[sjnam/metafont-the-program](https://github.com/sjnam/metafont-the-program)**
+  — its companion, *METAFONT: The Program* (`mf.web`, version 2.71828182) as
+  `mf.w`, a book of some 900 pages with 26 MetaPost figures the original lacks,
+  and a working `mf` that writes the same TFM and GF files as METAFONT and passes
+  the TRAP test.
+* **[sjnam/go-sgb](https://github.com/sjnam/go-sgb)** — the Stanford GraphBase,
+  its kernel (`gbflip`, `gbio`, `gbgraph`, `gbsort`) and graph generators, one
+  web per package. The `sham.w` example here builds on it.
+
 ## How it is organized
 
 Each `.w` source sits next to the Go it generates. Only the Go that bootstraps
