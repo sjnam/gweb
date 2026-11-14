@@ -496,7 +496,7 @@ variant.
 More \.{GWEB} examples are collected in the companion repository
 \pdfURL{gweb-examples}{https://github.com/sjnam/gweb-examples}.
 
-\noindent Three larger projects carry whole Knuth programs into \.{GWEB}, each a
+\noindent Four larger projects carry whole Knuth programs into \.{GWEB}, each a
 Korean translation that turns his Pascal (or \CEE/) into \GO/ section by section,
 keeping his sections, names, and structure so it reads side by side with the
 original:
@@ -511,6 +511,13 @@ Knuth's TRIP test;
 2.71828182) as \cw{mf.w}: a book of some 900 pages with 26 MetaPost figures the
 original lacks, and a working \cw{mf} that writes the same TFM and GF files as
 METAFONT and passes the TRAP test;
+
+\bull \pdfURL{go-mmix}{https://github.com/sjnam/go-mmix}---Knuth's MMIXware: the
+MMIX specification (\cw{mmixdoc.w}), the arithmetic and I/O libraries, the
+assembler \cw{mmixal}, the simulator, \cw{mmotype}, and the pipelined
+meta-simulator \cw{mmmix}, every section translated. Each program was checked
+against Knuth's \CEE/ original to give byte-for-byte the same output on the same
+input;
 
 \bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---the Stanford GraphBase,
 its kernel (\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort}) and graph

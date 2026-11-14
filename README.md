@@ -169,7 +169,7 @@ User's Manual* from its two constraints. All are written in Korean via
 **GWEB** document can look like — and of the Korean and LuaTeX support described
 above.
 
-Three larger projects carry whole Knuth programs into **GWEB**, each a Korean
+Four larger projects carry whole Knuth programs into **GWEB**, each a Korean
 translation that turns his Pascal (or C) into Go section by section, keeping his
 sections, names, and structure so it reads side by side with the original:
 
@@ -182,6 +182,11 @@ sections, names, and structure so it reads side by side with the original:
   `mf.w`, a book of some 900 pages with 26 MetaPost figures the original lacks,
   and a working `mf` that writes the same TFM and GF files as METAFONT and passes
   the TRAP test.
+* **[sjnam/go-mmix](https://github.com/sjnam/go-mmix)** — Knuth's MMIXware:
+  the MMIX specification (`mmixdoc.w`), the arithmetic and I/O libraries, the
+  assembler `mmixal`, the simulator, `mmotype`, and the pipelined meta-simulator
+  `mmmix`, every section translated. Each program was checked against Knuth's C
+  original to give byte-for-byte the same output on the same input.
 * **[sjnam/go-sgb](https://github.com/sjnam/go-sgb)** — the Stanford GraphBase,
   its kernel (`gbflip`, `gbio`, `gbgraph`, `gbsort`) and graph generators, one
   web per package. The `sham.w` example here builds on it.

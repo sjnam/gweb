@@ -489,7 +489,7 @@ Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt
 \.{GWEB} 예제는 \pdfURL{gweb-examples}{https://github.com/sjnam/gweb-examples}에
 있다.
 
-\noindent 크누스의 프로그램을 통째로 \.{GWEB}으로 옮긴 더 큰 작업도 셋 있다.
+\noindent 크누스의 프로그램을 통째로 \.{GWEB}으로 옮긴 더 큰 작업도 넷 있다.
 모두 한국어 번역이고, 크누스의 Pascal(또는 \CEE/) 코드를 절마다 \GO/로 바꾸면서
 그의 절과 이름과 짜임새를 그대로 지켰으므로 원본과 나란히 놓고 읽을 수 있다.
 
@@ -503,9 +503,14 @@ Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt
 METAFONT와 같은 TFM과 GF 파일을 만들고 TRAP 테스트를 통과하는 실제 \cw{mf}가
 나온다.
 
+\bull \pdfURL{go-mmix}{https://github.com/sjnam/go-mmix}---크누스의 MMIXware를
+한 절도 빠짐없이 옮겼다. 명세 \cw{mmixdoc.w}, 산술·입출력 라이브러리, 어셈블러
+\cw{mmixal}, 시뮬레이터, \cw{mmotype}, 파이프라인 메타 시뮬레이터 \cw{mmmix}가
+있고, 프로그램마다 크누스의 \CEE/ 원본과 출력이 바이트 단위로 같은지 대조했다.
+
 \bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---Stanford GraphBase의
 커널(\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort})과 그래프 생성기들을
-꾸러미마다 웹 하나씩으로 옮겼다. 위의 예제 \cw{sham.w}가 이것을 바탕으로 한다.
+꾸러미마다 웹 하나씩으로 옮겼다. 위의 예제 \cw{sham.w}가 이것을 쓴다.
 
 \noindent \.{GWEB}은 스스로를 기록하기도 한다. 명령 \cw{make selfdoc}은 시스템
 자신의 \cw{.w} 소스를 PDF 하나로 짜고, \cw{make manual-ko}는 이 문서를 만든다.
