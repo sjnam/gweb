@@ -188,11 +188,11 @@
 \cw{@f}/\cw{@s}로 바꿀 수 있다. 이를테면 \cw{@f Name int}는 \cw{Name}을 억지로
 굵게 찍고, \cw{@f Name x}(아무 보통 식별자)는 평범한 이탤릭으로 되돌린다.
 
-이런 지시자는 꾸러미나 리시버로 {\it 한정\/}할 수 있다. 지시자
+이런 지시자는 패키지나 리시버로 {\it 한정\/}할 수 있다. 지시자
 \cw{@s foo.Bar int}는 \cw{foo.Bar}로 쓴 \cw{Bar}만 정한다. 그래서 우연히 이름이
 같은 \cw{abc.Bar}(어떤 \cw{abc}의 필드 \cw{Bar})나 그냥 \cw{Bar}는 건드리지
 않는다. 한정하지 않은 \cw{@s Bar int}는 모든 \cw{Bar}를 정한다. 한정자는
-\cw{.} 앞에 쓴 식별자일 뿐이므로, 실제 꾸러미 이름이 아니어도 된다.
+\cw{.} 앞에 쓴 식별자일 뿐이므로, 실제 패키지 이름이 아니어도 된다.
 
 \section{\.{GWEB}은 \.{GWEB}으로 쓰였다}
 \.{CWEB}처럼 \.{GWEB}도 문학적 프로그램이다. 각 도구는 제 \GO/ 옆에 둔
@@ -202,7 +202,7 @@
 tangle한 것이고 바이트 단위까지 똑같이 재현된다. 이 고정점은 바꿀 때마다
 \cw{make bootstrap}이 확인하므로, 읽는 프로그램과 돌아가는 프로그램이 서로
 어긋날 수 없다. \.{GWEB}은 라이브러리가 아니라 명령들의 묶음이다. 그래서 각
-엔진은 따로 가져다 쓸 수 있는 꾸러미가 아니라 제 명령의 \cw{main} 꾸러미 안에
+엔진은 따로 가져다 쓸 수 있는 패키지가 아니라 제 명령의 \cw{main} 패키지 안에
 산다.
 \begincode
 make tangle       # re-tangle the .w sources back into the Go tree
@@ -515,7 +515,7 @@ Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt
 
 \bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---Stanford GraphBase의
 커널(\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort})과 그래프 생성기들을
-꾸러미마다 웹 하나씩으로 옮겼다. 위의 예제 \cw{sham.w}가 이것을 쓴다.
+패키지마다 웹 하나씩으로 옮겼다. 위의 예제 \cw{sham.w}가 이것을 쓴다.
 
 \noindent \.{GWEB}은 스스로를 기록하기도 한다. 명령 \cw{make selfdoc}은 시스템
 자신의 \cw{.w} 소스를 PDF 하나로 짜고, \cw{make manual-ko}는 이 문서를 만든다.
