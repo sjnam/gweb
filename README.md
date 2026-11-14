@@ -151,20 +151,23 @@ non-English (e.g. Korean) documentation, see the manual — `gwebman.tex`
 The `examples/` directory here is deliberately small — just enough to exercise
 the tools. For **GWEB** used in earnest, see the companion repository:
 
-**[sjnam/gweb-examples](https://github.com/sjnam/gweb-examples)** — thirty-odd
-standalone literate Go programs, plus two curated collections that work through a
-single technique across several problems (`cdq-dc/`, CDQ divide-and-conquer;
-`cht/`, the convex hull trick) and three small multi-file projects
-(`guitar-tuner/`, `life-game/`, `skew-ternary/`). The programs lean toward
-combinatorial search and exact cover (`back-pi-day.w`, `dlx-pre.w`,
-`word-cube-dlx.w`), graph algorithms (`tarjan-strong.w`, `hopcroft-karp.w`,
-`matula.w`), combinatorial generation (`koda-ruskey.w`, `ulam-gibbs.w`), and
-number theory and data structures (`ntt.w`, `prjeuler152.w`, `ziptree.w`), with
-the odd literary detour — `perec.w` retraces the knight's tour behind Perec's
-*Life A User's Manual*. They are written in Korean via `\input kotexgweb`, and
-most carry MetaPost figures drawn during typesetting by `luamplib`, so the
-repository doubles as a demonstration of what a finished **GWEB** document can
-look like — and of the Korean and LuaTeX support described above.
+**[sjnam/gweb-examples](https://github.com/sjnam/gweb-examples)** — some forty
+literate Go programs, each in a directory of its own with its `.w`, a README, and
+any change files, MetaPost files, or data it needs; one Makefile builds them all
+into a single Go module. Most are translations of Knuth's own CWEB programs. They
+range over backtracking and exhaustive search (`back-20q.w`, `back-pi-day.w`,
+`back-dissect.w`, `sliding.w`), graph algorithms (`tarjan-strong.w`,
+`hopcroft-karp.w`, `matula.w`, `grayspan.w`), combinatorial generation
+(`koda-ruskey.w`, `li-ruskey.w`, `spiders.w`), and serious counting
+(`ulam-gibbs.w`, `polynum.w`, `prime-sieve.w`). Beside them stand expositions of
+algorithms worth knowing — zip trees (`ziptree.w`), the FFT and number-theoretic
+transforms (`ntt.w`), Li Chao trees (`pairsums.w`), Floyd's random sampling
+(`perm.w`) — and the odd literary detour: `perec.w` rebuilds Perec's *Life A
+User's Manual* from its two constraints. All are written in Korean via
+`\input kotexgweb`, and most carry MetaPost figures drawn during typesetting by
+`luamplib`, so the repository doubles as a demonstration of what a finished
+**GWEB** document can look like — and of the Korean and LuaTeX support described
+above.
 
 Three larger projects carry whole Knuth programs into **GWEB**, each a Korean
 translation that turns his Pascal (or C) into Go section by section, keeping his
