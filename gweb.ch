@@ -21,12 +21,12 @@
 
 % ---- common.gw ----------------------------------------------------------------
 @x
-\def\title{Common code for GTANGLE and GWEAVE (Version 0.10.7)}
+\def\title{Common code for GTANGLE and GWEAVE (Version 0.11.0)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Common code for {\ttitlefont GTANGLE} and
     {\ttitlefont GWEAVE}}
   \vskip 15pt
-  \centerline{(Version 0.10.7)}
+  \centerline{(Version 0.11.0)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
   Soojin Nam, 2026. Released into the public domain.}}
@@ -45,11 +45,11 @@ the end of \.{gweb.gw} covers all three webs. The list of section names follows.
 
 % ---- gtangle.gw ---------------------------------------------------------------
 @x
-\def\title{GTANGLE (Version 0.10.7)}
+\def\title{GTANGLE (Version 0.11.0)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
   \vskip 15pt
-  \centerline{(Version 0.10.7)}
+  \centerline{(Version 0.11.0)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
   Soojin Nam, 2026. Released into the public domain.}}
@@ -68,11 +68,11 @@ identifier is defined), together with the manual index entries. In the combined
 
 % ---- gweave.gw ----------------------------------------------------------------
 @x
-\def\title{GWEAVE (Version 0.10.7)}
+\def\title{GWEAVE (Version 0.11.0)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GWEAVE} processor}
   \vskip 15pt
-  \centerline{(Version 0.10.7)}
+  \centerline{(Version 0.11.0)}
   \vfill}
 \def\botofcontents{\vfill\centerline{\smallfont
   Soojin Nam, 2026. Released into the public domain.}}
