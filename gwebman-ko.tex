@@ -94,10 +94,11 @@
 
 \bull \cw{gwebmac.tex} $\approx$ \cw{cwebmac.tex}---짜낸 출력이 쓰는 \TeX\ 매크로다.
 
-\noindent 웹은 파일 하나이고, 관례상 이름을 \cw{foo.w}로 짓는다. 명령
+\noindent 웹은 파일 하나이고, 관례상 이름을 \cw{foo.gw}로 짓는다. 명령
 \cw{gtangle foo}는 \cw{foo.go}를(덧붙인 출력 파일이 있으면 그것도) 쓰고, 명령
 \cw{gweave foo}는 \cw{foo.tex}를 쓴다. 이 파일을 \cw{pdftex}로 돌리면
-\cw{foo.pdf}가 나온다. \.{CWEB}처럼 명령줄에서는 \cw{.w}를 빼도 된다.
+\cw{foo.pdf}가 나온다. \.{CWEB}에서 \cw{.w}를 빼도 되듯이, 명령줄에서는 \cw{.gw}를
+빼도 된다.
 
 \chapter{\.{CWEB}에서 그대로 가져온 것}
 \noindent
@@ -134,7 +135,17 @@
 명령 \cw{gweave}가 대신 써 넣고, 직접 넣어 둔 것이 있으면 지운다.
 
 \chapter{\.{GWEB}이 다른 점}
-\noindent 차이는 모두 \CEE/ 대신 \GO/를 조판한다는 데서 나온다.
+\noindent 확장자를 빼면, 차이는 모두 \CEE/ 대신 \GO/를 조판한다는 데서 나온다.
+
+\section{웹의 확장자는 \cw{.gw}다}
+\.{CWEB}의 웹은 \cw{.w}로 끝나고, \.{GWEB}의 웹도 처음에는 그랬다. 그런데 이
+확장자는 \.{CWEB}의 것이다. GNU \cw{make}에는 \cw{.w} 파일을 \cw{ctangle}과
+\cw{cweave}에 넘기는 규칙이 들어 있어서, \GO/ 웹 \cw{foo.w} 옆에서 그냥
+\cw{make foo}를 치면 그것을 \CEE/로 컴파일하려 든다. 편집기와 GitHub도 \cw{.w}를
+\.{CWEB}으로 여긴다. 이름이 아직 \cw{foo.w}인 웹도 예전처럼 쓸 수 있다. 확장자
+없이 이름만 주면 두 명령은 \cw{foo.gw}를 읽고, 그것이 없고 \cw{foo.w}만 있으면
+그것을 읽는다. 확장자까지 적은 이름은 적은 그대로 읽는다. 변경 파일은 그대로
+\cw{.ch}다.
 
 \section{전처리기가 없다}
 \GO/에는 전처리기가 없으므로 \cw{@d}는 결코 코드를 만들지 않는다. 명령
@@ -196,36 +207,36 @@
 
 \section{\.{GWEB}은 \.{GWEB}으로 쓰였다}
 \.{CWEB}처럼 \.{GWEB}도 문학적 프로그램이다. 각 도구는 제 \GO/ 옆에 둔
-\cw{.w} 웹에서 tangle된다. 원본은 \cw{common/common.w}(함께 쓰는 파서),
-\cw{cmd/gtangle/gtangle.w}(명령과 tangle 엔진),
-\cw{cmd/gweave/gweave.w}(명령과 weave 엔진)이다. 그 옆의 \GO/는 이들에서
+\cw{.gw} 웹에서 tangle된다. 원본은 \cw{common/common.gw}(함께 쓰는 파서),
+\cw{cmd/gtangle/gtangle.gw}(명령과 tangle 엔진),
+\cw{cmd/gweave/gweave.gw}(명령과 weave 엔진)이다. 그 옆의 \GO/는 이들에서
 tangle한 것이고 바이트 단위까지 똑같이 재현된다. 이 고정점은 바꿀 때마다
 \cw{make bootstrap}이 확인하므로, 읽는 프로그램과 돌아가는 프로그램이 서로
 어긋날 수 없다. \.{GWEB}은 라이브러리가 아니라 명령들의 묶음이다. 그래서 각
 엔진은 따로 가져다 쓸 수 있는 패키지가 아니라 제 명령의 \cw{main} 패키지 안에
 산다.
 \begincode
-make tangle       # re-tangle the .w sources back into the Go tree
+make tangle       # re-tangle the .gw sources back into the Go tree
 make bootstrap    # tangle into a scratch tree and verify it is byte-for-byte
                   # identical to the committed sources (the fixpoint)
 |endcode
-\noindent 작업 순서는 이렇다. 파일 \cw{.w}를 고치고, \cw{make tangle}을 돌린 뒤,
-둘을 함께 커밋한다. 테스트도 \cw{.w} 소스 안에 있다(웹마다 {\it Tests\/}
+\noindent 작업 순서는 이렇다. 파일 \cw{.gw}를 고치고, \cw{make tangle}을 돌린 뒤,
+둘을 함께 커밋한다. 테스트도 \cw{.gw} 소스 안에 있다(웹마다 {\it Tests\/}
 장이 있다). 그래서 테스트는 나머지 생성된 \GO/와 함께 tangle되고 git에서
 무시된다. 커밋되는 \cw{\_test.go}는 하나도 없다.
 
-저장소 맨 위의 \cw{gweb.w}는 위의 세 웹을 읽는 차례대로 \cw{@i}로 끼워 넣는
+저장소 맨 위의 \cw{gweb.gw}는 위의 세 웹을 읽는 차례대로 \cw{@i}로 끼워 넣는
 주 웹이다. 그래서 명령 \cw{gweave}는 시스템 전체를 한 문서로 조판할 수 있다.
 \begincode
 make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program
 |endcode
 \noindent 그 결과는 \.{GWEB}이 스스로를 기록한 문서다. 다른 프로그램에 만들어
 주는 것과 똑같이 보기 좋게 조판한 코드와 색인과 상호 참조가 들어 있다. 각 웹을
-따로 짤 수도 있다. 이를테면 \cw{gweave cmd/gweave/gweave.w}는 제 제목 쪽과
+따로 짤 수도 있다. 이를테면 \cw{gweave cmd/gweave/gweave.gw}는 제 제목 쪽과
 색인을 갖춘 \cw{gweave}의 문서를 만든다. \.{CWEB}의 \cw{common.w},
 \cw{ctangle.w}, \cw{cweave.w}가 그렇듯이 말이다. 합본 문서는 \cw{gweb.ch}를
 적용한다. 이 변경 파일은 각 웹의 제목과 \cw{@** Index.} 절을 걷어내어,
-\cw{gweb.w}의 것만 남긴다.
+\cw{gweb.gw}의 것만 남긴다.
 
 \chapter{짜낸 문서}
 \noindent
@@ -350,7 +361,7 @@ $\ll$과 $\gg$로 찍는다. 함수 이름이나 키워드 뒤에 \cw{(}가 오�
 그리고 \cw{\bs pdfURL\char123 text\char125\char123 url\char125}를 \TeX\ 파트
 어디에 쓰든, {\it text\/}를 파란 글씨로 찍고 {\it url\/}로 가는 링크로 만든다.
 \.{CWEB}과 같다. PDF 백엔드가 없으면 둘 다 찍고 URL은 괄호 안에 넣는다. URL에서
-at 기호는 \cw{@@}로 쓰고(\cw{.w}의 보통 탈출 방식이다), \cw{\char126}는
+at 기호는 \cw{@@}로 쓰고(\cw{.gw}의 보통 탈출 방식이다), \cw{\char126}는
 \cw{\bs TILDE/}로, \cw{\char95}는 \cw{\bs UNDER/}로 쓴다.
 
 \chapter{다른 언어로 짜기}
@@ -368,7 +379,7 @@ at 기호는 \cw{@@}로 쓰고(\cw{.w}의 보통 탈출 방식이다), \cw{\char
 |endcode
 평소처럼 짠 다음, 결과를 \cw{pdftex}가 아니라 \cw{luatex}으로 돌린다.
 \begincode
-gweave foo.w
+gweave foo.gw
 luatex foo.tex
 |endcode
 파일 \cw{kotexgweb.tex}는 \cw{luatexko}와 Noto Serif/Sans CJK\thinspace KR
@@ -385,18 +396,19 @@ luatex foo.tex
 
 \chapter{프로그램 실행하기}
 \begincode
-gtangle [-o dir] file[.w] [change[.ch]]
-gweave  [-o dir] file[.w] [change[.ch]]
+gtangle [-o dir] file[.gw] [change[.ch]]
+gweave  [-o dir] file[.gw] [change[.ch]]
 |endcode
-확장자 \cw{.w}는, 그리고 변경 파일의 \cw{.ch}도 빼도 된다. 옵션
+확장자 \cw{.gw}는, 그리고 변경 파일의 \cw{.ch}도 빼도 된다. 이름만 주었는데
+\cw{.gw} 웹이 없으면 예전 꼴의 \cw{.w} 웹을 읽는다. 옵션
 \cw{-o}는 출력 디렉터리를 고르고, \cw{-version}은 버전을 찍고 끝낸다. 각
 도구는 실행하면서 한 줄짜리 머리말을 찍고, 이어서 별표 절마다
 \cw{*}{\it n\/} 진행 표시를 찍는다. \.{CWEB}의 도구와 같다.
 
 명령 \cw{gtangle}은 tangle한 \GO/에 언제나 \cw{//line} 지시문을 넣는다.
 \.{CWEB}의 \cw{ctangle}이 언제나 \cw{\#line}을 넣는 것과 같다. 그래서 컴파일러와
-\cw{go vet}과 패닉 추적은 오류를 \cw{.go}가 아니라 \cw{.w}의 위치로 알려 준다.
-\.{GWEB}은 제 소스도 이렇게 tangle하므로, \cw{.w}를 고치면 커밋된 \GO/의 그
+\cw{go vet}과 패닉 추적은 오류를 \cw{.go}가 아니라 \cw{.gw}의 위치로 알려 준다.
+\.{GWEB}은 제 소스도 이렇게 tangle하므로, \cw{.gw}를 고치면 커밋된 \GO/의 그
 줄 번호들이 뒤섞인다.
 
 PDF를 만들려면 \cw{pdftex}로 곧장 가거나, 같은 하이퍼링크를 얻으려면 DVI와
@@ -420,7 +432,7 @@ dvipdfmx foo.dvi                     # ...then to PDF, with links
 \begincode
 go install github.com/sjnam/gweb/cmd/gtangle@latest
 |endcode
-명령 \cw{gweave}는 커밋되지 않고 \cw{.w} 소스에서 생성되므로, 두 명령은
+명령 \cw{gweave}는 커밋되지 않고 \cw{.gw} 소스에서 생성되므로, 두 명령은
 저장소 사본에서 함께 빌드한다. 명령 \cw{make install-tools}는 두 실행 파일을
 \cw{GOBIN}에 넣는다.
 
@@ -431,12 +443,12 @@ go install github.com/sjnam/gweb/cmd/gtangle@latest
 만들고, 영어 원본은 \cw{make manual}로 만든다.
 
 \chapter{편집기 지원}
-\noindent 디렉터리 \cw{editors/vscode} 아래의 VS\thinspace Code 확장이 \cw{.w} 파일을
+\noindent 디렉터리 \cw{editors/vscode} 아래의 VS\thinspace Code 확장이 \cw{.gw} 파일을
 지원한다. 구문 강조(제어 코드, 코드 파트와 \cw{|}$\ldots$\cw{|} 스팬에 들어 있는
 \GO/, \TeX\ 설명)를 하고, {\bf 코드 파트 안에서 정의로 가기와 마우스 올리기}를
 제공한다. 이 둘은 \cw{gtangle}이 출력에 남기는 \cw{//line} 소스 맵을 거쳐
 \GO/ 확장으로 넘겨지므로, 한 웹에서 다른 웹에 정의된 코드로 건너뛰면 그 웹의
-\cw{.w}에 닿는다. 여기에 \cw{@<section name@>} 이동과 자동 완성, 저장할 때 다시
+\cw{.gw}에 닿는다. 여기에 \cw{@<section name@>} 이동과 자동 완성, 저장할 때 다시
 tangle하기가 더해진다.
 
 쓰려면 \pdfURL{릴리즈 페이지}{https://github.com/sjnam/gweb/releases}에서
@@ -448,45 +460,45 @@ tangle하기가 더해진다.
 있다. 명령 \cw{make example}은 이것들을 모두 tangle하고 짜며, \cw{make -C
 examples NAME=wc}는 하나만 처리한다.
 
-\bull \cw{floyd.w}---플로이드의 분할 문제. 커누스가 {\it Are Toy Problems
+\bull \cw{floyd.gw}---플로이드의 분할 문제. 커누스가 {\it Are Toy Problems
 Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt{50}$을 거의
 같은 두 반으로 나눈다. 가운데서 만나기 탐색, 그레이 코드 열거, 보정 합산,
 \cw{math/big} 검증을 갖춘 문학적 풀이다.
 
-\bull \cw{pairsums.w}---HackerRank의 {\it Pair Sums\/}. 모든 부분 배열에 걸친
+\bull \cw{pairsums.gw}---HackerRank의 {\it Pair Sums\/}. 모든 부분 배열에 걸친
 쌍 곱의 합 가운데 가장 큰 것을 구한다. 항등식 ${\rm value} = (S^2-Q)/2$과
 누적 합을 비튼 기법이 문제를 직선 무리의 위 포락선으로 바꾸고, 이것을
 {\sl Li Chao 트리\/}로 $O(n\log n)$에 푼다.
 
-\bull \cw{rps.w}---커피 내기로 위장한 한국어 문학적 수필. $N$명이 가위바위보로
+\bull \cw{rps.gw}---커피 내기로 위장한 한국어 문학적 수필. $N$명이 가위바위보로
 누가 낼지 정하려면 몇 판이 걸리고, 가장 빨리 끝내려면 어떻게 무리를 나눠야
 할까? 정확한 유리수로 \cw{math/big}을 써서 풀어 나간다. 기댓값 점화식, 정수
 분할 전수 탐색, 100명을 위한 재귀 전략, 네 명씩 묶는 것이 최적이라는 증명,
 볼록성 확인이 들어 있고, 짝이 되는 \cw{rps\_test.go}도 있다. 엔진 \cw{luatex}과
 \cw{kotexgweb.tex}로 짠다({\it 다른 언어로 짜기\/} 참고).
 
-\bull \cw{seq.w}---아주 작은 지연 수열 라이브러리(무한한 피보나치 수 위의
+\bull \cw{seq.gw}---아주 작은 지연 수열 라이브러리(무한한 피보나치 수 위의
 \cw{Map}, \cw{Filter}, \cw{Take}). \CEE/에는 짝이 없는 \GO/의 기능을 뽐낸다.
 일급 함수와 클로저, 익명 함수, 제네릭, \GO/ 1.23의 range-over-func
 반복자다.
 
-\bull \cw{sham.w}---커누스의 Stanford GraphBase 시연 프로그램 \cw{sham}을
+\bull \cw{sham.gw}---커누스의 Stanford GraphBase 시연 프로그램 \cw{sham}을
 \.{GWEB}으로 옮긴 것. $8\times9$ 판에서 나이트 그래프의 대칭 해밀턴 회로를
 센다. 그래프를 반으로 접고 \cw{goto} 레이블로 되추적한다. SGB를 \GO/로 옮긴
 \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb} 위에 지었으므로 돌리려면 그
 모듈이 있어야 한다(\cw{go get github.com/sjnam/go-sgb}). 설명은 새로 썼다.
 \.{GWEB}이 바깥 의존성과 진짜 커누스 프로그램을 다루는 모습을 보여 준다.
 
-\bull \cw{squint.w}---요구에 따라 움직이는 채널 연결망으로 만든 지연 멱급수(합,
+\bull \cw{squint.gw}---요구에 따라 움직이는 채널 연결망으로 만든 지연 멱급수(합,
 곱, 합성, 역수, 함수의 역, 그리고 \cw{exp} 같은 미분 방정식). 맥일로이의
 {\it Squinting at Power Series\/}를 따랐다.
 
-\bull \cw{torture.w}---일부러 엉망으로 만들었지만 컴파일은 되는, 1부터
+\bull \cw{torture.gw}---일부러 엉망으로 만들었지만 컴파일은 되는, 1부터
 번호를 매긴 펜윅 트리. 들여쓰기는 제멋대로이고 모든 줄의 코드가 빽빽하다.
 그래서 이것을 짜 보면 문법을 따르는 조판기가 엉성한 소스를 얼마나 깔끔하게
 다듬는지 드러난다.
 
-\bull \cw{wc.w}---tangle한 출력이 시스템의 \cw{wc}와 똑같이 동작하는 낱말 세기
+\bull \cw{wc.gw}---tangle한 출력이 시스템의 \cw{wc}와 똑같이 동작하는 낱말 세기
 프로그램. 지시자 \cw{@f}와, CSV 변형을 만드는 변경 파일(\cw{wc.ch})을 보여 준다.
 
 \noindent 명령 \cw{make test}(\cw{-short}가 아닌 실행)는 모든 예제를 tangle하고
@@ -515,10 +527,10 @@ Useful?}에서 다룬 고전적인 ``장난감 문제''로, $\sqrt1,\ldots,\sqrt
 
 \bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---Stanford GraphBase의
 커널(\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort})과 그래프 생성기들을
-패키지마다 웹 하나씩으로 옮겼다. 위의 예제 \cw{sham.w}가 이것을 쓴다.
+패키지마다 웹 하나씩으로 옮겼다. 위의 예제 \cw{sham.gw}가 이것을 쓴다.
 
 \noindent \.{GWEB}은 스스로를 기록하기도 한다. 명령 \cw{make selfdoc}은 시스템
-자신의 \cw{.w} 소스를 PDF 하나로 짜고, \cw{make manual-ko}는 이 문서를 만든다.
+자신의 \cw{.gw} 소스를 PDF 하나로 짜고, \cw{make manual-ko}는 이 문서를 만든다.
 
 \vfill
 \centerline{\eightrm\eightmj {\eighttt GWEB}---Go를 위한 문학적 프로그래밍 시스템.}

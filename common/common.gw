@@ -1,4 +1,4 @@
-@i types.w
+@i types.gw
 \def\title{Common code for GTANGLE and GWEAVE (Version 0.10.7)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont Common code for {\ttitlefont GTANGLE} and
@@ -10,7 +10,7 @@
   Soojin Nam, 2026. Released into the public domain.}}
 
 @** Package common.
-This package is the shared front end of \.{GWEB}. It reads a \.{.w} source file,
+This package is the shared front end of \.{GWEB}. It reads a \.{.gw} source file,
 expands \.{@@i} includes, optionally applies a change file, and splits the
 result into a sequence of {\it sections\/}. Both \.{gtangle} and \.{gweave}
 are built on top of it, so it plays the role of \.{CWEB}'s \.{common.w}.
@@ -168,7 +168,7 @@ func (w *Web) finish(src string) {
 @ Two views of the origin map. |Origin| maps a combined-source line back to the
 file and line the user wrote, returning the two parts separately; \.{gtangle}
 uses it to emit \.{//line} directives so the \GO/ compiler reports errors at
-\.{.w} positions. |at| formats the same information as a string for a
+\.{.gw} positions. |at| formats the same information as a string for a
 diagnostic, falling back to the source filename or a bare line number.
 @<Map a combined-source line back to its origin@>=
 func (w *Web) Origin(line int) (file string, ln int) {
@@ -189,14 +189,35 @@ func (w *Web) at(line int) string {
 }
 
 @ |DefaultExt| supplies a default extension when the user omits one, so the
-commands accept a bare web name as \.{CWEB} does (\.{gtangle wc} reads \.{wc.w}). A
-name that already has an extension, or is empty, is returned unchanged.
+commands accept a bare name as \.{CWEB} does; they use it for a change file, so
+\.{wc} names \.{wc.ch}. A name that already has an extension, or is empty, is
+returned unchanged.
 @<Supply a default file extension@>=
 func DefaultExt(name, ext string) string {
 	if name == "" || filepath.Ext(name) != "" {
 		return name
 	}
 	return name + ext
+}
+
+@ A web's own extension is \.{.gw}, so \.{gtangle wc} reads \.{wc.gw}. \.{GWEB}
+first used \CEE/\.{WEB}'s \.{.w}, but that extension is taken: \.{GNU make} has
+built-in rules that hand any \.{.w} file to \.{ctangle} and \.{cweave}, and editors
+and GitHub take one for \.{CWEB}. A web still named \.{wc.w} is found all the
+same: |WebFile| falls back to the old extension when the bare name has no
+\.{.gw} file beside it but has a \.{.w} one. A name given with an extension is
+used as it is.
+@<Supply a default file extension@>=
+func WebFile(name string) string {
+	if name == "" || filepath.Ext(name) != "" {
+		return name
+	}
+	if _, err := os.Stat(name + ".gw"); err != nil {
+		if _, err := os.Stat(name + ".w"); err == nil {
+			return name + ".w"
+		}
+	}
+	return name + ".gw"
 }
 
 @ Include expansion. As in \.{CWEB}, \.{@@i} is line-oriented: a line whose first
@@ -1375,15 +1396,43 @@ func TestCodePragmaP(t *testing.T) {
 @ @(common_test.go@>=
 func TestDefaultExt(t *testing.T) {
 	cases := []struct{ name, ext, want string }{
-		{"wc", ".w", "wc.w"},         // bare name gets the extension
-		{"wc.w", ".w", "wc.w"},       // already has one: unchanged
-		{"foo.bar", ".w", "foo.bar"}, // a different extension is respected
-		{"dir/wc", ".w", "dir/wc.w"}, // path components are fine
-		{"", ".ch", ""},              // empty (e.g. no change file) stays empty
+		{"wc", ".ch", "wc.ch"},         // bare name gets the extension
+		{"wc.ch", ".ch", "wc.ch"},      // already has one: unchanged
+		{"foo.bar", ".ch", "foo.bar"},  // a different extension is respected
+		{"dir/wc", ".ch", "dir/wc.ch"}, // path components are fine
+		{"", ".ch", ""},                // empty (e.g. no change file) stays empty
 	}
 	for _, c := range cases {
 		if got := DefaultExt(c.name, c.ext); got != c.want {
 			t.Errorf("DefaultExt(%q, %q) = %q, want %q", c.name, c.ext, got, c.want)
+		}
+	}
+}
+
+@ A bare web name gets \.{.gw}, or \.{.w} when only an old-style web is there;
+\.{.gw} wins when both are; a given extension is kept.
+@(common_test.go@>=
+func TestWebFile(t *testing.T) {
+	dir := t.TempDir()
+	touch := func(name string) {
+		if err := os.WriteFile(filepath.Join(dir, name), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	touch("old.w")
+	touch("both.w")
+	touch("both.gw")
+	at := func(name string) string { return filepath.Join(dir, name) }
+	cases := []struct{ name, want string }{
+		{at("new"), at("new.gw")},   // nothing there: the new extension
+		{at("old"), at("old.w")},    // only an old-style web: fall back
+		{at("both"), at("both.gw")}, // both: .gw wins
+		{at("old.w"), at("old.w")},  // an extension given is kept
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := WebFile(c.name); got != c.want {
+			t.Errorf("WebFile(%q) = %q, want %q", c.name, got, c.want)
 		}
 	}
 }
@@ -1443,7 +1492,7 @@ func TestLimboFormatsOneLine(t *testing.T) {
 	}
 }
 
-@ A \.{@@q...@@>} comment speaks to the reader of the \.{.w} file alone, so it is
+@ A \.{@@q...@@>} comment speaks to the reader of the \.{.gw} file alone, so it is
 dropped everywhere---from the limbo and from code alike---and the text on
 either side simply joins. Its own words (here \.{SECRET}) never reach the output.
 @(common_test.go@>=
@@ -1585,7 +1634,7 @@ func TestChangedSectionFlagged(t *testing.T) {
 		}
 		return p
 	}
-	master := mustWrite("m.w", "@@* One.\n@@c\nx := 1\n@@ Two.\n@@c\ny := 2\n")
+	master := mustWrite("m.gw", "@@* One.\n@@c\nx := 1\n@@ Two.\n@@c\ny := 2\n")
 	change := mustWrite("m.ch", "@@x\ny := 2\n@@y\ny := 22\n@@ Added.\n@@c\nz := 3\n@@z\n")
 	w, err := ParseWithChange(master, change)
 	if err != nil {
@@ -1606,7 +1655,7 @@ func TestChangedSectionFlagged(t *testing.T) {
 }
 
 @ Include-line mapping. An undefined reference living in an included file must be
-reported against that file (here \.{part.w}), not against a line number in the
+reported against that file (here \.{part.gw}), not against a line number in the
 includes-expanded master, and a section's origin must map back the same way.
 @(common_test.go@>=
 func TestIncludeLineMapping(t *testing.T) {
@@ -1618,19 +1667,19 @@ func TestIncludeLineMapping(t *testing.T) {
 		}
 		return p
 	}
-	mustWrite("part.w", "@@ A section in the included file.\n@@c\nx := @@<undef@@>\n")
-	main := mustWrite("main.w", "@@* Main.\n@@c\npackage main\n\n@@i part.w\n")
+	mustWrite("part.gw", "@@ A section in the included file.\n@@c\nx := @@<undef@@>\n")
+	main := mustWrite("main.gw", "@@* Main.\n@@c\npackage main\n\n@@i part.gw\n")
 
 	w, err := Parse(main)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasWarning(w.Warnings, "part.w:1") {
-		t.Errorf("want a warning citing part.w:1, got %v", w.Warnings)
+	if !hasWarning(w.Warnings, "part.gw:1") {
+		t.Errorf("want a warning citing part.gw:1, got %v", w.Warnings)
 	}
-	// Section 2 (the \.{@@c} in \.{part.w}) should map back to \.{part.w}.
-	if got := w.at(w.Sections[1].Line); !contains(got, "part.w") {
-		t.Errorf("section 2 origin = %q, want a part.w location", got)
+	// Section 2 (the \.{@@c} in \.{part.gw}) should map back to \.{part.gw}.
+	if got := w.at(w.Sections[1].Line); !contains(got, "part.gw") {
+		t.Errorf("section 2 origin = %q, want a part.gw location", got)
 	}
 }
 
@@ -1653,8 +1702,8 @@ func TestResolveAbbrevEitherSide(t *testing.T) {
 }
 
 @** Index.
-This index covers the common code alone, as it stands when \.{common.w} is
+This index covers the common code alone, as it stands when \.{common.gw} is
 woven by itself: every identifier it uses (a section number is underlined where
 the identifier is defined), together with the manual index entries. In the
 combined \.{GWEB} document \.{gweb.ch} removes this section, and the index at
-the end of \.{gweb.w} covers all three webs. The list of section names follows.
+the end of \.{gweb.gw} covers all three webs. The list of section names follows.

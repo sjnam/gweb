@@ -1,6 +1,7 @@
 # GWEB source format
 
-A GWEB source file (`.w`) is a sequence of **sections**, mirroring CWEB. Everything
+A GWEB source file (`.gw`; an older web may still end in `.w`, which the tools also
+read) is a sequence of **sections**, mirroring CWEB. Everything
 before the first section is **limbo** (TeX preamble for `gweave`, ignored by
 `gtangle`). Each section has up to three parts, in order:
 
@@ -21,7 +22,7 @@ All control codes begin with `@`. Use `@@` for a literal `@`.
 | `@c`, `@p`      | begin the code part of an *unnamed* section (the program text)   |
 | `@<name@>=`     | begin the code part of a *named* section (a "refinement")        |
 | `@(file@>=`     | begin code that `gtangle` writes to the file `file`              |
-| `@i file`       | include another `.w` file at this point                          |
+| `@i file`       | include another `.gw` file at this point                         |
 
 ## In-code control codes
 
@@ -59,7 +60,7 @@ semicolon) have no effect; they are accepted and ignored for portability.
 | `@^text@>`      | index entry, typeset in roman                                    |
 | `@.text@>`      | index entry, typeset in typewriter                               |
 | `@:text@>`      | index entry, typeset by the user macro `\9`                      |
-| `@%`            | the rest of the line is a comment in the `.w` file (ignored)     |
+| `@%`            | the rest of the line is a comment in the `.gw` file (ignored)    |
 | `@q text@>`     | quoted/ignored material (a comment for the web author)            |
 
 ## Name abbreviation
@@ -79,8 +80,8 @@ Both tools accept an optional second argument, a **change file** (`.ch`), which
 patches the master source without editing it (CWEB's mechanism):
 
 ```sh
-gtangle foo.w foo.ch
-gweave  foo.w foo.ch
+gtangle foo.gw foo.ch
+gweave  foo.gw foo.ch
 ```
 
 A change file is a sequence of changes, each of the form

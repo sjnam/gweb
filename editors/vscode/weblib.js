@@ -1,6 +1,6 @@
 // Pure helpers for the GWEB extension: parsing the //line directives gtangle
-// leaves in its output (they form a line-accurate source map between a .w file
-// and its tangled .go), and scanning .w text for @<section name@> spans.
+// leaves in its output (they form a line-accurate source map between a .gw file
+// and its tangled .go), and scanning .gw text for @<section name@> spans.
 // No dependency on the 'vscode' module, so this file is testable with plain node.
 'use strict';
 
@@ -32,10 +32,10 @@ function parseLineDirectives(goText) {
   return origins;
 }
 
-// originMatchesW: does a //line path refer to the .w file at wPath?  The path
+// originMatchesW: does a //line path refer to the .gw file at wPath?  The path
 // gtangle records is whatever it was invoked with (often workspace-relative),
 // so try resolving against the .go file's directory, then fall back to a
-// basename match (the .go and .w conventionally sit in the same directory).
+// basename match (the .go and .gw conventionally sit in the same directory).
 function originMatchesW(originFile, goDir, wPath) {
   if (path.resolve(goDir, originFile) === path.resolve(wPath)) return true;
   return path.basename(originFile) === path.basename(wPath);
@@ -44,7 +44,7 @@ function originMatchesW(originFile, goDir, wPath) {
 // ---------------------------------------------------------------------------
 // Identifier occurrence matching.
 //
-// gofmt re-indents the tangled code, so columns in the .go differ from the .w.
+// gofmt re-indents the tangled code, so columns in the .go differ from the .gw.
 // Lines map exactly (via //line); within a line we locate the identifier by
 // text, matching the occurrence ordinal so `x = x + 1` resolves the right `x`.
 
@@ -123,7 +123,7 @@ function sectionSpansInLine(lineText) {
   return spans;
 }
 
-// indexSections scans a whole .w text: every span per line, the definition
+// indexSections scans a whole .gw text: every span per line, the definition
 // sites keyed by (unresolved) name, and the list of full (unabbreviated)
 // names, needed to resolve `prefix...` abbreviations.
 function indexSections(wText) {
@@ -173,7 +173,7 @@ function closeAfter(lineSuffix) {
   return -1;
 }
 
-// escapeName re-escapes a canonical section name for insertion into .w source:
+// escapeName re-escapes a canonical section name for insertion into .gw source:
 // a literal at-sign is written @@.
 function escapeName(name) {
   return name.replace(/@/g, '@@');

@@ -1,13 +1,13 @@
 // GWEB language features for VS Code.
 //
-// The idea: gtangle already writes a `//line file.w:N` directive for virtually
+// The idea: gtangle already writes a `//line file.gw:N` directive for virtually
 // every line of its output, so the tangled .go on disk carries a line-accurate
-// source map back to the .w. This extension turns that into IDE features by
-// request forwarding: a Go to Definition (or Hover) in a .w code part is mapped
+// source map back to the .gw. This extension turns that into IDE features by
+// request forwarding: a Go to Definition (or Hover) in a .gw code part is mapped
 // through the //line table to the corresponding position in the tangled .go,
 // handed to whatever Go language support is installed (gopls, via the standard
 // `vscode.execute...Provider` commands), and the answer is mapped back the same
-// way. @<section name@> navigation is handled natively, and saving a .w
+// way. @<section name@> navigation is handled natively, and saving a .gw
 // re-tangles it so the map stays fresh.
 'use strict';
 
@@ -20,7 +20,7 @@ const lib = require('./weblib');
 let out; // output channel, created on activation
 
 // ---------------------------------------------------------------------------
-// Source maps: for a given .w file, every .go in its directory whose //line
+// Source maps: for a given .gw file, every .go in its directory whose //line
 // directives mention it, parsed into per-file tables. Cached on the .go mtimes.
 
 const mapCache = new Map(); // wPath -> { stamp, entries }
@@ -56,7 +56,7 @@ function getMaps(wPath) {
     }
     if (!text.includes('//line ')) continue;
     const origins = lib.parseLineDirectives(text);
-    const wToGo = new Map(); // .w line (1-based) -> [.go lines]
+    const wToGo = new Map(); // .gw line (1-based) -> [.go lines]
     for (let gl = 1; gl < origins.length; gl++) {
       const o = origins[gl];
       if (!o || !lib.originMatchesW(o.file, dir, wPath)) continue;
@@ -111,7 +111,7 @@ function resolveOriginPath(originFile, goDir) {
 }
 
 // ---------------------------------------------------------------------------
-// Forwarding a position: .w -> tangled .go.
+// Forwarding a position: .gw -> tangled .go.
 //
 // Returns { goUri, goPos } or null. Lines map exactly; the column is found by
 // locating the same identifier occurrence in the mapped line (gofmt re-indents,
@@ -140,7 +140,7 @@ async function mapToGo(document, position, word, wordStart) {
 }
 
 // Mapping a result back: a location in some tangled .go whose line carries a
-// //line origin becomes a location in the .w; anything else (stdlib, plain Go
+// //line origin becomes a location in the .gw; anything else (stdlib, plain Go
 // packages) is returned as it came.
 async function mapLocationBack(uri, range) {
   if (uri.scheme === 'file' && uri.fsPath.endsWith('.go')) {
@@ -336,7 +336,7 @@ const running = new Set();
 function tangle(document, force) {
   if (document.languageId !== 'gweb') return;
   const wPath = document.uri.fsPath;
-  if (!wPath.endsWith('.w')) return; // change files are not tangled
+  if (!/\.g?w$/.test(wPath)) return; // a web (.gw, or an old-style .w); change files are not tangled
   if (!force) {
     const cfg = vscode.workspace.getConfiguration('gweb');
     if (!cfg.get('tangleOnSave')) return;

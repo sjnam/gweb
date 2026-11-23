@@ -73,13 +73,13 @@ mkdir -p "$BINDIR"
 "$GO" build -o "$BINDIR/gtangle" ./cmd/gtangle
 # gweave's Go is not committed (cweb tradition); tangle it with the gtangle just
 # built, then compile it.
-"$BINDIR/gtangle" cmd/gweave/gweave.w >/dev/null
+"$BINDIR/gtangle" cmd/gweave/gweave.gw >/dev/null
 "$GO" build -o "$BINDIR/gweave" ./cmd/gweave
 
 echo "Installing TeX macros into $GWEBMACDIR ..."
 mkdir -p "$GWEBMACDIR"
 cp gwebmac.tex "$GWEBMACDIR/gwebmac.tex"
-# Korean (luatexko) support: kotexgweb.tex is loaded from a .w file's limbo,
+# Korean (luatexko) support: kotexgweb.tex is loaded from a .gw file's limbo,
 # and it \inputs hangulfont.tex, so both must sit on TeX's search path.
 # Harmless to install even if you never write Korean webs.
 cp kotexgweb.tex "$GWEBMACDIR/kotexgweb.tex"

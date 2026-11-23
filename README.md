@@ -5,7 +5,7 @@
 
 **GWEB** is a [literate programming](https://www-cs-faculty.stanford.edu/~knuth/lp.html)
 system for the Go programming language, modeled closely on Donald Knuth and Silvio Levy's
-**CWEB**. You write a single `.w` source file that interleaves TeX
+**CWEB**. You write a single `.gw` source file that interleaves TeX
 documentation with Go code, and two tools turn it into either a program or a
 typeset document — exactly as **CWEB** does for C, with C replaced by Go:
 
@@ -62,7 +62,7 @@ make test         # runs the test suite
 ```
 
 As in **CWEB**, only the Go needed to build `gtangle` is committed; `gweave` and the
-weave engine are tangled from their `.w` sources on the fly. `make build` does
+weave engine are tangled from their `.gw` sources on the fly. `make build` does
 this for you: it builds `gtangle` from the committed sources, runs it to generate
 the rest, then builds `gweave`. (`make generate` performs just the tangling step.)
 So build through `make`, not a bare `go build ./...`, on a fresh checkout.
@@ -100,14 +100,18 @@ sudo ./install.sh                  # system-wide
 ## Usage
 
 ```sh
-gtangle foo.w     # -> foo.go (plus any @(file@>= outputs)
-gweave  foo.w     # -> foo.tex
+gtangle foo.gw    # -> foo.go (plus any @(file@>= outputs)
+gweave  foo.gw    # -> foo.tex
 pdftex  foo.tex   # -> foo.pdf   (gwebmac.tex must be on TEXINPUTS)
 ```
 
-The `.w` extension may be omitted, as in **CWEB** — `gtangle foo` reads `foo.w` (and
-a bare change-file name gets `.ch`). Each command prints a brief cweb-style
-progress line, one `*N` per starred (chapter) section.
+The `.gw` extension may be omitted, as **CWEB**'s `.w` may — `gtangle foo` reads
+`foo.gw` (and a bare change-file name gets `.ch`). **GWEB** webs used to end in `.w`
+too, but that extension is **CWEB**'s: GNU make has built-in rules that hand any
+`.w` file to `ctangle` and `cweave`, and editors and GitHub read it as CWEB. A web
+still named `foo.w` keeps working — a bare `foo` falls back to it when there is no
+`foo.gw` — and a name given with its extension is used as it is. Each command
+prints a brief cweb-style progress line, one `*N` per starred (chapter) section.
 
 For a hyperlinked PDF you can also go through DVI, exactly as **CWEB** does — request
 the `\special{pdf:…}` back end with `\let\pdf+`, then convert with `dvipdfmx`:
@@ -118,10 +122,10 @@ dvipdfmx foo.dvi                 # -> foo.pdf  (links + bookmarks)
 ```
 
 Both commands accept `-o <dir>` to choose an output directory, and an optional
-**change file** as a second argument — `gtangle foo.w foo.ch` — which patches the
+**change file** as a second argument — `gtangle foo.gw foo.ch` — which patches the
 master source without editing it (**CWEB**'s `.ch` mechanism; see
 [format.md](format.md)). For example,
-`gtangle examples/wc.w examples/wc.ch` builds a CSV variant of the word counter. When
+`gtangle examples/wc.gw examples/wc.ch` builds a CSV variant of the word counter. When
 `gweave` runs with a change file it marks each altered or added section with a `*`
 after its number (on the heading, in the index, and in cross-reference notes) and
 lists the changed sections just before the index, exactly as **CWEB** does. `gwebmac.tex`
@@ -129,18 +133,18 @@ lives at the repository root; point `TEXINPUTS` there, or copy the file
 next to your document.
 
 The tangled Go always carries `//line` directives, so the Go compiler, `go vet`,
-and panic traces report errors at **`.w`** positions instead of `.go` ones — the
+and panic traces report errors at **`.gw`** positions instead of `.go` ones — the
 Go counterpart of **CWEB**'s `#line`, which `ctangle` likewise emits unconditionally:
 
 ```sh
-gtangle foo.w && go build .       # an error reads  foo.w:42: ...
+gtangle foo.gw && go build .      # an error reads  foo.gw:42: ...
 ```
 
-**GWEB** tangles its own sources the same way, so editing a `.w` reshuffles the line
+**GWEB** tangles its own sources the same way, so editing a `.gw` reshuffles the line
 numbers in the bootstrap Go it commits — the price of keeping the generated code
 honest about its literate origin.
 
-For a tour of the bundled examples, the full `.w` file-format reference, and
+For a tour of the bundled examples, the full `.gw` file-format reference, and
 non-English (e.g. Korean) documentation, see the manual — `gwebman.tex`
 (`make manual`). A Korean translation, `gwebman-ko.tex`, is built with
 `make manual-ko` (it needs `luatex` and the Korean fonts listed under
@@ -189,30 +193,30 @@ sections, names, and structure so it reads side by side with the original:
   original to give byte-for-byte the same output on the same input.
 * **[sjnam/go-sgb](https://github.com/sjnam/go-sgb)** — the Stanford GraphBase,
   its kernel (`gbflip`, `gbio`, `gbgraph`, `gbsort`) and graph generators, one
-  web per package. The `sham.w` example here builds on it.
+  web per package. The `sham.gw` example here builds on it.
 
 ## How it is organized
 
-Each `.w` source sits next to the Go it generates. Only the Go that bootstraps
+Each `.gw` source sits next to the Go it generates. Only the Go that bootstraps
 `gtangle` is committed (◇ below); the rest (✦) is tangled by `make`.
 
 ```text
-gweb.w             the master web: @i-includes the three below (woven, not tangled)
+gweb.gw            the master web: @i-includes the three below (woven, not tangled)
 cmd/
-├── gtangle/       gtangle.w -> gtangle: front end + the tangle engine        ◇
-└── gweave/        gweave.w -> gweave: front end + the weave engine (lexer,        ✦
+├── gtangle/       gtangle.gw -> gtangle: front end + the tangle engine        ◇
+└── gweave/        gweave.gw -> gweave: front end + the weave engine (lexer,        ✦
                    pretty-printer, cross-references)
-common/            common.w -> the shared parser (CWEB's common.w)        ◇
+common/            common.gw -> the shared parser (CWEB's common.w)        ◇
 gwebmac.tex        TeX macros for woven output (CWEB's cwebmac.tex)
 kotexgweb.tex      Korean (luatexko) localization
 hangulfont.tex     the Hangul typeface choices (\input by kotexgweb.tex)
 gweb.1             the man page for both commands (CWEB's cweb.1)
-format.md          the .w file-format reference
+format.md          the .gw file-format reference
 gwebman.tex        the GWEB manual
 gwebman-ko.tex     the manual in Korean (make manual-ko; luatex)
 examples/          worked examples
 editors/
-└── vscode/        VS Code language support for .w files
+└── vscode/        VS Code language support for .gw files
 install.sh         installer for the commands, gwebmac.tex, and the man page
 ```
 

@@ -17,7 +17,7 @@
 
 @** Introduction.
 This is \.{GWEB}, a literate-programming system for the \GO/ language, modeled
-closely on Knuth and Levy's \.{CWEB}. You write a single |.w| source that
+closely on Knuth and Levy's \.{CWEB}. You write a single |.gw| source that
 interleaves \TeX\ documentation with \GO/ code; \.{gtangle} extracts the \GO/ a
 compiler needs, and \.{gweave} produces a typeset document for people.
 
@@ -27,7 +27,7 @@ what \.{gweave} turns into the pages you are reading. The system is organized as
 three short webs, presented in turn:
 
 \smallskip
-\item{$\bullet$} the \.{common} package -- the shared front end that parses a |.w|
+\item{$\bullet$} the \.{common} package -- the shared front end that parses a |.gw|
 file into sections (the analogue of \.{CWEB}'s \.{common.w});
 \item{$\bullet$} \.{gtangle} -- its command-line driver together with the tangle
 engine that extracts the \GO/ a compiler needs;
@@ -39,9 +39,9 @@ engine: a small \GO/ lexer, the pretty-printer, and the cross-reference machiner
 section that defines it, and the index and list of section names at the end
 gather all the cross-references automatically.
 
-@i common/common.w
-@i cmd/gtangle/gtangle.w
-@i cmd/gweave/gweave.w
+@i common/common.gw
+@i cmd/gtangle/gtangle.gw
+@i cmd/gweave/gweave.gw
 
 @** Index.
 This index lists every identifier used in the program (a section number is

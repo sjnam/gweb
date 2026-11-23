@@ -1,8 +1,9 @@
 # GWEB language support for VS Code
 
 Language support for [GWEB](https://github.com/sjnam/gweb) literate-programming
-files (`.w`, and change files `.ch`): syntax highlighting, plus real IDE
-features in the Go code parts, borrowed from your installed Go extension.
+files (`.gw` — and older `.w` webs — and change files `.ch`): syntax
+highlighting, plus real IDE features in the Go code parts, borrowed from your
+installed Go extension.
 
 ## Features
 
@@ -15,12 +16,12 @@ part and in `|…|` inline spans, and light **TeX** highlighting in the
 commentary.
 
 **Go to Definition (F12) and Hover in code parts.** gtangle writes a
-`//line file.w:N` directive for virtually every line of its output, so the
-tangled `.go` sitting next to your `.w` carries a line-accurate source map back
+`//line file.gw:N` directive for virtually every line of its output, so the
+tangled `.go` sitting next to your `.gw` carries a line-accurate source map back
 to the web. The extension maps your cursor position through that table to the
 tangled `.go`, asks the Go language support (gopls, via the standard VS Code
 provider commands), and maps the answer back — including across webs: a jump
-from `gtangle.w` into code defined in `common.w` lands in `common.w`.
+from `gtangle.gw` into code defined in `common.gw` lands in `common.gw`.
 Definitions in plain Go packages (the standard library, dependencies) open
 normally.
 
@@ -35,11 +36,11 @@ filtering as you type (spaces included); accepting an entry completes
 `name@>`, replacing the rest of an existing name when your cursor sits inside
 one. Names already defined sort first, with their definition lines shown.
 
-**Tangle on save.** Saving a `.w` re-runs gtangle so the source map stays
+**Tangle on save.** Saving a `.gw` re-runs gtangle so the source map stays
 fresh. Only a web whose tangled `.go` already exists is re-tangled — the
 extension never creates one behind your back; run the **GWEB: Tangle current
 file** command for the first tangle (this also lets weave-only masters, like a
-`gweb.w` that only `@i`-includes other webs, sit untangled).
+`gweb.gw` that only `@i`-includes other webs, sit untangled).
 
 ## Requirements
 
@@ -47,7 +48,7 @@ file** command for the first tangle (this also lets weave-only masters, like a
 * The **Go extension** (`golang.go`) for definition/hover in code parts —
   anything that provides Go language features works, since requests go through
   VS Code's provider commands.
-* The tangled `.go` next to the `.w` (the normal GWEB workflow). Definition and
+* The tangled `.go` next to the `.gw` (the normal GWEB workflow). Definition and
   hover answer from the **last saved** state of the web.
 
 ## Settings
@@ -55,7 +56,7 @@ file** command for the first tangle (this also lets weave-only masters, like a
 | setting | default | meaning |
 |---|---|---|
 | `gweb.gtanglePath` | `gtangle` | gtangle executable |
-| `gweb.tangleOnSave` | `true` | re-tangle a saved `.w` whose `.go` exists |
+| `gweb.tangleOnSave` | `true` | re-tangle a saved `.gw` whose `.go` exists |
 
 ## Limitations
 
@@ -81,7 +82,7 @@ below), then either:
 Then **fully quit and relaunch** VS Code (`Cmd/Ctrl+Q`, not just close the
 window) so all windows pick it up.
 
-Open any `.w` file; the language indicator at the bottom right should read
+Open any `.gw` file; the language indicator at the bottom right should read
 **GWEB**. If not, click it and choose *Change Language Mode → GWEB*.
 
 ## Build the VSIX

@@ -90,10 +90,10 @@ interesting parts are where \GO/, and \cw{gofmt}, change the picture.
 \bull \cw{gwebmac.tex} $\approx$ \cw{cwebmac.tex}---the \TeX\ macros the woven
 output uses.
 
-\noindent A web is a single file, conventionally \cw{foo.w}. \cw{gtangle foo}
+\noindent A web is a single file, conventionally \cw{foo.gw}. \cw{gtangle foo}
 writes \cw{foo.go} (plus any extra files); \cw{gweave foo} writes \cw{foo.tex},
-which \cw{pdftex} turns into \cw{foo.pdf}. As in \.{CWEB}, the \cw{.w} may be left
-off the command line.
+which \cw{pdftex} turns into \cw{foo.pdf}. The \cw{.gw} may be left off the command
+line, as \.{CWEB}'s \cw{.w} may.
 
 \chapter{What carries over from \.{CWEB}}
 \noindent
@@ -129,7 +129,17 @@ commentary work exactly as in \.{CWEB}.
 for you, and removes a stray copy if you include one.
 
 \chapter{What makes \.{GWEB} different}
-\noindent The differences all follow from typesetting \GO/ instead of \CEE/.
+\noindent Apart from the file extension, the differences all follow from typesetting
+\GO/ instead of \CEE/.
+
+\section{Webs end in \cw{.gw}}
+\.{CWEB}'s webs end in \cw{.w}, and so did \.{GWEB}'s at first. That extension
+belongs to \.{CWEB}: GNU \cw{make} has built-in rules that hand any \cw{.w} file to
+\cw{ctangle} and \cw{cweave}, so a bare \cw{make foo} beside a \GO/ web \cw{foo.w}
+would try to compile it as \CEE/, and editors and GitHub take a \cw{.w} for \.{CWEB}
+as well. A web still named \cw{foo.w} works as before: given a bare name, both
+commands read \cw{foo.gw}, or \cw{foo.w} if that is all there is, and a name given
+with its extension is read as it is. Change files keep \cw{.ch}.
 
 \section{No preprocessor}
 \GO/ has no preprocessor, so \cw{@d} never generates code: \cw{gtangle} ignores it
@@ -192,26 +202,26 @@ just the identifier written before the \cw{.}, so it need not name a real
 package.
 
 \section{\.{GWEB} is written in itself}
-Like \.{CWEB}, \.{GWEB} is a literate program: each tool is tangled from a \cw{.w} web
-kept beside its \GO/. \cw{common/common.w} (the shared parser),
-\cw{cmd/gtangle/gtangle.w} (the command and the tangle engine), and
-\cw{cmd/gweave/gweave.w} (the command and the weave engine) are the source of
+Like \.{CWEB}, \.{GWEB} is a literate program: each tool is tangled from a \cw{.gw} web
+kept beside its \GO/. \cw{common/common.gw} (the shared parser),
+\cw{cmd/gtangle/gtangle.gw} (the command and the tangle engine), and
+\cw{cmd/gweave/gweave.gw} (the command and the weave engine) are the source of
 truth; the \GO/ beside them is tangled from them and is byte-for-byte
 reproducible---a fixpoint \cw{make bootstrap} checks on every change---so the
 program you read and the program that runs cannot drift apart. \.{GWEB} is a set
 of commands, not a library, so each engine lives in its command's \cw{main}
 package rather than a separate importable one.
 \begincode
-make tangle       # re-tangle the .w sources back into the Go tree
+make tangle       # re-tangle the .gw sources back into the Go tree
 make bootstrap    # tangle into a scratch tree and verify it is byte-for-byte
                   # identical to the committed sources (the fixpoint)
 |endcode
-\noindent Editing workflow: change a \cw{.w}, run \cw{make tangle}, then commit
-both. The tests live in the \cw{.w} sources too (a {\it Tests\/} chapter per
+\noindent Editing workflow: change a \cw{.gw}, run \cw{make tangle}, then commit
+both. The tests live in the \cw{.gw} sources too (a {\it Tests\/} chapter per
 web), so they are tangled and git-ignored along with the rest of the generated
 \GO/: no \cw{\_test.go} is committed.
 
-\cw{gweb.w}, at the repository root, is a master web that \cw{@i}-includes the
+\cw{gweb.gw}, at the repository root, is a master web that \cw{@i}-includes the
 three component webs above in reading order, so \cw{gweave} can typeset the
 whole system as one document:
 \begincode
@@ -219,11 +229,11 @@ make selfdoc      # -> build/gweb.pdf, GWEB woven as a literate program
 |endcode
 \noindent The result is \.{GWEB} documenting itself---the same pretty-printed
 code, index, and cross-references it produces for any other program. Each
-component web also weaves on its own---\cw{gweave cmd/gweave/gweave.w} gives
+component web also weaves on its own---\cw{gweave cmd/gweave/gweave.gw} gives
 \cw{gweave}'s document, with its own title page and index---as \.{CWEB}'s
 \cw{common.w}, \cw{ctangle.w}, and \cw{cweave.w} do. The combined document
 applies \cw{gweb.ch}, which strips each web's title and \cw{@** Index.} section
-so that only \cw{gweb.w}'s remain.
+so that only \cw{gweb.gw}'s remain.
 
 \chapter{The woven document}
 \noindent
@@ -350,7 +360,7 @@ contents of several separately-typeset pieces into one.
 And \cw{\bs pdfURL\char123 text\char125\char123 url\char125}, anywhere in the
 \TeX\ parts, sets {\it text\/} in blue as a clickable link to {\it url\/}, as in
 \.{CWEB}; with no PDF back end both are printed, the URL in parentheses. In the
-URL write \cw{@@} for an at-sign (the usual \cw{.w} escape), \cw{\bs TILDE/} for
+URL write \cw{@@} for an at-sign (the usual \cw{.gw} escape), \cw{\bs TILDE/} for
 \cw{\char126}, and \cw{\bs UNDER/} for \cw{\char95}.
 
 \chapter{Weaving in another language}
@@ -369,7 +379,7 @@ Korean support ships ready-made. Put one line in your limbo,
 |endcode
 weave as usual, and process the result with \cw{luatex} rather than \cw{pdftex}:
 \begincode
-gweave foo.w
+gweave foo.gw
 luatex foo.tex
 |endcode
 \cw{kotexgweb.tex} loads \cw{luatexko} and the Noto Serif/Sans CJK\thinspace KR
@@ -387,18 +397,19 @@ your own.
 
 \chapter{Running the programs}
 \begincode
-gtangle [-o dir] file[.w] [change[.ch]]
-gweave  [-o dir] file[.w] [change[.ch]]
+gtangle [-o dir] file[.gw] [change[.ch]]
+gweave  [-o dir] file[.gw] [change[.ch]]
 |endcode
-The \cw{.w} extension---and a change file's \cw{.ch}---may be omitted.
+The \cw{.gw} extension---and a change file's \cw{.ch}---may be omitted; a bare
+name falls back to an old-style \cw{.w} web when there is no \cw{.gw} one.
 \cw{-o} chooses the output directory. \cw{-version} prints the version and exits.
 As each tool runs it prints a one-line banner and then a \cw{*}{\it n\/} progress
 marker for every starred section, as \.{CWEB}'s tools do.
 
 \cw{gtangle} always emits \cw{//line} directives in the tangled \GO/---as \.{CWEB}'s
 \cw{ctangle} always emits \cw{\#line}---so the compiler, \cw{go vet}, and panic
-traces report errors at \cw{.w} positions rather than \cw{.go} ones. \.{GWEB} tangles
-its own sources this way too, so editing a \cw{.w} reshuffles those line numbers
+traces report errors at \cw{.gw} positions rather than \cw{.go} ones. \.{GWEB} tangles
+its own sources this way too, so editing a \cw{.gw} reshuffles those line numbers
 in the committed \GO/.
 
 To make a PDF, either go straight through \cw{pdftex}, or through DVI and
@@ -422,7 +433,7 @@ way:
 \begincode
 go install github.com/sjnam/gweb/cmd/gtangle@latest
 |endcode
-\cw{gweave} is generated from its \cw{.w} source rather than committed, so the two
+\cw{gweave} is generated from its \cw{.gw} source rather than committed, so the two
 commands are built together from a checkout: \cw{make install-tools} puts both
 binaries in your \cw{GOBIN}.
 
@@ -434,11 +445,11 @@ manual}.
 
 \chapter{Editor support}
 \noindent A VS\thinspace Code extension under \cw{editors/vscode} supports
-\cw{.w} files: syntax highlighting (the control codes, embedded \GO/ in code
+\cw{.gw} files: syntax highlighting (the control codes, embedded \GO/ in code
 parts and \cw{|}$\ldots$\cw{|} spans, the \TeX\ commentary), and {\bf Go to
 Definition and Hover inside code parts}---forwarded to your \GO/ extension
 through the \cw{//line} source map \cw{gtangle} leaves in its output, so a
-jump from one web into code defined in another lands in that web's \cw{.w}---%
+jump from one web into code defined in another lands in that web's \cw{.gw}---%
 plus \cw{@<section name@>} navigation and completion, and re-tangling on save.
 
 To use it, install the \cw{.vsix} from the
@@ -450,18 +461,18 @@ view $\to$ {\it Install from VSIX\dots\/}), then fully relaunch. See
 The \cw{examples/} directory holds eight worked webs, from simple to rich; \cw{make
 example} tangles and weaves them all, or \cw{make -C examples NAME=wc} just one:
 
-\bull \cw{floyd.w}---Floyd's partition problem, the classic ``toy problem''
+\bull \cw{floyd.gw}---Floyd's partition problem, the classic ``toy problem''
 Knuth discusses in {\it Are Toy Problems Useful?}: partition
 $\sqrt1,\ldots,\sqrt{50}$ into two nearly-equal halves. A worked literate
 solution (meet-in-the-middle search, Gray-code enumeration, compensated
 summation, and a \cw{math/big} verification);
 
-\bull \cw{pairsums.w}---HackerRank's {\it Pair Sums\/}: the largest pair-product
+\bull \cw{pairsums.gw}---HackerRank's {\it Pair Sums\/}: the largest pair-product
 sum over all subarrays. The identity ${\rm value} = (S^2-Q)/2$ and a prefix-sum
 twist turn it into the upper envelope of a family of lines, solved with a
 {\sl Li Chao tree\/} in $O(n\log n)$;
 
-\bull \cw{rps.w}---a Korean literate essay disguised as a coffee bet: how many
+\bull \cw{rps.gw}---a Korean literate essay disguised as a coffee bet: how many
 rounds of rock--paper--scissors does it take $N$ players to settle who pays,
 and how should they split into groups to finish fastest? Worked out in exact
 rationals with \cw{math/big}---expected-value recurrences, a full search over
@@ -470,12 +481,12 @@ of four are optimal, and a convexity check---with a companion
 \cw{rps\_test.go}; woven with \cw{luatex} and \cw{kotexgweb.tex} (see {\it Weaving
 in another language\/});
 
-\bull \cw{seq.w}---a tiny lazy-sequence library (\cw{Map}, \cw{Filter},
+\bull \cw{seq.gw}---a tiny lazy-sequence library (\cw{Map}, \cw{Filter},
 \cw{Take} over infinite Fibonacci numbers), showing off the \GO/ features
 \CEE/ has no answer to: first-class functions and closures, anonymous
 functions, generics, and \GO/ 1.23 range-over-func iterators;
 
-\bull \cw{sham.w}---a \.{GWEB} port of Knuth's Stanford GraphBase demo
+\bull \cw{sham.gw}---a \.{GWEB} port of Knuth's Stanford GraphBase demo
 \cw{sham}: count the symmetric Hamiltonian cycles of the knight's graph on an
 $8\times9$ board, by folding the graph in half and backtracking with \cw{goto}
 labels. It builds on \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}, a \GO/
@@ -483,16 +494,16 @@ port of the SGB, so running it needs that module (\cw{go get
 github.com/sjnam/go-sgb}); the commentary is newly written. Shows \.{GWEB}
 handling an external dependency and a real Knuth program;
 
-\bull \cw{squint.w}---lazy power series as demand-driven channel networks
+\bull \cw{squint.gw}---lazy power series as demand-driven channel networks
 (sum, product, composition, reciprocal, functional inverse, and differential
 equations like \cw{exp}), after McIlroy's {\it Squinting at Power Series};
 
-\bull \cw{torture.w}---a deliberately mangled but compiling 1-indexed Fenwick
+\bull \cw{torture.gw}---a deliberately mangled but compiling 1-indexed Fenwick
 tree, its indentation inconsistent and its code cramped on every line, so that
 weaving it shows off how the grammar-driven prettyprinter cleans up careless
 source.
 
-\bull \cw{wc.w}---a word counter whose tangled output matches the system
+\bull \cw{wc.gw}---a word counter whose tangled output matches the system
 \cw{wc}; shows \cw{@f} and a change file (\cw{wc.ch}) that builds a CSV
 variant.
 
@@ -526,10 +537,10 @@ the same input;
 
 \bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---the Stanford GraphBase,
 its kernel (\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort}) and graph
-generators, one web per package. The \cw{sham.w} example above builds on it.
+generators, one web per package. The \cw{sham.gw} example above builds on it.
 
 \noindent \.{GWEB} also documents itself: \cw{make selfdoc} weaves the system's own
-\cw{.w} sources into a single PDF, and \cw{make manual} builds this document.
+\cw{.gw} sources into a single PDF, and \cw{make manual} builds this document.
 
 \vfill
 \centerline{\eightrm {\eighttt GWEB}---a literate programming system for Go.}

@@ -1,4 +1,4 @@
-@i ../../common/types.w
+@i ../../common/types.gw
 \def\title{GTANGLE (Version 0.10.7)}
 \def\topofcontents{\null\vfill
   \centerline{\titlefont The {\ttitlefont GTANGLE} processor}
@@ -11,7 +11,8 @@
 @** Processor gtangle.
 This is the command-line front end of \.{gtangle}; the tangle engine it drives is
 defined in the second half of this web. The input may be named with or without
-its \.{.w} extension (\.{gtangle wc} reads \.{wc.w}, as in \.{CWEB}). The unnamed \.{@@c}
+its \.{.gw} extension, as \.{CWEB}'s may without \.{.w}: \.{gtangle wc} reads
+\.{wc.gw}, or an old-style \.{wc.w} if that is all there is (see |WebFile|). The unnamed \.{@@c}
 sections are written to the input's base name with a \.{.go} extension (in the
 \.{-o} directory, default the input's directory); \.{@@(file@@>=} sections are
 written to their named files.
@@ -66,7 +67,7 @@ func main() {
 @ Usage.
 @<Print a usage message@>=
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file[.w] [change[.ch]]")
+	fmt.Fprintln(os.Stderr, "usage: gtangle [-o dir] file[.gw] [change[.ch]]")
 	flag.PrintDefaults()
 }
 
@@ -83,13 +84,13 @@ func reportProgress(w *common.Web) {
 	fmt.Fprintln(os.Stderr)
 }
 
-@ |run| supplies the default \.{.w} (and \.{.ch}) extension, parses the web
+@ |run| supplies the default \.{.gw} (and \.{.ch}) extension, parses the web
 (applying a change file if given), prints any warnings and a short progress
 report, tangles (always with \.{//line} directives), and writes each output
 file, creating its directory if necessary.
 @<Tangle the web and write its files@>=
 func run(input, changeFile, outDir string) error {
-	input = common.DefaultExt(input, ".w")
+	input = common.WebFile(input)
 	changeFile = common.DefaultExt(changeFile, ".ch")
 	w, err := common.ParseWithChange(input, changeFile)
 	if err != nil {
@@ -163,10 +164,10 @@ type Output struct {
 @ A |Tangler| holds the resolved code of a web, classified by destination: the
 refinements (|defs|), the \.{@@(file@@>=} outputs, and the unnamed program text
 (|main|). Each destination keeps a list of |codePiece|s rather than one joined
-string, so every piece remembers the \.{.w} line it began on -- the anchor for
+string, so every piece remembers the \.{.gw} line it began on -- the anchor for
 the \.{//line} directives. As in \.{CWEB}'s \.{ctangle}, those directives are always
 emitted (there is no switch to suppress them), so the \GO/ compiler, \.{go vet},
-and panic traces report positions in the literate \.{.w} source rather than in
+and panic traces report positions in the literate \.{.gw} source rather than in
 the generated \.{.go}. The buffer marks every line as it goes and
 |thinLineMarks| then drops the ones \GO/'s own line counting already implies, so
 what is written keeps a mark only where the origin jumps---\.{ctangle}'s density,
@@ -308,7 +309,7 @@ of its own.
 inside a raw string literal can look exactly like a directive, and dropping it
 would corrupt the string. |PositionFor| with |adjusted| false reports the physical
 line---the scanner honours the very directives we are reading, so the adjusted
-position would be the \.{.w} line instead. If the text cannot be scanned cleanly
+position would be the \.{.gw} line instead. If the text cannot be scanned cleanly
 (a \.{gofmt} failure leaves broken \GO/), nothing is touched.
 @<Render and gofmt one output@>=
 func thinLineMarks(src []byte) []byte {
@@ -1054,12 +1055,12 @@ asks \.{go/scanner} rather than matching text, such a line is never mistaken for
 one and never dropped.
 @(gtangle_test.go@>=
 func TestTangleKeepsLineMarkLookalikeInString(t *testing.T) {
-	const src = "@@ x\n@@c\npackage main\n\nvar s = `\n//line fake.w:99\n`\n"
+	const src = "@@ x\n@@c\npackage main\n\nvar s = `\n//line fake.gw:99\n`\n"
 	outs, err := New(common.ParseString(src)).Tangle("p.go")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := string(outs[0].Content); !strings.Contains(got, "//line fake.w:99") {
+	if got := string(outs[0].Content); !strings.Contains(got, "//line fake.gw:99") {
 		t.Errorf("a mark-lookalike inside a raw string must survive:\n%s", got)
 	}
 }
@@ -1228,12 +1229,12 @@ func TestExamplesBuild(t *testing.T) {
 		t.Skip("go tool not found in PATH")
 	}
 
-	examples, err := filepath.Glob(filepath.Join("..", "..", "examples", "*.w"))
+	examples, err := filepath.Glob(filepath.Join("..", "..", "examples", "*.gw"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(examples) == 0 {
-		t.Fatal("no example .w files found")
+		t.Fatal("no example .gw files found")
 	}
 
 	for _, ex := range examples {
@@ -1277,7 +1278,7 @@ func buildExample(t *testing.T, path string) {
 		}
 	}
 	if !haveMod {
-		// go 1.23 so examples may use range-over-func iterators (e.g. \.{seq.w}).
+		// go 1.23 so examples may use range-over-func iterators (e.g. \.{seq.gw}).
 		const mod = "module gwebexample\n\ngo 1.23\n"
 		if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0o644); err != nil {
 			t.Fatal(err)
@@ -1300,7 +1301,7 @@ func TestChangeFileBuilds(t *testing.T) {
 		t.Skip("go tool not found in PATH")
 	}
 	w, err := common.ParseWithChange(
-		filepath.Join("..", "..", "examples", "wc.w"),
+		filepath.Join("..", "..", "examples", "wc.gw"),
 		filepath.Join("..", "..", "examples", "wc.ch"),
 	)
 	if err != nil {
@@ -1330,8 +1331,8 @@ func TestChangeFileBuilds(t *testing.T) {
 }
 
 @** Index.
-This index covers \.{GTANGLE} alone, as it stands when \.{gtangle.w} is woven
+This index covers \.{GTANGLE} alone, as it stands when \.{gtangle.gw} is woven
 by itself: every identifier it uses (a section number is underlined where the
 identifier is defined), together with the manual index entries. In the combined
 \.{GWEB} document \.{gweb.ch} removes this section, and the index at the end of
-\.{gweb.w} covers all three webs. The list of section names follows.
+\.{gweb.gw} covers all three webs. The list of section names follows.

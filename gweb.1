@@ -5,7 +5,7 @@ gtangle, gweave \- translate GWEB to Go and/or TeX
 .B gtangle
 .RB [ \-o
 .IR dir ]
-.IR webfile [ .w ]
+.IR webfile [ .gw ]
 .RI [ changefile [ .ch ]]
 .PD 0
 .P
@@ -13,7 +13,7 @@ gtangle, gweave \- translate GWEB to Go and/or TeX
 .B gweave
 .RB [ \-o
 .IR dir ]
-.IR webfile [ .w ]
+.IR webfile [ .gw ]
 .RI [ changefile [ .ch ]]
 .SH DESCRIPTION
 The
@@ -53,8 +53,10 @@ of
 .SH USAGE
 The command line should have one or two names on it. The first is taken as the
 GWEB input file (and
+.B .gw
+is added if there is no extension, or
 .B .w
-is added if there is no extension). If there is a second name, it is a change
+when only a web of that older name exists). If there is a second name, it is a change
 file (and
 .B .ch
 is added if there is no extension). The change file overrides parts of the GWEB
@@ -82,7 +84,7 @@ The woven file begins with
 \(em
 .B gweave
 supplies this line itself \(em so the
-.B .w
+.B .gw
 file need not. Process the result with a TeX engine that can find
 .IR gwebmac.tex :
 .PP
@@ -161,7 +163,7 @@ to a web's limbo to use it.
 .TP
 .I gwebman.tex
 The GWEB user manual, together with the
-.B .w
+.B .gw
 file\-format reference in
 .IR format.md .
 .SH "SEE ALSO"

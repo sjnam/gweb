@@ -1,4 +1,4 @@
-% Change file for the self-documentation. gweb.w @i-includes the three
+% Change file for the self-documentation. gweb.gw @i-includes the three
 % component webs; each carries, in its own limbo, a \def\title, \def\topofcontents,
 % and \def\botofcontents so it weaves nicely on its own. Spliced into the combined
 % document those would fight the master's own title and contents page, so here we
@@ -6,20 +6,20 @@
 % manual's appendices (comm-man.ch and friends). Each web likewise ends in its
 % own `@** Index.' section, so that it has an index when woven alone, as CWEB's
 % common.w, ctangle.w, and cweave.w do; the combined document has one index, at
-% the end of gweb.w, so here we strip the three. Each index section's text names
+% the end of gweb.gw, so here we strip the three. Each index section's text names
 % its own web, so no @x block below can match another's. Apply with
-% `gweave gweb.w gweb.ch'; `make selfdoc' does this for you.
+% `gweave gweb.gw gweb.ch'; `make selfdoc' does this for you.
 %
-% Only the \def block is matched here---never the `@i types.w' line above it.
+% Only the \def block is matched here---never the `@i types.gw' line above it.
 % Changes are matched after @i includes are expanded (see the Change files
-% section of common.w), so by matching time that line is gone, replaced by the
-% contents of types.w; an @x block naming it can never match. Spelling out
+% section of common.gw), so by matching time that line is gone, replaced by the
+% contents of types.gw; an @x block naming it can never match. Spelling out
 % those contents instead would work, but then this file would have to mirror
-% types.w forever and would break every time it changed. Leaving the include
-% alone costs nothing: types.w holds only @d and @s format hints, which are
+% types.gw forever and would break every time it changed. Leaving the include
+% alone costs nothing: types.gw holds only @d and @s format hints, which are
 % invisible and harmless when the three webs each bring in a copy.
 
-% ---- common.w ----------------------------------------------------------------
+% ---- common.gw ----------------------------------------------------------------
 @x
 \def\title{Common code for GTANGLE and GWEAVE (Version 0.10.7)}
 \def\topofcontents{\null\vfill
@@ -35,15 +35,15 @@
 
 @x
 @** Index.
-This index covers the common code alone, as it stands when \.{common.w} is
+This index covers the common code alone, as it stands when \.{common.gw} is
 woven by itself: every identifier it uses (a section number is underlined where
 the identifier is defined), together with the manual index entries. In the
 combined \.{GWEB} document \.{gweb.ch} removes this section, and the index at
-the end of \.{gweb.w} covers all three webs. The list of section names follows.
+the end of \.{gweb.gw} covers all three webs. The list of section names follows.
 @y
 @z
 
-% ---- gtangle.w ---------------------------------------------------------------
+% ---- gtangle.gw ---------------------------------------------------------------
 @x
 \def\title{GTANGLE (Version 0.10.7)}
 \def\topofcontents{\null\vfill
@@ -58,15 +58,15 @@ the end of \.{gweb.w} covers all three webs. The list of section names follows.
 
 @x
 @** Index.
-This index covers \.{GTANGLE} alone, as it stands when \.{gtangle.w} is woven
+This index covers \.{GTANGLE} alone, as it stands when \.{gtangle.gw} is woven
 by itself: every identifier it uses (a section number is underlined where the
 identifier is defined), together with the manual index entries. In the combined
 \.{GWEB} document \.{gweb.ch} removes this section, and the index at the end of
-\.{gweb.w} covers all three webs. The list of section names follows.
+\.{gweb.gw} covers all three webs. The list of section names follows.
 @y
 @z
 
-% ---- gweave.w ----------------------------------------------------------------
+% ---- gweave.gw ----------------------------------------------------------------
 @x
 \def\title{GWEAVE (Version 0.10.7)}
 \def\topofcontents{\null\vfill
@@ -81,10 +81,10 @@ identifier is defined), together with the manual index entries. In the combined
 
 @x
 @** Index.
-This index covers \.{GWEAVE} alone, as it stands when \.{gweave.w} is woven by
+This index covers \.{GWEAVE} alone, as it stands when \.{gweave.gw} is woven by
 itself: every identifier it uses (a section number is underlined where the
 identifier is defined), together with the manual index entries. In the combined
 \.{GWEB} document \.{gweb.ch} removes this section, and the index at the end of
-\.{gweb.w} covers all three webs. The list of section names follows.
+\.{gweb.gw} covers all three webs. The list of section names follows.
 @y
 @z

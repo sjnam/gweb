@@ -1,7 +1,7 @@
 # Build a GWEB example program: tangle it to Go, weave it to a PDF.
 #
-#   make            # tangle + weave + typeset NAME.w  (default NAME=wc)
-#   make NAME=foo   # operate on foo.w instead
+#   make            # tangle + weave + typeset NAME.gw  (default NAME=wc)
+#   make NAME=foo   # operate on foo.gw instead
 #   make go         # only produce NAME.go
 #   make pdf        # only produce NAME.pdf
 
@@ -13,7 +13,7 @@ GWEAVE    ?= $(ROOT)/bin/gweave
 TEXENGINE ?= pdftex
 
 # Let the TeX engine find gwebmac.tex.
-export TEXINPUTS := $(ROOT)/tex:$(TEXINPUTS)
+export TEXINPUTS := $(ROOT):$(TEXINPUTS)
 
 .PHONY: all go pdf clean
 
@@ -21,13 +21,13 @@ all: go pdf
 
 go: $(NAME).go
 # Depend on gtangle too, so rebuilding the tool re-tangles the example.
-$(NAME).go: $(NAME).w $(GTANGLE)
-	$(GTANGLE) $(NAME).w
+$(NAME).go: $(NAME).gw $(GTANGLE)
+	$(GTANGLE) $(NAME).gw
 
 pdf: $(NAME).pdf
 # Depend on gweave and the macro package too, so changing either rebuilds the PDF.
-$(NAME).pdf: $(NAME).w $(GWEAVE) $(ROOT)/tex/gwebmac.tex
-	$(GWEAVE) $(NAME).w
+$(NAME).pdf: $(NAME).gw $(GWEAVE) $(ROOT)/gwebmac.tex
+	$(GWEAVE) $(NAME).gw
 	$(TEXENGINE) $(NAME).tex
 
 clean:

@@ -5,18 +5,18 @@ BIN ?= bin
 
 .PHONY: all build generate test install install-tools uninstall clean example tangle bootstrap selfdoc manual manual-ko bump
 
-# GWEB is self-hosted: its Go is tangled from the literate .w sources, each kept
+# GWEB is self-hosted: its Go is tangled from the literate .gw sources, each kept
 # next to its output. Following cweb's tradition, the repository commits only the
 # Go needed to build gtangle the first time -- the shared common package and
 # cmd/gtangle (its main and the tangle engine). Everything else is tangled on
 # demand by `generate' and is git-ignored: all of gweave (its main and the weave
-# engine) and every test, which live in the .w sources too.
+# engine) and every test, which live in the .gw sources too.
 #
-# Each command is a single web: cmd/gtangle/gtangle.w is the gtangle front end
-# plus the tangle engine, cmd/gweave/gweave.w the gweave front end plus the weave
-# engine, and common/common.w the shared parser. gweb.w is the weave-only
+# Each command is a single web: cmd/gtangle/gtangle.gw is the gtangle front end
+# plus the tangle engine, cmd/gweave/gweave.gw the gweave front end plus the weave
+# engine, and common/common.gw the shared parser. gweb.gw is the weave-only
 # master (it just @i-includes the three, so it is not tangled).
-WEBS   = common/common.w cmd/gtangle/gtangle.w cmd/gweave/gweave.w
+WEBS   = common/common.gw cmd/gtangle/gtangle.gw cmd/gweave/gweave.gw
 # The non-committed Go that `generate' produces (removed by `clean').
 GEN_GO = cmd/gtangle/gtangle_test.go \
          cmd/gweave/gweave.go cmd/gweave/gweave_test.go \
@@ -26,16 +26,16 @@ all: build
 
 # The two commands. `generate' first tangles the tree (building a bootstrap
 # gtangle from the committed Go to do so); we then build both binaries from the
-# freshly generated sources, so each reflects the current .w (e.g. the version).
+# freshly generated sources, so each reflects the current .gw (e.g. the version).
 build: generate
 	$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
 	$(GO) build -o $(BIN)/gweave  ./cmd/gweave
 
 # Build a bootstrap gtangle from the committed sources, then tangle every web, so
 # the non-committed Go exists and the tree compiles. This rewrites the committed
-# bootstrap Go in place too (identically, unless a .w changed); Go's build cache
+# bootstrap Go in place too (identically, unless a .gw changed); Go's build cache
 # absorbs the no-op rewrites. gtangle always emits //line directives (as cweb's
-# ctangle does), so the Go points back at the .w source, and editing a .w
+# ctangle does), so the Go points back at the .gw source, and editing a .gw
 # reshuffles those line numbers. `tangle' is a synonym.
 generate tangle:
 	$(GO) build -o $(BIN)/gtangle ./cmd/gtangle
@@ -57,14 +57,14 @@ bootstrap:
 		done; \
 	done; \
 	rm -rf .bootstrap; \
-	[ $$ok = 1 ] && echo "bootstrap: the .w sources reproduce the committed Go byte-for-byte"
+	[ $$ok = 1 ] && echo "bootstrap: the .gw sources reproduce the committed Go byte-for-byte"
 
-# Weave GWEB's own sources into a typeset PDF of the whole system. gweb.w is the
+# Weave GWEB's own sources into a typeset PDF of the whole system. gweb.gw is the
 # master that @i-includes the three component webs in reading order. Needs a
 # TeX engine (pdftex) that can find gwebmac.tex.
 selfdoc: build
 	@mkdir -p build
-	$(BIN)/gweave -o build gweb.w gweb.ch
+	$(BIN)/gweave -o build gweb.gw gweb.ch
 	cd build && TEXINPUTS="$(CURDIR):" pdftex -interaction=nonstopmode gweb.tex
 	@echo "selfdoc: wrote build/gweb.pdf"
 
@@ -88,19 +88,19 @@ test: generate
 
 # Bump the release version everywhere it appears. Usage:
 #   make bump VERSION=0.5.2
-# The current version is read from common.w's Version constant, then replaced --
-# in every tracked .w/.tex/.ch/.md that carries it -- with VERSION. That is why
+# The current version is read from common.gw's Version constant, then replaced --
+# in every tracked .gw/.tex/.ch/.md that carries it -- with VERSION. That is why
 # it exists: the version now lives in each component web's \title and
 # \topofcontents, in gweb.ch (which must keep matching those lines), and in
-# the manual, besides common.w's constant; this moves them together. The
+# the manual, besides common.gw's constant; this moves them together. The
 # committed Go is regenerated afterwards. Review the diff, then commit, tag, and
 # release by hand (make bootstrap && make test first).
 bump:
 	@test -n "$(VERSION)" || { echo "usage: make bump VERSION=x.y.z"; exit 2; }
-	@old=`sed -n 's/.*const Version = "\([^"]*\)".*/\1/p' common/common.w`; \
-	test -n "$$old" || { echo "cannot read the current version from common/common.w"; exit 1; }; \
+	@old=`sed -n 's/.*const Version = "\([^"]*\)".*/\1/p' common/common.gw`; \
+	test -n "$$old" || { echo "cannot read the current version from common/common.gw"; exit 1; }; \
 	if [ "$$old" = "$(VERSION)" ]; then echo "already at $$old"; exit 0; fi; \
-	files=`git grep -lF "$$old" -- '*.w' '*.tex' '*.ch' '*.md'`; \
+	files=`git grep -lF "$$old" -- '*.gw' '*.tex' '*.ch' '*.md'`; \
 	echo "bumping $$old -> $(VERSION) in:"; echo "$$files" | sed 's/^/  /'; \
 	for f in $$files; do perl -pi -e "s/\Q$$old\E(?![0-9.])/$(VERSION)/g" $$f; done
 	@$(MAKE) --no-print-directory generate >/dev/null
