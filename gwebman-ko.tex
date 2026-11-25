@@ -455,6 +455,29 @@ tangle하기가 더해진다.
 \cw{.vsix}를 받아 설치하고(확장 보기 $\to$ {\it Install from VSIX\dots\/}),
 편집기를 완전히 다시 띄운다. 자세한 것은 \cw{editors/vscode/README.md}를 본다.
 
+\chapter{미니 색인: GTWILL}
+\noindent \.{CWEB}에는 자매 프로그램으로 커누스의 \.{CTWILL}이 있다. 그는 이것으로
+{\it The Stanford GraphBase\/}와 {\it MMIXware\/} 같은 자신의 문학적 프로그램을
+책으로 짰다. \.{GWEB}에도 짝이 있으니
+\pdfURL{gtwill}{https://github.com/sjnam/gtwill}이다. 명령 \cw{gtwill}은
+\cw{.gw} 파일을 \cw{gweave}와 똑같이 짜되, 쪽을 마주 보는 둘씩 놓고 오른쪽
+쪽마다 아래에 {\it 미니 색인\/}을 단다. 미니 색인에는 두 쪽에서 쓰지만 정의하지는
+않는 이름들이, 저마다의 뜻과 그것을 정의한 절 번호와 함께 실린다.
+
+\.{CTWILL}이 \.{CWEAVE}에 변경 파일을 더한 것이듯, \cw{gtwill}도 \cw{gweave}에
+변경 파일을 더한 것이다. 변경 파일 \cw{gtwill.ch}를 고정해 둔 \.{GWEB} 릴리즈의
+\cw{cmd/gweave/gweave.gw}에 적용한다. 도우미 명령 \cw{gtwill-refsort}는 \TeX을
+두 번 돌리는 사이에 색인 항목을 정렬하고, \cw{gtwill-twinx}는 여러 프로그램의
+색인을 하나로 합친다.
+\begincode
+gtwill foo.gw [foo.ch]          # -> foo.tex, foo.aux
+luatex foo                      # 첫 번째: -> foo.pdf, foo.mref
+gtwill-refsort < foo.mref > foo.smref
+luatex foo                      # 두 번째: 미니 색인이 정렬된다
+|endcode
+아래 예제와 함께 소개하는 큰 프로젝트들은 이것으로 책꼴 판을 만든다(\cw{make
+twill}).
+
 \chapter{딸린 예제}
 디렉터리 \cw{examples/}에는 간단한 것부터 풍성한 것까지 완성된 웹이 여덟 개
 있다. 명령 \cw{make example}은 이것들을 모두 tangle하고 짜며, \cw{make -C

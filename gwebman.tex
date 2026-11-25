@@ -457,6 +457,29 @@ To use it, install the \cw{.vsix} from the
 view $\to$ {\it Install from VSIX\dots\/}), then fully relaunch. See
 \cw{editors/vscode/README.md} for details.
 
+\chapter{Mini-indexes: GTWILL}
+\noindent \.{CWEB} has a sister program, Knuth's \.{CTWILL}, which typeset his
+literate programs as books---{\it The Stanford GraphBase\/} and {\it MMIXware\/}
+among them. \.{GWEB} has one too,
+\pdfURL{gtwill}{https://github.com/sjnam/gtwill}. Its \cw{gtwill} weaves a
+\cw{.gw} file exactly as \cw{gweave} does, but sets the pages in facing pairs and
+puts a {\it mini-index\/} at the foot of every right-hand page: the identifiers
+the two pages use but do not define, each with its meaning and the section that
+defines it.
+
+As \.{CTWILL} is \.{CWEAVE} with a change file, \cw{gtwill} is \cw{gweave} with
+one: \cw{gtwill.ch} applies to \cw{cmd/gweave/gweave.gw} of a pinned \.{GWEB}
+release. Two helpers, \cw{gtwill-refsort} and \cw{gtwill-twinx}, sort the entries
+between \TeX's two passes and merge the indexes of several programs into one:
+\begincode
+gtwill foo.gw [foo.ch]          # -> foo.tex, foo.aux
+luatex foo                      # first pass: -> foo.pdf, foo.mref
+gtwill-refsort < foo.mref > foo.smref
+luatex foo                      # second pass: mini-indexes sorted
+|endcode
+The larger projects listed with the examples below use it for their book
+editions (\cw{make twill}).
+
 \chapter{The bundled examples}
 The \cw{examples/} directory holds eight worked webs, from simple to rich; \cw{make
 example} tangles and weaves them all, or \cw{make -C examples NAME=wc} just one:

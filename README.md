@@ -150,6 +150,35 @@ non-English (e.g. Korean) documentation, see the manual — `gwebman.tex`
 `make manual-ko` (it needs `luatex` and the Korean fonts listed under
 [Prerequisites](#prerequisites)).
 
+## Mini-indexes: GTWILL
+
+**CWEB** has a sister program, Knuth's **CTWILL**, which typeset his literate
+programs as books — *The Stanford GraphBase* and *MMIXware* among them. **GWEB**
+has one too: **[sjnam/gtwill](https://github.com/sjnam/gtwill)**. Its `gtwill`
+weaves a `.gw` file exactly as `gweave` does, but sets the pages in facing pairs
+and puts a **mini-index** at the foot of every right-hand page: the identifiers
+the two pages use but do not define, each with its meaning and the section that
+defines it.
+
+```text
+appendChar: func( ), §53.          mem: [ ]memoryWord, §132.
+curLength: func( ) int32, §52.     memEnd: pointer, §134.
+```
+
+As CTWILL is CWEAVE with a change file, `gtwill` is `gweave` with one:
+`gtwill.ch` applies to `cmd/gweave/gweave.gw` of a pinned **GWEB** release. Two
+helpers, `gtwill-refsort` and `gtwill-twinx`, sort the entries between TeX's two
+passes and merge the indexes of several programs into one:
+
+```sh
+gtwill foo.gw [foo.ch]                       # -> foo.tex, foo.aux
+luatex foo                                   # first pass: -> foo.pdf, foo.mref
+gtwill-refsort < foo.mref > foo.smref
+luatex foo                                   # second pass: mini-indexes sorted
+```
+
+The larger projects below use it for their book editions (`make twill`).
+
 ## More examples
 
 The `examples/` directory here is deliberately small — just enough to exercise
