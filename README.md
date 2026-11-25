@@ -156,17 +156,17 @@ The `examples/` directory here is deliberately small — just enough to exercise
 the tools. For **GWEB** used in earnest, see the companion repository:
 
 **[sjnam/gweb-examples](https://github.com/sjnam/gweb-examples)** — some forty
-literate Go programs, each in a directory of its own with its `.w`, a README, and
+literate Go programs, each in a directory of its own with its `.gw`, a README, and
 any change files, MetaPost files, or data it needs; one Makefile builds them all
 into a single Go module. Most are translations of Knuth's own CWEB programs. They
-range over backtracking and exhaustive search (`back-20q.w`, `back-pi-day.w`,
-`back-dissect.w`, `sliding.w`), graph algorithms (`tarjan-strong.w`,
-`hopcroft-karp.w`, `matula.w`, `grayspan.w`), combinatorial generation
-(`koda-ruskey.w`, `li-ruskey.w`, `spiders.w`), and serious counting
-(`ulam-gibbs.w`, `polynum.w`, `prime-sieve.w`). Beside them stand expositions of
-algorithms worth knowing — zip trees (`ziptree.w`), the FFT and number-theoretic
-transforms (`ntt.w`), Li Chao trees (`pairsums.w`), Floyd's random sampling
-(`perm.w`) — and the odd literary detour: `perec.w` rebuilds Perec's *Life A
+range over backtracking and exhaustive search (`back-20q.gw`, `back-pi-day.gw`,
+`back-dissect.gw`, `sliding.gw`), graph algorithms (`tarjan-strong.gw`,
+`hopcroft-karp.gw`, `matula.gw`, `grayspan.gw`), combinatorial generation
+(`koda-ruskey.gw`, `li-ruskey.gw`, `spiders.gw`), and serious counting
+(`ulam-gibbs.gw`, `polynum.gw`, `prime-sieve.gw`). Beside them stand expositions of
+algorithms worth knowing — zip trees (`ziptree.gw`), the FFT and number-theoretic
+transforms (`ntt.gw`), Li Chao trees (`pairsums.gw`), Floyd's random sampling
+(`perm.gw`) — and the odd literary detour: `perec.gw` rebuilds Perec's *Life A
 User's Manual* from its two constraints. All are written in Korean via
 `\input kotexgweb`, and most carry MetaPost figures drawn during typesetting by
 `luamplib`, so the repository doubles as a demonstration of what a finished
@@ -178,22 +178,29 @@ translation that turns his Pascal (or C) into Go section by section, keeping his
 sections, names, and structure so it reads side by side with the original:
 
 * **[sjnam/tex-the-program](https://github.com/sjnam/tex-the-program)** —
-  *TeX: The Program* (`tex.web`, version 3.141592653) as a single `tex.w`. It
+  *TeX: The Program* (`tex.web`, version 3.141592653) as a single `tex.gw`. It
   yields both a book of some 860 pages and a working `tex` that passes Knuth's
   TRIP test.
 * **[sjnam/metafont-the-program](https://github.com/sjnam/metafont-the-program)**
   — its companion, *METAFONT: The Program* (`mf.web`, version 2.71828182) as
-  `mf.w`, a book of some 900 pages with 26 MetaPost figures the original lacks,
+  `mf.gw`, a book of some 900 pages with 26 MetaPost figures the original lacks,
   and a working `mf` that writes the same TFM and GF files as METAFONT and passes
   the TRAP test.
 * **[sjnam/go-mmix](https://github.com/sjnam/go-mmix)** — Knuth's MMIXware:
-  the MMIX specification (`mmixdoc.w`), the arithmetic and I/O libraries, the
+  the MMIX specification (`mmixdoc.gw`), the arithmetic and I/O libraries, the
   assembler `mmixal`, the simulator, `mmotype`, and the pipelined meta-simulator
   `mmmix`, every section translated. Each program was checked against Knuth's C
   original to give byte-for-byte the same output on the same input.
 * **[sjnam/go-sgb](https://github.com/sjnam/go-sgb)** — the Stanford GraphBase,
   its kernel (`gbflip`, `gbio`, `gbgraph`, `gbsort`) and graph generators, one
   web per package. The `sham.gw` example here builds on it.
+
+And one to play: **[sjnam/go-advent](https://github.com/sjnam/go-advent)** —
+Colossal Cave Adventure, from the CWEB version Knuth wrote in 1998
+(`advent.w`), carried into **GWEB** as `advent.gw` and sixteen chapter webs, and
+localized throughout into Korean: the places, the messages, and the commands you
+type. Its tests replay fixed-seed games against golden transcripts, and
+`make twill` sets it as a book with a mini-index on every right-hand page.
 
 ## How it is organized
 

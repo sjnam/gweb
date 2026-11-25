@@ -518,18 +518,18 @@ keeping his sections, names, and structure so it reads side by side with the
 original:
 
 \bull \pdfURL{tex-the-program}{https://github.com/sjnam/tex-the-program}---{\it
-\TeX: The Program\/} (\cw{tex.web}, version 3.141592653) as a single \cw{tex.w}.
+\TeX: The Program\/} (\cw{tex.web}, version 3.141592653) as a single \cw{tex.gw}.
 It yields both a book of some 860 pages and a working \cw{tex} that passes
 Knuth's TRIP test;
 
 \bull \pdfURL{metafont-the-program}{https://github.com/sjnam/metafont-the-program}%
 ---its companion, {\slMF\it: The Program\/} (\cw{mf.web}, version
-2.71828182) as \cw{mf.w}: a book of some 900 pages with 26 MetaPost figures the
+2.71828182) as \cw{mf.gw}: a book of some 900 pages with 26 MetaPost figures the
 original lacks, and a working \cw{mf} that writes the same TFM and GF files as
 \MF\ and passes the TRAP test;
 
 \bull \pdfURL{go-mmix}{https://github.com/sjnam/go-mmix}---Knuth's MMIXware, every
-section translated: the specification of the MMIX machine (\cw{mmixdoc.w}), the
+section translated: the specification of the MMIX machine (\cw{mmixdoc.gw}), the
 arithmetic and I/O libraries, the assembler \cw{mmixal}, the simulator,
 \cw{mmotype}, and the pipelined meta-simulator \cw{mmmix}. Each program was
 checked against Knuth's \CEE/ original to give byte-for-byte the same output on
@@ -538,6 +538,12 @@ the same input;
 \bull \pdfURL{go-sgb}{https://github.com/sjnam/go-sgb}---the Stanford GraphBase,
 its kernel (\cw{gbflip}, \cw{gbio}, \cw{gbgraph}, \cw{gbsort}) and graph
 generators, one web per package. The \cw{sham.gw} example above builds on it.
+
+\noindent And one to play: \pdfURL{go-advent}{https://github.com/sjnam/go-advent}%
+---Colossal Cave Adventure, from the \.{CWEB} version Knuth wrote in 1998
+(\cw{advent.w}), carried into \.{GWEB} as \cw{advent.gw} and sixteen chapter
+webs, and localized throughout into Korean: the places, the messages, and the
+commands you type. Its tests replay fixed-seed games against golden transcripts.
 
 \noindent \.{GWEB} also documents itself: \cw{make selfdoc} weaves the system's own
 \cw{.gw} sources into a single PDF, and \cw{make manual} builds this document.
